@@ -1,0 +1,21 @@
+{
+  "module": {
+    "name": "openai_ohos",
+    "type": "har",
+    "deviceTypes": [
+      "default"
+    ],
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.INTERNET"
+      },
+      {
+        "name": "ohos.permission.MICROPHONE",
+        "reason": "$string:library_microphone_reason",
+        "usedScene": {
+          "when": "inuse"
+        }
+      }
+    ]
+  }
+}
