@@ -3,4 +3,5 @@ export class RouterName {
   public static readonly Message = 'Message'
   public static readonly Contacts = 'Contacts'
   public static readonly WorldBook = 'WorldBook'
+  public static readonly AddContacts = 'AddContacts'
 }

@@ -47,6 +47,8 @@ struct Index {
         }
       })
     }
+
+    .hideTitleBar(true)
     .width(FullPercent)
     .height(FullPercent)
   }

@@ -1,6 +1,15 @@
 {
   "routerMap": [
     {
+      "name": "AddContacts",
+      "pageSourceFile": "src/main/ets/_generated/ZRAddContactsPage.ets",
+      "buildFunction": "entryAddContactsPageBuilder",
+      "data": {
+        "needLogin": "false",
+        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
+      }
+    },
+    {
       "name": "Contacts",
       "pageSourceFile": "src/main/ets/_generated/ZRContactsPage.ets",
       "buildFunction": "entryContactsPageBuilder",

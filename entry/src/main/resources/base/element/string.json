@@ -23,6 +23,10 @@
     {
       "name": "world_book",
       "value": "世界书"
+    },
+    {
+      "name": "add_contacts",
+      "value": "添加联系人"
     }
   ]
 }

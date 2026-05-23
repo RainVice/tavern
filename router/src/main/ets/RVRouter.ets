@@ -1,4 +1,4 @@
-import { ZRouter } from '@hzw/zrouter';
+import { PopResult, ZRouter } from '@hzw/zrouter';
 import { LogUtil } from '@pura/harmony-utils';
 import BuildProfile from '../../../BuildProfile';
 
@@ -18,7 +18,18 @@ export class RVRouter {
     return ZRouter.getNavStack()
   }
 
-  static push(name: string) {
-    ZRouter.getInstance().push(name)
+  static push<P = void, R = void>(
+    name: string,
+    param?: P,
+    onPop?: (result: PopResult<R | Object | null | undefined>) => void
+  ) {
+    const router = ZRouter.getInstance()
+    if (param) {
+      router.setParam(param)
+    }
+    if (onPop) {
+      router.setPopListener(onPop)
+    }
+    router.push(name)
   }
 }
