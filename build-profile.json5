@@ -1,6 +1,20 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/rainvice/.ohos/config/default_Tavern_3o26BJYkqvJTslYj6ekwkRIMO34WrIH1akH6K77GU3o=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001A4828C99B8C00DF8C6F20696A77A79AC895F5820F8AC5F6562D9C51420BDBF58E4E8CF946642E",
+          "profile": "/Users/rainvice/.ohos/config/default_Tavern_3o26BJYkqvJTslYj6ekwkRIMO34WrIH1akH6K77GU3o=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/rainvice/.ohos/config/default_Tavern_3o26BJYkqvJTslYj6ekwkRIMO34WrIH1akH6K77GU3o=.p12",
+          "storePassword": "0000001A02FFBAB3AC80DD348D88460F23E4F622ECE4C9396FF1DEF297AAD68723822F6600D7615D011F"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",
@@ -49,6 +63,14 @@
           ]
         }
       ]
+    },
+    {
+      "name": "router",
+      "srcPath": "./router",
+    },
+    {
+      "name": "common",
+      "srcPath": "./common",
     }
   ]
 }

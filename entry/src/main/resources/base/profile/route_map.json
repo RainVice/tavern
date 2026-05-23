@@ -1,0 +1,31 @@
+{
+  "routerMap": [
+    {
+      "name": "Contacts",
+      "pageSourceFile": "src/main/ets/_generated/ZRContactsPage.ets",
+      "buildFunction": "entryContactsPageBuilder",
+      "data": {
+        "needLogin": "false",
+        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
+      }
+    },
+    {
+      "name": "Message",
+      "pageSourceFile": "src/main/ets/_generated/ZRMessagePage.ets",
+      "buildFunction": "entryMessagePageBuilder",
+      "data": {
+        "needLogin": "false",
+        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
+      }
+    },
+    {
+      "name": "WorldBook",
+      "pageSourceFile": "src/main/ets/_generated/ZRWorldBookPage.ets",
+      "buildFunction": "entryWorldBookPageBuilder",
+      "data": {
+        "needLogin": "false",
+        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
+      }
+    }
+  ]
+}
