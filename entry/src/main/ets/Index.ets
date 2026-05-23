@@ -4,6 +4,7 @@ import { RVRouter } from 'router';
 import { MessagePage } from './pages/message/MessagePage';
 import { ContactsPage } from './pages/contacts/ContactsPage';
 import { WorldBookPage } from './pages/worldbook/WorldBookPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 
 @Entry
 @Component
@@ -35,6 +36,15 @@ struct Index {
         .height(FullPercent)
         .tabBar(new BottomTabBarStyle({ normal: symbolModifier($r("sys.symbol.book_pages_fill_1")) },
           $r('app.string.world_book')))
+
+        // 设置
+        TabContent() {
+          SettingsPage()
+        }
+        .width(FullPercent)
+        .height(FullPercent)
+        .tabBar(new BottomTabBarStyle({ normal: symbolModifier($r("sys.symbol.gearshape_fill")) },
+          $r('app.string.settings')))
       }
       .barOverlap(true)
       .barPosition(BarPosition.End)
@@ -47,7 +57,7 @@ struct Index {
         }
       })
     }
-
+    .backgroundColor($r("sys.color.background_secondary"))
     .hideTitleBar(true)
     .width(FullPercent)
     .height(FullPercent)

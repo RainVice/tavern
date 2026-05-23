@@ -8,6 +8,7 @@ export struct WorldBookPage {
     HdsNavDestination() {
 
     }
+    .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({ content: { title: { mainTitle: $r("app.string.world_book") } } })
     .hideBackButton(true)
   }

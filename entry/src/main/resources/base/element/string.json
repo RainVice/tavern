@@ -27,6 +27,14 @@
     {
       "name": "add_contacts",
       "value": "添加联系人"
+    },
+    {
+      "name": "settings",
+      "value": "设置"
+    },
+    {
+      "name": "model_provider",
+      "value": "模型提供商"
     }
   ]
 }

@@ -6,8 +6,9 @@ import { Route, RouterName } from 'router';
 export struct MessagePage {
   build() {
     HdsNavDestination() {
-      
+
     }
+    .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({ content: { title: { mainTitle: $r("app.string.messages") } } })
     .hideBackButton(true)
   }

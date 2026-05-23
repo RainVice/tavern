@@ -1,4 +1,4 @@
-import { HdsNavDestination } from '@kit.UIDesignKit';
+import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
 import { Route, RouterName } from 'router';
 
 @Route({ name: RouterName.AddContacts })
@@ -8,7 +8,14 @@ export struct AddContactsPage {
     HdsNavDestination() {
 
     }
-    .titleBar({ content: { title: { mainTitle: $r("app.string.add_contacts") } } })
+    .titleBar({
+      content: { title: { mainTitle: $r("app.string.add_contacts") }, },
+      style: {
+        systemMaterialEffect: {
+          materialType: hdsMaterial.MaterialType.ADAPTIVE
+        }
+      }
+    })
     .hideBackButton(false)
   }
 }
