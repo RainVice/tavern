@@ -1,10 +1,10 @@
-import { HdsNavDestination } from '@kit.UIDesignKit';
+import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
 import { symbolModifier } from 'common';
 import { Route, RouterName } from 'router';
 import { ContactsViewModel } from './ContactsViewModel';
 
 @Route({ name: RouterName.Contacts })
-@Component
+@ComponentV2
 export struct ContactsPage {
   private readonly vm = new ContactsViewModel();
 
@@ -27,6 +27,11 @@ export struct ContactsPage {
           }]
         }
       },
+      style: {
+        systemMaterialEffect: {
+          materialType: hdsMaterial.MaterialType.ADAPTIVE
+        }
+      }
     })
     .hideBackButton(true)
   }

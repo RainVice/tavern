@@ -6,6 +6,6 @@ export class SettingsViewModel {
   }
 
   onModelProviderClick() {
-    // TODO: 跳转模型提供商选择页
+    RVRouter.push(RouterName.ModelProviderList)
   }
 }

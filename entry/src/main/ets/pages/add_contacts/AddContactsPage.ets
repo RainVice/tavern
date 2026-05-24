@@ -2,7 +2,7 @@ import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
 import { Route, RouterName } from 'router';
 
 @Route({ name: RouterName.AddContacts })
-@Component
+@ComponentV2
 export struct AddContactsPage {
   build() {
     HdsNavDestination() {

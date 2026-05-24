@@ -35,6 +35,50 @@
     {
       "name": "model_provider",
       "value": "模型提供商"
+    },
+    {
+      "name": "add_model_provider",
+      "value": "添加提供商"
+    },
+    {
+      "name": "edit_model_provider",
+      "value": "编辑提供商"
+    },
+    {
+      "name": "save",
+      "value": "保存"
+    },
+    {
+      "name": "provider_name",
+      "value": "提供商名称"
+    },
+    {
+      "name": "provider_name_placeholder",
+      "value": "请输入提供商名称"
+    },
+    {
+      "name": "api_key",
+      "value": "API 密钥"
+    },
+    {
+      "name": "api_key_placeholder",
+      "value": "请输入 API 密钥"
+    },
+    {
+      "name": "base_url",
+      "value": "接口地址"
+    },
+    {
+      "name": "base_url_placeholder",
+      "value": "请输入接口地址"
+    },
+    {
+      "name": "model_list",
+      "value": "模型列表"
+    },
+    {
+      "name": "model_list_placeholder",
+      "value": "输入模型名称"
     }
   ]
 }

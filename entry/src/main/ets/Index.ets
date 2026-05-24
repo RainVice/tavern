@@ -7,7 +7,7 @@ import { WorldBookPage } from './pages/worldbook/WorldBookPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 
 @Entry
-@Component
+@ComponentV2
 struct Index {
   build() {
     HdsNavigation(RVRouter.getNavStack()) {

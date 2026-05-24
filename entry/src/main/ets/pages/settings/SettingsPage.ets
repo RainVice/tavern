@@ -1,10 +1,10 @@
-import { HdsListItem, HdsNavDestination, IconSize, PrefixIcon, SuffixIcon } from '@kit.UIDesignKit';
+import { HdsListItem, HdsNavDestination, IconSize, PrefixIcon, SuffixArrow } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
 import { Route, RouterName } from 'router';
 import { SettingsViewModel } from './SettingsViewModel';
 
 @Route({ name: RouterName.Settings })
-@Component
+@ComponentV2
 export struct SettingsPage {
   private readonly vm = new SettingsViewModel();
 
@@ -23,15 +23,13 @@ export struct SettingsPage {
             }),
             textItem: {
               primaryText: {
-                text: '模型提供商',
+                text: $r("app.string.model_provider"),
               },
             },
-            suffixItem: new SuffixIcon({
-              iconValue: {
-                symbol: symbolModifier($r("sys.symbol.chevron_right"))
-                  .fontColor([$r("sys.color.font_tertiary")])
-              }
-            })
+            suffixItem: new SuffixArrow({ color: $r("sys.color.font_tertiary") }),
+            onClick: (): void => {
+              this.vm.onModelProviderClick()
+            }
           }
         })
       }
