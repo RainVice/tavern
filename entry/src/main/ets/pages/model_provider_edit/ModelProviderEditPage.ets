@@ -1,5 +1,5 @@
 import { HdsListItem, hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
-import { FullPercent, hdsAttribute, symbolModifier } from 'common';
+import { FullPercent, hdsAttribute, symbolGlyphAttribute, symbolModifier, symbolSpanAttribute } from 'common';
 import { Route, RouterName } from 'router';
 import { ModelProviderEditViewModel } from './ModelProviderEditViewModel';
 import { LengthMetrics } from '@kit.ArkUI';
@@ -75,7 +75,7 @@ export struct ModelProviderEditPage {
 
   @Builder
   private modelListInput() {
-    ModelListInput({ state: this.state })
+    ModelListInput({ state: this.state, vm: this.vm })
   }
 }
 
@@ -91,9 +91,7 @@ struct ModelProviderInput {
   build() {
     Column({ space: 8 }) {
       Text() {
-        SymbolSpan(this.icon)
-          .renderingStrategy(SymbolRenderingStrategy.MULTIPLE_OPACITY)
-          .effectStrategy(SymbolEffectStrategy.HIERARCHICAL)
+        SymbolSpan(this.icon).attributeModifier(symbolSpanAttribute())
         Span(" ")
         Span(this.title)
       }.margin({ start: LengthMetrics.vp(8) }).fontSize(12).fontColor($r("sys.color.font_secondary"))
@@ -110,14 +108,14 @@ struct ModelProviderInput {
 @ComponentV2
 struct ModelListInput {
   @Require @Param state: ModelProviderEditState
+  @Require @Param vm: ModelProviderEditViewModel
+  @Local private modelName: string = ""
 
   build() {
     Column({ space: 8 }) {
       Row() {
         Text() {
-          SymbolSpan($r("sys.symbol.list_bullet"))
-            .renderingStrategy(SymbolRenderingStrategy.MULTIPLE_OPACITY)
-            .effectStrategy(SymbolEffectStrategy.HIERARCHICAL)
+          SymbolSpan($r("sys.symbol.list_bullet")).attributeModifier(symbolSpanAttribute())
           Span(" ")
           Span($r("app.string.model_list"))
         }.margin({ start: LengthMetrics.vp(8) }).fontSize(12).fontColor($r("sys.color.font_secondary"))
@@ -125,28 +123,51 @@ struct ModelListInput {
         Blank().layoutWeight(1)
         if (this.state.isShowGetModel()) {
           Text() {
-            SymbolSpan($r("sys.symbol.arrow_down_circle"))
-              .renderingStrategy(SymbolRenderingStrategy.MULTIPLE_OPACITY)
-              .effectStrategy(SymbolEffectStrategy.HIERARCHICAL)
+            SymbolSpan($r("sys.symbol.arrow_down_circle")).attributeModifier(symbolSpanAttribute())
             Span(" ")
             Span($r("app.string.get_model"))
           }.margin({ start: LengthMetrics.vp(8) }).fontSize(12).fontColor($r("sys.color.font_emphasize"))
+          .onClick(() => this.vm.onGetModel())
         }
       }
 
-      Column() {
-        Row({ space: 8 }) {
-          TextInput({ text: "", placeholder: $r("app.string.model_list_placeholder") })
-            .layoutWeight(1)
+      Row({ space: 8 }) {
+        TextInput({ text: this.modelName!!, placeholder: $r("app.string.model_list_placeholder") })
+          .layoutWeight(1)
+          .padding(8)
+          .borderRadius(8)
+          .width(FullPercent)
+        Button() {
+          SymbolGlyph($r("sys.symbol.plus"))
+            .attributeModifier(symbolGlyphAttribute())
+            .fontColor([$r('sys.color.font_primary')])
+        }.padding(8).backgroundColor($r('sys.color.background_tertiary')).attributeModifier(hdsAttribute())
+        .onClick(() => {
+          if (this.vm.onAddModel(this.modelName)) {
+            this.modelName = ""
+          }
+        })
+      }
+
+      if (this.state.modelList.length > 0) {
+        Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
+          Repeat(this.state.modelList).each(repeat => {
+            Text() {
+              Span(repeat.item.modelId)
+              Span(" ")
+              SymbolSpan($r("sys.symbol.xmark"))
+                .attributeModifier(symbolSpanAttribute())
+            }
+            .onClick(() => this.vm.onDeleteModel(repeat.item))
+            .fontSize(12)
+            .fontColor($r("sys.color.font_secondary"))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
             .padding(8)
-            .borderRadius(8)
-            .width(FullPercent) // .onChange()
-          Button() {
-            SymbolGlyph($r("sys.symbol.plus"))
-              .renderingStrategy(SymbolRenderingStrategy.MULTIPLE_OPACITY)
-              .effectStrategy(SymbolEffectStrategy.HIERARCHICAL)
-              .fontColor([$r('sys.color.font_secondary')])
-          }.padding(8).backgroundColor($r('sys.color.background_tertiary')).attributeModifier(hdsAttribute())
+            .backgroundColor($r('sys.color.background_fourth'))
+            .borderRadius(100)
+            .attributeModifier(hdsAttribute())
+          }).key(item => item.modelId)
         }
       }
     }.alignItems(HorizontalAlign.Start).padding(4)
