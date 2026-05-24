@@ -5,13 +5,6 @@ import { ModelProviderEditViewModel } from './ModelProviderEditViewModel';
 import { LengthMetrics } from '@kit.ArkUI';
 import { ModelProviderEditState } from './ModelProviderEditState';
 
-interface ModelProviderInputOption {
-  icon: Resource;
-  text: ResourceStr;
-  title: ResourceStr;
-  placeholder: ResourceStr;
-  onTextChange: (text: string) => void;
-}
 
 @Route({ name: RouterName.ModelProviderEdit })
 @ComponentV2
@@ -23,142 +16,140 @@ export struct ModelProviderEditPage {
     HdsNavDestination() {
       List({ space: 10 }) {
         ListItem().height(56)
-        HdsListItem({
-          hdsListItemCard: {
-            textItem: {
-              customBuilder: () => this.modelProviderInput({
-                icon: $r("sys.symbol.person_text_rectangle_fill"),
-                text: this.state.providerName,
-                title: $r("app.string.provider_name"),
-                placeholder: $r("app.string.provider_name_placeholder"),
-                onTextChange: (text) => this.state.providerName = text,
-              }),
-            },
-          }
-        })
-        HdsListItem({
-          hdsListItemCard: {
-            textItem: {
-              customBuilder: () => this.modelProviderInput({
-                icon: $r("sys.symbol.link"),
-                text: this.state.baseUrl,
-                title: $r("app.string.base_url"),
-                placeholder: $r("app.string.base_url_placeholder"),
-                onTextChange: (text) => this.state.baseUrl = text,
-              })
-            }
-          }
-        })
-        HdsListItem({
-          hdsListItemCard: {
-            textItem: {
-              customBuilder: () => this.modelProviderInput({
-                icon: $r("sys.symbol.key_fill"),
-                text: this.state.apiKey,
-                title: $r("app.string.api_key"),
-                placeholder: $r("app.string.api_key_placeholder"),
-                onTextChange: (text) => this.state.apiKey = text,
-              }),
-            }
-          }
-        })
-        HdsListItem({
-          hdsListItemCard: {
-            textItem: {
-              customBuilder: () => this.modelListInput({
-                icon: $r("sys.symbol.list_bullet"),
-                text: "",
-                title: $r("app.string.model_list"),
-                placeholder: $r("app.string.model_list_placeholder"),
-                onTextChange: (text) => {
-                },
-              })
-            }
-          }
-        })
-      }
-      .width(FullPercent)
-      .height(FullPercent)
-    }
-    .backgroundColor($r("sys.color.background_secondary"))
-    .titleBar({
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.providerNameInput() }, } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.baseUrlInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.apiKeyInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.modelListInput() } } })
+      }.width(FullPercent).height(FullPercent)
+    }.backgroundColor($r("sys.color.background_secondary")).titleBar({
       content: {
-        title: { mainTitle: $r("app.string.add_model_provider") },
-        menu: {
+        title: { mainTitle: $r("app.string.add_model_provider") }, menu: {
           value: [{
             content: {
-              icon: symbolModifier($r("sys.symbol.checkmark"))
-                .fontColor([$r('sys.color.font_primary')]),
+              icon: symbolModifier($r("sys.symbol.checkmark")).fontColor([$r('sys.color.font_primary')]),
               label: $r("app.string.save"),
               action: () => this.vm.onSave()
             }
           }]
         }
-      },
-      style: {
+      }, style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
         }
       }
-    })
-    .hideBackButton(false)
+    }).hideBackButton(false)
   }
 
   @Builder
-  private modelProviderInput(option: ModelProviderInputOption) {
+  private providerNameInput() {
+    ModelProviderInput({
+      icon: $r("sys.symbol.person_text_rectangle_fill"),
+      text: this.state.providerName,
+      $text: (text: string) => this.state.providerName = text,
+      title: $r("app.string.provider_name"),
+      placeholder: $r("app.string.provider_name_placeholder"),
+    })
+  }
+
+  @Builder
+  private baseUrlInput() {
+    ModelProviderInput({
+      icon: $r("sys.symbol.link"),
+      text: this.state.baseUrl,
+      $text: (text: string) => this.state.baseUrl = text,
+      title: $r("app.string.base_url"),
+      placeholder: $r("app.string.base_url_placeholder"),
+    })
+  }
+
+  @Builder
+  private apiKeyInput() {
+    ModelProviderInput({
+      icon: $r("sys.symbol.key_fill"),
+      text: this.state.apiKey,
+      $text: (text: string) => this.state.apiKey = text,
+      title: $r("app.string.api_key"),
+      placeholder: $r("app.string.api_key_placeholder"),
+    })
+  }
+
+  @Builder
+  private modelListInput() {
+    ModelListInput({ state: this.state })
+  }
+}
+
+@ComponentV2
+struct ModelProviderInput {
+  @Param icon: Resource = $r("sys.symbol.person_text_rectangle_fill");
+  @Param text: ResourceStr = "";
+  @Event $text: (text: string) => void = (text: string) => {
+  };
+  @Param title: ResourceStr = "";
+  @Param placeholder: ResourceStr = "";
+
+  build() {
     Column({ space: 8 }) {
       Text() {
-        SymbolSpan(option.icon)
+        SymbolSpan(this.icon)
           .renderingStrategy(SymbolRenderingStrategy.MULTIPLE_OPACITY)
           .effectStrategy(SymbolEffectStrategy.HIERARCHICAL)
         Span(" ")
-        Span(option.title)
-      }
-      .margin({ start: LengthMetrics.vp(8) })
-      .fontSize(12)
-      .fontColor($r("sys.color.font_emphasize"))
+        Span(this.title)
+      }.margin({ start: LengthMetrics.vp(8) }).fontSize(12).fontColor($r("sys.color.font_secondary"))
 
-      TextInput({ text: option.text, placeholder: option.placeholder })
+      TextInput({ text: this.text, placeholder: this.placeholder })
         .padding(8)
         .borderRadius(8)
         .width(FullPercent)
-        .onChange(option.onTextChange)
+        .onChange((text: string) => this.$text(text))
     }.alignItems(HorizontalAlign.Start).padding(4)
   }
+}
 
-  @Builder
-  private modelListInput(option: ModelProviderInputOption) {
+@ComponentV2
+struct ModelListInput {
+  @Require @Param state: ModelProviderEditState
+
+  build() {
     Column({ space: 8 }) {
-      Text() {
-        SymbolSpan(option.icon)
-          .renderingStrategy(SymbolRenderingStrategy.MULTIPLE_OPACITY)
-          .effectStrategy(SymbolEffectStrategy.HIERARCHICAL)
-        Span(" ")
-        Span(option.title)
+      Row() {
+        Text() {
+          SymbolSpan($r("sys.symbol.list_bullet"))
+            .renderingStrategy(SymbolRenderingStrategy.MULTIPLE_OPACITY)
+            .effectStrategy(SymbolEffectStrategy.HIERARCHICAL)
+          Span(" ")
+          Span($r("app.string.model_list"))
+        }.margin({ start: LengthMetrics.vp(8) }).fontSize(12).fontColor($r("sys.color.font_secondary"))
+
+        Blank().layoutWeight(1)
+        if (this.state.isShowGetModel()) {
+          Text() {
+            SymbolSpan($r("sys.symbol.arrow_down_circle"))
+              .renderingStrategy(SymbolRenderingStrategy.MULTIPLE_OPACITY)
+              .effectStrategy(SymbolEffectStrategy.HIERARCHICAL)
+            Span(" ")
+            Span($r("app.string.get_model"))
+          }.margin({ start: LengthMetrics.vp(8) }).fontSize(12).fontColor($r("sys.color.font_emphasize"))
+        }
       }
-      .margin({ start: LengthMetrics.vp(8) })
-      .fontSize(12)
-      .fontColor($r("sys.color.font_emphasize"))
 
       Column() {
         Row({ space: 8 }) {
-          TextInput({ text: option.text, placeholder: option.placeholder })
+          TextInput({ text: "", placeholder: $r("app.string.model_list_placeholder") })
             .layoutWeight(1)
             .padding(8)
             .borderRadius(8)
-            .width(FullPercent)
-            .onChange(option.onTextChange)
+            .width(FullPercent) // .onChange()
           Button() {
             SymbolGlyph($r("sys.symbol.plus"))
               .renderingStrategy(SymbolRenderingStrategy.MULTIPLE_OPACITY)
               .effectStrategy(SymbolEffectStrategy.HIERARCHICAL)
               .fontColor([$r('sys.color.font_secondary')])
-          }
-          .padding(8)
-          .backgroundColor($r('sys.color.background_tertiary'))
-          .attributeModifier(hdsAttribute())
+          }.padding(8).backgroundColor($r('sys.color.background_tertiary')).attributeModifier(hdsAttribute())
         }
       }
     }.alignItems(HorizontalAlign.Start).padding(4)
   }
 }
+

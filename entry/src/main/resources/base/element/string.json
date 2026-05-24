@@ -79,6 +79,10 @@
     {
       "name": "model_list_placeholder",
       "value": "输入模型名称"
+    },
+    {
+      "name": "get_model",
+      "value": "获取模型"
     }
   ]
 }

@@ -8,6 +8,10 @@ export class ModelProviderEditViewModel {
     this.state = state
   }
 
+  onGetModel() {
+
+  }
+
   onSave() {
     RVRouter.getNavStack().pop()
   }
