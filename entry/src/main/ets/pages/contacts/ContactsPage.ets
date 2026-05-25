@@ -1,6 +1,7 @@
+import { Route } from '@hzw/zrouter';
 import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
 import { symbolModifier } from 'common';
-import { Route, RouterName } from 'router';
+import {  RouterName } from 'router';
 import { ContactsViewModel } from './ContactsViewModel';
 
 @Route({ name: RouterName.Contacts })

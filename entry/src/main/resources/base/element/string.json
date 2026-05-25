@@ -83,6 +83,14 @@
     {
       "name": "get_model",
       "value": "获取模型"
+    },
+    {
+      "name": "get_model_failed",
+      "value": "获取模型列表失败"
+    },
+    {
+      "name": "model_list_empty",
+      "value": "请至少添加一个模型"
     }
   ]
 }

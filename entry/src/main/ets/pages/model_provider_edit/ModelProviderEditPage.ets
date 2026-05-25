@@ -1,9 +1,10 @@
 import { HdsListItem, hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
 import { FullPercent, hdsAttribute, symbolGlyphAttribute, symbolModifier, symbolSpanAttribute } from 'common';
-import { Route, RouterName } from 'router';
+import { RouterName } from 'router';
 import { ModelProviderEditViewModel } from './ModelProviderEditViewModel';
 import { LengthMetrics } from '@kit.ArkUI';
 import { ModelProviderEditState } from './ModelProviderEditState';
+import { Route } from '@hzw/zrouter';
 
 
 @Route({ name: RouterName.ModelProviderEdit })
@@ -44,8 +45,7 @@ export struct ModelProviderEditPage {
   private providerNameInput() {
     ModelProviderInput({
       icon: $r("sys.symbol.person_text_rectangle_fill"),
-      text: this.state.providerName,
-      $text: (text: string) => this.state.providerName = text,
+      text: this.state.name!!,
       title: $r("app.string.provider_name"),
       placeholder: $r("app.string.provider_name_placeholder"),
     })
@@ -55,8 +55,7 @@ export struct ModelProviderEditPage {
   private baseUrlInput() {
     ModelProviderInput({
       icon: $r("sys.symbol.link"),
-      text: this.state.baseUrl,
-      $text: (text: string) => this.state.baseUrl = text,
+      text: this.state.baseUrl!!,
       title: $r("app.string.base_url"),
       placeholder: $r("app.string.base_url_placeholder"),
     })
@@ -66,8 +65,7 @@ export struct ModelProviderEditPage {
   private apiKeyInput() {
     ModelProviderInput({
       icon: $r("sys.symbol.key_fill"),
-      text: this.state.apiKey,
-      $text: (text: string) => this.state.apiKey = text,
+      text: this.state.apiKey!!,
       title: $r("app.string.api_key"),
       placeholder: $r("app.string.api_key_placeholder"),
     })
@@ -143,7 +141,7 @@ struct ModelListInput {
             .fontColor([$r('sys.color.font_primary')])
         }.padding(8).backgroundColor($r('sys.color.background_tertiary')).attributeModifier(hdsAttribute())
         .onClick(() => {
-          if (this.vm.onAddModel(this.modelName)) {
+          if (this.vm.onAddModel(this.modelName.trim())) {
             this.modelName = ""
           }
         })
@@ -173,4 +171,3 @@ struct ModelListInput {
     }.alignItems(HorizontalAlign.Start).padding(4)
   }
 }
-

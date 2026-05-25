@@ -1,6 +1,7 @@
+import { Route } from '@hzw/zrouter';
 import { HdsListItem, hdsMaterial, HdsNavDestination, IconSize, PrefixIcon, SuffixIcon } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
-import { Route, RouterName } from 'router';
+import {  RouterName } from 'router';
 import { ModelProviderListViewModel } from './ModelProviderListViewModel';
 
 @Route({ name: RouterName.ModelProviderList })

@@ -1,5 +1,6 @@
+import { Route } from '@hzw/zrouter';
 import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
-import { Route, RouterName } from 'router';
+import {  RouterName } from 'router';
 
 @Route({ name: RouterName.AddContacts })
 @ComponentV2

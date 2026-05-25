@@ -32,4 +32,12 @@ export class RVRouter {
     }
     router.push(name)
   }
+
+  static pop<T = void>(t?: T) {
+    if (t) {
+      ZRouter.getInstance().popWithResult(t)
+    } else {
+      ZRouter.getInstance().pop()
+    }
+  }
 }
