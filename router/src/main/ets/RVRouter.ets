@@ -18,7 +18,18 @@ export class RVRouter {
     return ZRouter.getNavStack()
   }
 
-  static push<P = void, R = void>(
+  static push<R = void>(
+    name: string,
+    onPop?: (result: PopResult<R | Object | null | undefined>) => void
+  ) {
+    const router = ZRouter.getInstance()
+    if (onPop) {
+      router.setPopListener(onPop)
+    }
+    router.push(name)
+  }
+
+  static pushWithParam<P = void, R = void>(
     name: string,
     param?: P,
     onPop?: (result: PopResult<R | Object | null | undefined>) => void

@@ -1,48 +1,52 @@
 import { Route } from '@hzw/zrouter';
 import { HdsListItem, hdsMaterial, HdsNavDestination, IconSize, PrefixIcon, SuffixIcon } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
-import {  RouterName } from 'router';
+import { RouterName } from 'router';
 import { ModelProviderListViewModel } from './ModelProviderListViewModel';
+import { ModelProvider } from '../../store/model/ModelProvider';
+import { ModelProviderListState } from './ModelProviderListState';
 
 @Route({ name: RouterName.ModelProviderList })
 @ComponentV2
 export struct ModelProviderListPage {
-  private readonly vm = new ModelProviderListViewModel();
+  private readonly state = new ModelProviderListState()
+  private readonly vm = new ModelProviderListViewModel(this.state)
 
   build() {
     HdsNavDestination() {
       List({ space: 10 }) {
         ListItem().height(56)
-        ForEach(this.vm.providers, (item: ModelProviderItem, index: number) => {
-          HdsListItem({
-            hdsListItemCard: {
-              prefixItem: new PrefixIcon({
-                iconValue: {
-                  symbol: symbolModifier($r("sys.symbol.gearshape"))
-                    .fontColor([$r("sys.color.font_emphasize")])
+        Repeat<ModelProvider>(this.state.providers)
+          .each((obj: RepeatItem<ModelProvider>) => {
+            HdsListItem({
+              hdsListItemCard: {
+                prefixItem: new PrefixIcon({
+                  iconValue: {
+                    symbol: symbolModifier($r("sys.symbol.cloud_and_arrow_up"))
+                      .fontColor([$r("sys.color.font_emphasize")])
+                  },
+                  iconSize: IconSize.SYSTEM_ICON
+                }),
+                textItem: {
+                  primaryText: {
+                    text: obj.item.name,
+                  },
+                  secondaryText: {
+                    text: obj.item.baseUrl,
+                  }
                 },
-                iconSize: IconSize.SYSTEM_ICON
-              }),
-              textItem: {
-                primaryText: {
-                  text: item.name,
-                },
-                secondaryText: {
-                  text: item.apiType,
+                suffixItem: new SuffixIcon({
+                  iconValue: {
+                    symbol: symbolModifier($r("sys.symbol.chevron_right"))
+                      .fontColor([$r("sys.color.font_tertiary")])
+                  }
+                }),
+                onClick: (): void => {
+                  this.vm.onProviderClick(obj.index)
                 }
-              },
-              suffixItem: new SuffixIcon({
-                iconValue: {
-                  symbol: symbolModifier($r("sys.symbol.chevron_right"))
-                    .fontColor([$r("sys.color.font_tertiary")])
-                }
-              }),
-              onClick: (): void => {
-                this.vm.onProviderClick(index)
               }
-            }
-          })
-        })
+            })
+          }).key((item: ModelProvider) => item.id)
       }
       .width(FullPercent)
       .height(FullPercent)
@@ -70,9 +74,4 @@ export struct ModelProviderListPage {
     })
     .hideBackButton(false)
   }
-}
-
-interface ModelProviderItem {
-  name: string;
-  apiType: string;
 }
