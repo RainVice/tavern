@@ -25,38 +25,10 @@ export struct ModelProviderListPage {
         ListItem().height(56)
         Repeat<ModelProvider>(this.state.providers)
           .each((obj: RepeatItem<ModelProvider>) => {
-            HdsListItem({
-              hdsListItemCard: {
-                prefixItem: new PrefixIcon({
-                  iconValue: {
-                    symbol: symbolModifier($r("sys.symbol.cloud_and_arrow_up"))
-                      .fontColor([$r("sys.color.font_emphasize")])
-                  },
-                  iconSize: IconSize.SYSTEM_ICON
-                }),
-                textItem: {
-                  primaryText: {
-                    text: obj.item.name,
-                  },
-                  secondaryText: {
-                    text: obj.item.baseUrl,
-                  }
-                },
-                suffixItem: new SuffixIcon({
-                  iconValue: {
-                    symbol: symbolModifier($r("sys.symbol.chevron_right"))
-                      .fontColor([$r("sys.color.font_tertiary")])
-                  }
-                }),
-                onClick: (): void => {
-                  this.vm.onProviderClick(obj.index)
-                }
-              },
-              swipeActionOptions: {
-                deleteIconOptions: {
-                  onAction: (): void => this.vm.onDeleteProvider(obj.index)
-                }
-              }
+            ModelProviderItem({
+              repeat: obj,
+              onProviderClick: () => this.vm.onProviderClick(obj.item),
+              onProviderDelete: () => this.vm.onDeleteProvider(obj.item),
             })
           }).key((item: ModelProvider) => item.id + '_' + item.updateTime)
           .virtualScroll()
@@ -86,5 +58,46 @@ export struct ModelProviderListPage {
       }
     })
     .hideBackButton(false)
+  }
+}
+
+@ComponentV2
+struct ModelProviderItem {
+  @Param @Require repeat: RepeatItem<ModelProvider>
+  @Event onProviderClick: () => void
+  @Event onProviderDelete: () => void
+
+  build() {
+    HdsListItem({
+      hdsListItemCard: {
+        prefixItem: new PrefixIcon({
+          iconValue: {
+            symbol: symbolModifier($r("sys.symbol.cloud_and_arrow_up"))
+              .fontColor([$r("sys.color.font_emphasize")])
+          },
+          iconSize: IconSize.SYSTEM_ICON
+        }),
+        textItem: {
+          primaryText: {
+            text: this.repeat.item.name,
+          },
+          secondaryText: {
+            text: this.repeat.item.baseUrl,
+          }
+        },
+        suffixItem: new SuffixIcon({
+          iconValue: {
+            symbol: symbolModifier($r("sys.symbol.chevron_right"))
+              .fontColor([$r("sys.color.font_tertiary")])
+          }
+        }),
+        onClick: (): void => this.onProviderClick()
+      },
+      swipeActionOptions: {
+        deleteIconOptions: {
+          onAction: (): void => this.onProviderDelete()
+        }
+      }
+    })
   }
 }

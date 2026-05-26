@@ -1,5 +1,6 @@
 import { RVRouter, RouterName } from 'router'
 import { modelProviderStore } from '../../store/ModelProviderStore'
+import { ModelProvider } from '../../store/model/ModelProvider'
 import { ModelProviderListState } from './ModelProviderListState'
 
 export class ModelProviderListViewModel {
@@ -22,15 +23,13 @@ export class ModelProviderListViewModel {
     })
   }
 
-  onProviderClick(index: number): void {
-    const provider = this.state.providers[index]
+  onProviderClick(provider: ModelProvider): void {
     RVRouter.pushWithParam(RouterName.ModelProviderEdit, provider, () => {
       this.loadProviders()
     })
   }
 
-  onDeleteProvider(index: number): void {
-    const provider = this.state.providers[index]
+  onDeleteProvider(provider: ModelProvider): void {
     modelProviderStore.deleteProvider(provider.id).then(() => {
       this.loadProviders()
     })
