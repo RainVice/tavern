@@ -1,9 +1,11 @@
-import { ToastUtil } from '@pura/harmony-utils'
+import { FileUtil, ImageUtil, ToastUtil } from '@pura/harmony-utils'
 import { RVRouter } from 'router'
 import { CharacterCard } from '../../store/model/CharacterCard'
 import { characterCardStore } from '../../store/CharacterCardStore'
 import { CharacterCardEditState } from './CharacterCardEditState'
 import { ZRouter } from '@hzw/zrouter'
+import { PhotoHelper } from '@pura/picker_utils'
+import fs from '@ohos.file.fs'
 
 export class CharacterCardEditViewModel {
   private state: CharacterCardEditState
@@ -33,6 +35,28 @@ export class CharacterCardEditViewModel {
     } else {
       this.state.name = param.name ?? ''
     }
+  }
+
+  onSelectAvatar(): void {
+    PhotoHelper.selectEasy()
+      .then((uris) => {
+        if (uris.length === 0) {
+          return;
+        }
+        const uri = uris[0];
+        FileUtil.open(uri, fs.OpenMode.READ_ONLY)
+          .then((file) => {
+            ImageUtil.createImageSource(file.fd).createPixelMap()
+              .then((pixelMap) => {
+                FileUtil.closeSync(file.fd);
+                ImageUtil.pixelMapToBase64Str(pixelMap, 'image/jpeg')
+                  .then((base64) => {
+                    this.state.avatarUrl = base64;
+                    pixelMap.release();
+                  });
+              });
+          });
+      });
   }
 
   onSave(): boolean {

@@ -102,11 +102,11 @@
     },
     {
       "name": "character_card_avatar",
-      "value": "头像URL"
+      "value": "设置头像"
     },
     {
       "name": "character_card_avatar_placeholder",
-      "value": "请输入头像URL"
+      "value": "点击选择照片"
     },
     {
       "name": "character_card_description",
