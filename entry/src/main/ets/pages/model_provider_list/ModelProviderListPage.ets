@@ -46,7 +46,7 @@ export struct ModelProviderListPage {
                 }
               }
             })
-          }).key((item: ModelProvider) => item.id)
+          }).key((item: ModelProvider) => item.id + '_' + item.updateTime)
       }
       .width(FullPercent)
       .height(FullPercent)

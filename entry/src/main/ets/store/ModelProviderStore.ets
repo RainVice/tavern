@@ -2,6 +2,7 @@ import { distributedKVStore } from '@kit.ArkData';
 import { AppUtil, JSONUtil } from '@pura/harmony-utils';
 import { ModelProvider } from './model/ModelProvider';
 import { util } from '@kit.ArkTS';
+import { systemDateTime } from '@kit.BasicServicesKit';
 
 /**
  * 基于分布式KV数据库的模型提供商存储
@@ -72,6 +73,7 @@ class ModelProviderStore {
       if (!provider.id) {
         provider.id = ModelProviderStore.PREFIX + util.generateRandomUUID();
       }
+      provider.updateTime = systemDateTime.getTime();
       return store.put(provider.id, JSONUtil.beanToJsonStr(provider)).then(() => provider.id);
     });
   }

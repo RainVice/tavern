@@ -1,5 +1,5 @@
 import { PopResult, ZRouter } from '@hzw/zrouter';
-import { LogUtil } from '@pura/harmony-utils';
+import { LogUtil, ObjectUtil } from '@pura/harmony-utils';
 import BuildProfile from '../../../BuildProfile';
 
 export class RVRouter {
@@ -45,7 +45,7 @@ export class RVRouter {
   }
 
   static pop<T = void>(t?: T) {
-    if (t) {
+    if (!ObjectUtil.isNull(t)) {
       ZRouter.getInstance().popWithResult(t)
     } else {
       ZRouter.getInstance().pop()

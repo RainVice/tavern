@@ -2,6 +2,7 @@ import { distributedKVStore } from '@kit.ArkData';
 import { AppUtil, JSONUtil } from '@pura/harmony-utils';
 import { CharacterCard } from './model/CharacterCard';
 import { util } from '@kit.ArkTS';
+import { systemDateTime } from '@kit.BasicServicesKit';
 
 /**
  * 基于分布式KV数据库的角色卡存储
@@ -68,6 +69,7 @@ class CharacterCardStore {
       if (!card.id) {
         card.id = CharacterCardStore.PREFIX + util.generateRandomUUID();
       }
+      card.updateTime = systemDateTime.getTime();
       return store.put(card.id, JSONUtil.beanToJsonStr(card)).then(() => card.id);
     });
   }
