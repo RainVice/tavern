@@ -2,7 +2,7 @@ import { hdsMaterial, HdsNavigation, HdsTabs } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
 import { RVRouter } from 'router';
 import { MessagePage } from './pages/message/MessagePage';
-import { ContactsPage } from './pages/contacts/ContactsPage';
+import { CharacterCardPage } from './pages/character_card/CharacterCardPage';
 import { WorldBookPage } from './pages/worldbook/WorldBookPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 
@@ -21,7 +21,7 @@ struct Index {
           $r('app.string.messages')))
 
         TabContent() {
-          ContactsPage()
+          CharacterCardPage()
         }
         .width(FullPercent)
         .height(FullPercent)

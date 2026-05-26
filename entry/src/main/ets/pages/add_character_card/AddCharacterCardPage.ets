@@ -2,9 +2,9 @@ import { Route } from '@hzw/zrouter';
 import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
 import {  RouterName } from 'router';
 
-@Route({ name: RouterName.AddContacts })
+@Route({ name: RouterName.AddCharacterCard })
 @ComponentV2
-export struct AddContactsPage {
+export struct AddCharacterCardPage {
   build() {
     HdsNavDestination() {
 

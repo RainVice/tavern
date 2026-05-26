@@ -2,12 +2,12 @@ import { Route } from '@hzw/zrouter';
 import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
 import { symbolModifier } from 'common';
 import {  RouterName } from 'router';
-import { ContactsViewModel } from './ContactsViewModel';
+import { CharacterCardViewModel } from './CharacterCardViewModel';
 
-@Route({ name: RouterName.Contacts })
+@Route({ name: RouterName.CharacterCard })
 @ComponentV2
-export struct ContactsPage {
-  private readonly vm = new ContactsViewModel();
+export struct CharacterCardPage {
+  private readonly vm = new CharacterCardViewModel();
 
   build() {
     HdsNavDestination() {
