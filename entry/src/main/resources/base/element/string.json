@@ -91,6 +91,66 @@
     {
       "name": "model_list_empty",
       "value": "请至少添加一个模型"
+    },
+    {
+      "name": "character_card_name",
+      "value": "角色名称"
+    },
+    {
+      "name": "character_card_name_placeholder",
+      "value": "请输入角色名称"
+    },
+    {
+      "name": "character_card_avatar",
+      "value": "头像URL"
+    },
+    {
+      "name": "character_card_avatar_placeholder",
+      "value": "请输入头像URL"
+    },
+    {
+      "name": "character_card_description",
+      "value": "角色描述"
+    },
+    {
+      "name": "character_card_description_placeholder",
+      "value": "请输入角色描述"
+    },
+    {
+      "name": "character_card_personality",
+      "value": "性格设定"
+    },
+    {
+      "name": "character_card_personality_placeholder",
+      "value": "请输入性格设定"
+    },
+    {
+      "name": "character_card_scenario",
+      "value": "场景设定"
+    },
+    {
+      "name": "character_card_scenario_placeholder",
+      "value": "请输入场景设定"
+    },
+    {
+      "name": "character_card_first_message",
+      "value": "开场白"
+    },
+    {
+      "name": "character_card_first_message_placeholder",
+      "value": "请输入开场白"
+    },
+    {
+      "name": "character_card_example_messages",
+      "value": "对话示例"
+    },
+    {
+      "name": "character_card_example_messages_placeholder",
+      "value": "请输入对话示例"
+    },
+    {
+      "name": "character_card_name_empty",
+      "value": "请输入角色名称"
     }
   ]
 }

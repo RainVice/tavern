@@ -62,6 +62,24 @@
         "needLogin": "false",
         "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
       }
+    },
+    {
+      "name": "AddCharacterCard",
+      "pageSourceFile": "src/main/ets/_generated/ZRAddCharacterCardPage.ets",
+      "buildFunction": "entryAddCharacterCardPageBuilder",
+      "data": {
+        "needLogin": "false",
+        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
+      }
+    },
+    {
+      "name": "CharacterCard",
+      "pageSourceFile": "src/main/ets/_generated/ZRCharacterCardPage.ets",
+      "buildFunction": "entryCharacterCardPageBuilder",
+      "data": {
+        "needLogin": "false",
+        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
+      }
     }
   ]
 }
