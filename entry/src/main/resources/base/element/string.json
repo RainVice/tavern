@@ -17,16 +17,16 @@
       "value": "消息"
     },
     {
-      "name": "contacts",
-      "value": "联系人"
+      "name": "character_card",
+      "value": "角色卡"
     },
     {
       "name": "world_book",
       "value": "世界书"
     },
     {
-      "name": "add_contacts",
-      "value": "添加联系人"
+      "name": "add_character_card",
+      "value": "添加角色卡"
     },
     {
       "name": "settings",

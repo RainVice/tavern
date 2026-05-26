@@ -26,7 +26,7 @@ struct Index {
         .width(FullPercent)
         .height(FullPercent)
         .tabBar(new BottomTabBarStyle({ normal: symbolModifier($r("sys.symbol.person_2_fill")) },
-          $r('app.string.contacts')))
+          $r('app.string.character_card')))
 
 
         TabContent() {

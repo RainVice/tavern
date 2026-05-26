@@ -16,13 +16,13 @@ export struct ContactsPage {
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
       content: {
-        title: { mainTitle: $r("app.string.contacts") },
+        title: { mainTitle: $r("app.string.character_card") },
         menu: {
           value: [{
             content: {
               icon: symbolModifier($r("sys.symbol.plus"))
                 .fontColor([$r('sys.color.font_primary')]),
-              label: $r("app.string.add_contacts"),
+              label: $r("app.string.add_character_card"),
               action: () => this.vm.onAdd()
             }
           }]

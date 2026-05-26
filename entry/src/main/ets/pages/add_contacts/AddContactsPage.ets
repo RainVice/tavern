@@ -10,7 +10,7 @@ export struct AddContactsPage {
 
     }
     .titleBar({
-      content: { title: { mainTitle: $r("app.string.add_contacts") }, },
+      content: { title: { mainTitle: $r("app.string.add_character_card") }, },
       style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
