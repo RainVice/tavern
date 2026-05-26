@@ -4,7 +4,7 @@
 export interface ModelProvider {
   id: string;
   name: string;
-  updateTime: number;
+  updateTime?: number;
   baseUrl: string;
   apiKey: string;
   modelDefinitions: ModelDefinition[];

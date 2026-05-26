@@ -4,7 +4,7 @@
 export interface CharacterCard {
   id: string;
   name: string;
-  updateTime: number;
+  updateTime?: number;
   avatarUrl?: string;
   description?: string;
   personality?: string;

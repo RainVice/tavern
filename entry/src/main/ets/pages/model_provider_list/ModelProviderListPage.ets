@@ -1,5 +1,12 @@
 import { Route } from '@hzw/zrouter';
-import { HdsListItem, hdsMaterial, HdsNavDestination, IconSize, PrefixIcon, SuffixIcon } from '@kit.UIDesignKit';
+import {
+  HdsListItem,
+  hdsMaterial,
+  HdsNavDestination,
+  IconSize,
+  PrefixIcon,
+  SuffixIcon
+} from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
 import { RouterName } from 'router';
 import { ModelProviderListViewModel } from './ModelProviderListViewModel';
@@ -44,9 +51,15 @@ export struct ModelProviderListPage {
                 onClick: (): void => {
                   this.vm.onProviderClick(obj.index)
                 }
+              },
+              swipeActionOptions: {
+                deleteIconOptions: {
+                  onAction: (): void => this.vm.onDeleteProvider(obj.index)
+                }
               }
             })
           }).key((item: ModelProvider) => item.id + '_' + item.updateTime)
+          .virtualScroll()
       }
       .width(FullPercent)
       .height(FullPercent)

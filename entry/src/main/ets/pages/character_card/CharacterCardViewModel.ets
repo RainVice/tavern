@@ -1,5 +1,6 @@
 import { RVRouter, RouterName } from 'router'
 import { characterCardStore } from '../../store/CharacterCardStore'
+import { CharacterCard } from '../../store/model/CharacterCard'
 import { CharacterCardListState } from './CharacterCardListState'
 
 export class CharacterCardViewModel {
@@ -22,15 +23,13 @@ export class CharacterCardViewModel {
     })
   }
 
-  onCardClick(index: number): void {
-    const card = this.state.cards[index]
+  onCardClick(card: CharacterCard): void {
     RVRouter.pushWithParam(RouterName.AddCharacterCard, card, () => {
       this.loadCards()
     })
   }
 
-  onDeleteCard(index: number): void {
-    const card = this.state.cards[index]
+  onDeleteCard(card: CharacterCard): void {
     characterCardStore.deleteCard(card.id).then(() => {
       this.loadCards()
     })
