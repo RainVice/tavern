@@ -131,6 +131,14 @@ class AudioTranscriptionsResource implements OpenAIAudioTranscriptionsResource {
     if (params.temperature !== undefined) {
       parts.push(buildTextPart('temperature', params.temperature.toString()));
     }
+    if (params.timestamp_granularities !== undefined) {
+      for (let index = 0; index < params.timestamp_granularities.length; index++) {
+        parts.push(buildTextPart('timestamp_granularities[]', params.timestamp_granularities[index]));
+      }
+    }
+    if (params.stream !== undefined) {
+      parts.push(buildTextPart('stream', params.stream.toString()));
+    }
     return parts;
   }
 }

@@ -61,21 +61,23 @@ export class RealtimeResource implements OpenAIRealtimeResource {
   }
 
   async connectWebSocket(options: RealtimeWebSocketOptions): Promise<OpenAIRealtimeWebSocket> {
-    if (options.apiKey === undefined) {
-      options.apiKey = this.client.getAPIKey();
+    const opts = { ...options };
+    if (opts.apiKey === undefined) {
+      opts.apiKey = this.client.getAPIKey();
     }
-    if (options.url === undefined) {
-      options.url = this.buildRealtimeWebSocketURL(options.model);
+    if (opts.url === undefined) {
+      opts.url = this.buildRealtimeWebSocketURL(opts.model);
     }
-    const connection = new OpenAIRealtimeWebSocket(options);
+    const connection = new OpenAIRealtimeWebSocket(opts);
     return await connection.connect();
   }
 
   async connectWebRTC(options: RealtimeWebRTCOptions): Promise<OpenAIRealtimeWebRTC> {
-    if (options.apiKey === undefined) {
-      options.apiKey = this.client.getAPIKey();
+    const opts = { ...options };
+    if (opts.apiKey === undefined) {
+      opts.apiKey = this.client.getAPIKey();
     }
-    const connection = new OpenAIRealtimeWebRTC(this.client, options);
+    const connection = new OpenAIRealtimeWebRTC(this.client, opts);
     return await connection.connect();
   }
 

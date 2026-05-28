@@ -112,6 +112,8 @@ export type RealtimeClientEventType =
   'input_audio_buffer.clear' |
   'response.create' |
   'response.cancel' |
+  'conversation.item.truncate' |
+  'output_audio_buffer.clear' |
   'transcription_session.update';
 
 /**
@@ -150,6 +152,9 @@ export type RealtimeServerEventType =
   'response.text.done' |
   'response.function_call_arguments.delta' |
   'response.function_call_arguments.done' |
+  'output_audio_buffer.started' |
+  'output_audio_buffer.stopped' |
+  'output_audio_buffer.cleared' |
   'rate_limits.updated' |
   'transcription_session.created' |
   'transcription_session.updated';
@@ -247,7 +252,7 @@ export interface RealtimeConversationItem {
    * API：Realtime conversation item。
    * 说明：例如 `message`、`function_call`、`function_call_output`。
    */
-  type: 'message' | 'function_call' | 'function_call_output' | string;
+  type: 'message' | 'function_call' | 'function_call_output';
 
   /**
    * 角色。
@@ -627,6 +632,21 @@ export interface RealtimeResponseCancelEvent extends RealtimeEventBase<'response
   response_id?: string;
 }
 
+/** 截断助手音频消息事件。API：Realtime。说明：中断场景必需。 */
+export interface RealtimeConversationItemTruncateEvent {
+  type: 'conversation.item.truncate';
+  event_id?: string;
+  item_id: string;
+  content_index: number;
+  audio_end_ms: number;
+}
+
+/** 清除输出音频缓冲事件。API：Realtime。说明：WebRTC 场景。 */
+export interface RealtimeOutputAudioBufferClearEvent {
+  type: 'output_audio_buffer.clear';
+  event_id?: string;
+}
+
 /**
  * Realtime 客户端事件。
  *
@@ -639,11 +659,13 @@ export type RealtimeClientEvent =
   RealtimeConversationItemCreateEvent |
   RealtimeConversationItemRetrieveEvent |
   RealtimeConversationItemDeleteEvent |
+  RealtimeConversationItemTruncateEvent |
   RealtimeInputAudioBufferAppendEvent |
   RealtimeInputAudioBufferCommitEvent |
   RealtimeInputAudioBufferClearEvent |
   RealtimeResponseCreateEvent |
-  RealtimeResponseCancelEvent;
+  RealtimeResponseCancelEvent |
+  RealtimeOutputAudioBufferClearEvent;
 
 /**
  * Realtime 错误对象。
@@ -758,7 +780,7 @@ export interface RealtimeInputAudioTranscriptionFailedEvent
 /** Realtime response 基础对象。API：Realtime Server events。说明：response.created/done 携带。 */
 export interface RealtimeResponse {
   id: string;
-  object?: 'realtime.response' | string;
+  object?: 'realtime.response';
   status?: 'in_progress' | 'completed' | 'cancelled' | 'failed' | 'incomplete';
   output?: Array<RealtimeConversationItem>;
   metadata?: JsonObject | null;
@@ -829,6 +851,27 @@ export interface RealtimeRateLimitsUpdatedEvent extends RealtimeServerEventBase<
   rate_limits: Array<RealtimeRateLimit>;
 }
 
+/** 输出音频缓冲开始事件。API：Realtime。说明：服务端开始推送音频。 */
+export interface RealtimeOutputAudioBufferStartedEvent {
+  type: 'output_audio_buffer.started';
+  event_id?: string;
+  response_id: string;
+}
+
+/** 输出音频缓冲停止事件。API：Realtime。说明：音频缓冲已排空。 */
+export interface RealtimeOutputAudioBufferStoppedEvent {
+  type: 'output_audio_buffer.stopped';
+  event_id?: string;
+  response_id: string;
+}
+
+/** 输出音频缓冲清除事件。API：Realtime。说明：缓冲被清除。 */
+export interface RealtimeOutputAudioBufferClearedEvent {
+  type: 'output_audio_buffer.cleared';
+  event_id?: string;
+  response_id: string;
+}
+
 /**
  * Realtime 服务端事件。
  *
@@ -852,4 +895,7 @@ export type RealtimeServerEvent =
   RealtimeResponseContentPartEvent |
   RealtimeResponseDeltaEvent |
   RealtimeResponseContentDoneEvent |
+  RealtimeOutputAudioBufferStartedEvent |
+  RealtimeOutputAudioBufferStoppedEvent |
+  RealtimeOutputAudioBufferClearedEvent |
   RealtimeRateLimitsUpdatedEvent;

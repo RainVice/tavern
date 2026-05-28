@@ -108,9 +108,12 @@ export class HarmonyHttpTransport implements OpenAITransport {
       if (onError !== undefined) {
         onError(String(error));
       }
+      if (onDone !== undefined) {
+        onDone();
+      }
       closeStream();
     });
-    return new HarmonyOpenAIStream(closeStream);
+    return new HarmonyOpenAIStream(closeStream, (): boolean => closed);
   }
 
   private toHttpDataType(responseDataType?: string): http.HttpDataType {
@@ -160,9 +163,15 @@ export class HarmonyHttpTransport implements OpenAITransport {
 
 class HarmonyOpenAIStream implements OpenAIStream {
   private closeHandler: () => void;
+  private isClosed: () => boolean;
 
-  constructor(closeHandler: () => void) {
+  constructor(closeHandler: () => void, isClosed: () => boolean) {
     this.closeHandler = closeHandler;
+    this.isClosed = isClosed;
+  }
+
+  get closed(): boolean {
+    return this.isClosed();
   }
 
   close(): void {

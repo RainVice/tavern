@@ -60,7 +60,9 @@ class ReturnValueFakeTransport implements OpenAITransport {
 }
 
 class ReturnValueFakeStream implements OpenAIStream {
+  closed: boolean = false;
   close(): void {
+    this.closed = true;
   }
 }
 

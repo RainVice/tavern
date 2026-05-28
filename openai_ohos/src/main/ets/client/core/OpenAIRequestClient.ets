@@ -128,7 +128,7 @@ export class OpenAIRequestClient {
   async postText(path: string, body: string, contentType: string, extraHeaders?: Record<string, string>, requestOptions?: OpenAIRequestSettings): Promise<string> {
     let headers: Record<string, string> = {};
     if (extraHeaders !== undefined) {
-      headers = extraHeaders;
+      headers = { ...extraHeaders };
     }
     headers['Content-Type'] = contentType;
     return this.executeRequest({
@@ -333,18 +333,27 @@ export class OpenAIRequestClient {
   private async executeRequest(options: OpenAIRequestOptions): Promise<string> {
     let attempt = 0;
     while (true) {
-      const response: OpenAIResponse = await this.transport.request(options);
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return response.body;
-      }
-      if (attempt >= this.maxRetries || !this.isRetryableStatus(response.statusCode)) {
-        throw new OpenAIAPIError(response.statusCode, response.body);
+      try {
+        const response: OpenAIResponse = await this.transport.request(options);
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response.body;
+        }
+        if (attempt >= this.maxRetries || !this.isRetryableStatus(response.statusCode)) {
+          throw new OpenAIAPIError(response.statusCode, response.body);
+        }
+      } catch (error) {
+        if (error instanceof OpenAIAPIError) {
+          throw error;
+        }
+        if (attempt >= this.maxRetries) {
+          throw error;
+        }
       }
       attempt += 1;
     }
   }
 
   private isRetryableStatus(statusCode: number): boolean {
-    return statusCode === 408 || statusCode === 409 || statusCode === 429 || statusCode >= 500;
+    return statusCode === 408 || statusCode === 429 || statusCode >= 500;
   }
 }

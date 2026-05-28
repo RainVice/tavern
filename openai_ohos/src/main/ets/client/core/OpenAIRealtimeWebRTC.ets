@@ -32,7 +32,7 @@ export class OpenAIRealtimeWebRTC implements OpenAIStream {
   private audioDeviceModule: AudioDeviceModule | null = null;
   private audioTrack: MediaStreamTrack | null = null;
   private peerConnectionFactory: PeerConnectionFactory | null = null;
-  private closed: boolean = false;
+  private _closed: boolean = false;
 
   constructor(client: OpenAIRequestClient, options: RealtimeWebRTCOptions) {
     this.client = client;
@@ -41,28 +41,36 @@ export class OpenAIRealtimeWebRTC implements OpenAIStream {
 
   /** 建立 WebRTC 连接。API：Realtime WebRTC。说明：创建 offer、交换 SDP、设置 remote answer。 */
   async connect(): Promise<OpenAIRealtimeWebRTC> {
-    const factory = this.createPeerConnectionFactory();
-    this.peerConnectionFactory = factory;
-    const peerConnection = this.createPeerConnection(factory);
-    this.peerConnection = peerConnection;
-    this.dataChannel = peerConnection.createDataChannel('oai-events');
-    this.bindDataChannel(this.dataChannel);
-    if (this.options.includeAudio === true) {
-      this.attachAudio(factory, peerConnection);
+    if (this._closed) {
+      throw new Error('Cannot connect: WebRTC has been closed');
     }
-    if (this.options.cancelToken !== undefined) {
-      this.options.cancelToken.onCancel(() => {
-        this.close();
-      });
+    try {
+      const factory = this.createPeerConnectionFactory();
+      this.peerConnectionFactory = factory;
+      const peerConnection = this.createPeerConnection(factory);
+      this.peerConnection = peerConnection;
+      this.dataChannel = peerConnection.createDataChannel('oai-events');
+      this.bindDataChannel(this.dataChannel);
+      if (this.options.includeAudio === true) {
+        this.attachAudio(factory, peerConnection);
+      }
+      if (this.options.cancelToken !== undefined) {
+        this.options.cancelToken.onCancel(() => {
+          this.close();
+        });
+      }
+      const localSdp = await this.createLocalSdp(peerConnection);
+      const answerSdp = await this.exchangeSdp(localSdp);
+      const answer: RTCSessionDescriptionInit = {
+        type: 'answer',
+        sdp: answerSdp,
+      };
+      await peerConnection.setRemoteDescription(answer);
+      return this;
+    } catch (error) {
+      this.close();
+      throw error;
     }
-    const localSdp = await this.createLocalSdp(peerConnection);
-    const answerSdp = await this.exchangeSdp(localSdp);
-    const answer: RTCSessionDescriptionInit = {
-      type: 'answer',
-      sdp: answerSdp,
-    };
-    await peerConnection.setRemoteDescription(answer);
-    return this;
   }
 
   /** 发送客户端事件。API：Realtime WebRTC。说明：通过 data channel 发送 JSON 事件。 */
@@ -73,12 +81,17 @@ export class OpenAIRealtimeWebRTC implements OpenAIStream {
     this.dataChannel.send(JSON.stringify(event));
   }
 
-  /** 关闭连接。API：Realtime WebRTC。说明：关闭 data channel、peer connection 并释放音频模块。 */
+  /** 是否已关闭。API：Realtime WebRTC。说明：连接已关闭时为 true。 */
+  get closed(): boolean {
+    return this._closed;
+  }
+
+  /** 关闭连接。API：Realtime WebRTC。说明：关闭 data channel、peer connection 并释放音频模块。幂等操作。 */
   close(): void {
-    if (this.closed) {
+    if (this._closed) {
       return;
     }
-    this.closed = true;
+    this._closed = true;
     if (this.dataChannel !== null) {
       this.dataChannel.close();
       this.dataChannel = null;
@@ -133,7 +146,18 @@ export class OpenAIRealtimeWebRTC implements OpenAIStream {
         return;
       }
       if (typeof event.data === 'string') {
-        this.options.handlers.onEvent(JSON.parse(event.data) as RealtimeServerEvent);
+        try {
+          this.options.handlers.onEvent(JSON.parse(event.data) as RealtimeServerEvent);
+        } catch (parseError) {
+          if (this.options.handlers.onError !== undefined) {
+            this.options.handlers.onError('Failed to parse realtime event: ' + String(parseError));
+          }
+        }
+      }
+    };
+    dataChannel.onerror = () => {
+      if (this.options.handlers !== undefined && this.options.handlers.onError !== undefined) {
+        this.options.handlers.onError('Data channel error');
       }
     };
     dataChannel.onclose = () => {

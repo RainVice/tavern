@@ -179,8 +179,8 @@ class ThreadsResource implements OpenAIThreadsResource {
   }
 
   createAndRunStream(params: ThreadAndRunCreateParams, handlers: AssistantStreamHandlers, options?: OpenAIRequestSettings): OpenAIStream {
-    params.stream = true;
-    return this.client.streamPost('/threads/runs', params, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
+    const streamParams = { ...params, stream: true };
+    return this.client.streamPost('/threads/runs', streamParams, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
       this.forwardAssistantStreamEvent(event, handlers);
     }, handlers.onError, handlers.onDone, options);
   }
@@ -275,15 +275,15 @@ class ThreadRunsResource implements OpenAIThreadRunsResource {
   }
 
   createStream(threadID: string, params: RunCreateParams, handlers: AssistantStreamHandlers, options?: OpenAIRequestSettings): OpenAIStream {
-    params.stream = true;
-    return this.client.streamPost('/threads/' + threadID + '/runs', params, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
+    const streamParams = { ...params, stream: true };
+    return this.client.streamPost('/threads/' + threadID + '/runs', streamParams, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
       handlers.onEvent(buildAssistantStreamEvent(event));
     }, handlers.onError, handlers.onDone, options);
   }
 
   submitToolOutputsStream(threadID: string, runID: string, params: RunSubmitToolOutputsParams, handlers: AssistantStreamHandlers, options?: OpenAIRequestSettings): OpenAIStream {
-    params.stream = true;
-    return this.client.streamPost('/threads/' + threadID + '/runs/' + runID + '/submit_tool_outputs', params, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
+    const streamParams = { ...params, stream: true };
+    return this.client.streamPost('/threads/' + threadID + '/runs/' + runID + '/submit_tool_outputs', streamParams, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
       handlers.onEvent(buildAssistantStreamEvent(event));
     }, handlers.onError, handlers.onDone, options);
   }

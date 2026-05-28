@@ -238,12 +238,14 @@ class FakeTransport implements OpenAITransport {
 
 class FakeOpenAIStream implements OpenAIStream {
   private transport: FakeTransport;
+  closed: boolean = false;
 
   constructor(transport: FakeTransport) {
     this.transport = transport;
   }
 
   close(): void {
+    this.closed = true;
     this.transport.latestStreamChunkCount += 1;
   }
 }
@@ -1378,10 +1380,11 @@ export default function modelsUnitTest() {
       expect(transport.latestUrl).assertEqual('https://example.test/v1/evals/eval_123/runs/evalrun_123/output_items/output_123');
       expect(outputItem.status).assertEqual('pass');
 
-      transport.nextBody = '{"object":"eval.deleted","deleted":true,"eval_id":"eval_123"}';
+      transport.nextBody = '{"object":"eval.deleted","deleted":true,"id":"eval_123"}';
       const deleted: EvalDeleted = await client.evals.delete('eval_123');
 
       expect(transport.latestUrl).assertEqual('https://example.test/v1/evals/eval_123');
+      expect(deleted.id).assertEqual('eval_123');
       expect(deleted.deleted).assertEqual(true);
     });
 

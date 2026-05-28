@@ -150,7 +150,7 @@ function buildEvalListPath(path: string, params?: EvalListParams): string {
   }
   const query: Array<string> = [];
   if (params.order_by !== undefined) {
-    query.push('order_by=' + params.order_by);
+    appendStringQuery(query, 'order_by', params.order_by);
   }
   appendCursorQuery(query, params);
   return buildPathWithQuery(path, query);

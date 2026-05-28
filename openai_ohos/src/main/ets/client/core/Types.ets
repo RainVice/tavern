@@ -82,7 +82,9 @@ export interface OpenAIRequestSettings {
  * 说明：调用 `close()` 主动关闭底层连接。
  */
 export interface OpenAIStream {
-  /** 关闭流。API：streaming。说明：释放底层 HTTP/WebSocket/WebRTC 资源。 */
+  /** 是否已关闭。API：streaming。说明：初始为 false，调用 `close()` 后变为 true。 */
+  readonly closed: boolean;
+  /** 关闭流。API：streaming。说明：释放底层 HTTP/WebSocket/WebRTC 资源。幂等操作。 */
   close(): void;
 }
 

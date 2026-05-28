@@ -97,12 +97,12 @@ export class VectorStoresResource implements OpenAIVectorStoresResource {
   }
 
   async retrieve(vectorStoreID: string): Promise<VectorStore> {
-    const body = await this.client.get('/vector_stores/' + vectorStoreID);
+    const body = await this.client.get('/vector_stores/' + encodeURIComponent(vectorStoreID));
     return JSON.parse(body) as VectorStore;
   }
 
   async update(vectorStoreID: string, params: VectorStoreUpdateParams): Promise<VectorStore> {
-    const body = await this.client.post('/vector_stores/' + vectorStoreID, params);
+    const body = await this.client.post('/vector_stores/' + encodeURIComponent(vectorStoreID), params);
     return JSON.parse(body) as VectorStore;
   }
 
@@ -112,12 +112,12 @@ export class VectorStoresResource implements OpenAIVectorStoresResource {
   }
 
   async delete(vectorStoreID: string): Promise<VectorStoreDeleted> {
-    const body = await this.client.delete('/vector_stores/' + vectorStoreID);
+    const body = await this.client.delete('/vector_stores/' + encodeURIComponent(vectorStoreID));
     return JSON.parse(body) as VectorStoreDeleted;
   }
 
   async search(vectorStoreID: string, params: VectorStoreSearchParams): Promise<VectorStoreSearchResponse> {
-    const body = await this.client.post('/vector_stores/' + vectorStoreID + '/search', params);
+    const body = await this.client.post('/vector_stores/' + encodeURIComponent(vectorStoreID) + '/search', params);
     return JSON.parse(body) as VectorStoreSearchResponse;
   }
 }
@@ -130,22 +130,28 @@ class VectorStoreFilesResource implements OpenAIVectorStoreFilesResource {
   }
 
   async create(vectorStoreID: string, params: VectorStoreFileCreateParams): Promise<VectorStoreFile> {
-    const body = await this.client.post('/vector_stores/' + vectorStoreID + '/files', params);
+    const body = await this.client.post('/vector_stores/' + encodeURIComponent(vectorStoreID) + '/files', params);
     return JSON.parse(body) as VectorStoreFile;
   }
 
   async retrieve(vectorStoreID: string, fileID: string): Promise<VectorStoreFile> {
-    const body = await this.client.get('/vector_stores/' + vectorStoreID + '/files/' + fileID);
+    const body = await this.client.get(
+      '/vector_stores/' + encodeURIComponent(vectorStoreID) + '/files/' + encodeURIComponent(fileID)
+    );
     return JSON.parse(body) as VectorStoreFile;
   }
 
   async list(vectorStoreID: string, params?: VectorStoreFileListParams): Promise<VectorStoreFileListResponse> {
-    const body = await this.client.get(buildFileListPath('/vector_stores/' + vectorStoreID + '/files', params));
+    const body = await this.client.get(
+      buildFileListPath('/vector_stores/' + encodeURIComponent(vectorStoreID) + '/files', params)
+    );
     return JSON.parse(body) as VectorStoreFileListResponse;
   }
 
   async delete(vectorStoreID: string, fileID: string): Promise<VectorStoreFileDeleted> {
-    const body = await this.client.delete('/vector_stores/' + vectorStoreID + '/files/' + fileID);
+    const body = await this.client.delete(
+      '/vector_stores/' + encodeURIComponent(vectorStoreID) + '/files/' + encodeURIComponent(fileID)
+    );
     return JSON.parse(body) as VectorStoreFileDeleted;
   }
 }
@@ -158,23 +164,31 @@ class VectorStoreFileBatchesResource implements OpenAIVectorStoreFileBatchesReso
   }
 
   async create(vectorStoreID: string, params: VectorStoreFileBatchCreateParams): Promise<VectorStoreFileBatch> {
-    const body = await this.client.post('/vector_stores/' + vectorStoreID + '/file_batches', params);
+    const body = await this.client.post(
+      '/vector_stores/' + encodeURIComponent(vectorStoreID) + '/file_batches', params
+    );
     return JSON.parse(body) as VectorStoreFileBatch;
   }
 
   async retrieve(vectorStoreID: string, batchID: string): Promise<VectorStoreFileBatch> {
-    const body = await this.client.get('/vector_stores/' + vectorStoreID + '/file_batches/' + batchID);
+    const body = await this.client.get(
+      '/vector_stores/' + encodeURIComponent(vectorStoreID) + '/file_batches/' + encodeURIComponent(batchID)
+    );
     return JSON.parse(body) as VectorStoreFileBatch;
   }
 
   async cancel(vectorStoreID: string, batchID: string): Promise<VectorStoreFileBatch> {
     const requestBody: EmptyRequestBody = {};
-    const body = await this.client.post('/vector_stores/' + vectorStoreID + '/file_batches/' + batchID + '/cancel', requestBody);
+    const body = await this.client.post(
+      '/vector_stores/' + encodeURIComponent(vectorStoreID) + '/file_batches/' +
+        encodeURIComponent(batchID) + '/cancel', requestBody
+    );
     return JSON.parse(body) as VectorStoreFileBatch;
   }
 
   async listFiles(vectorStoreID: string, batchID: string, params?: VectorStoreFileListParams): Promise<VectorStoreFileListResponse> {
-    const path = '/vector_stores/' + vectorStoreID + '/file_batches/' + batchID + '/files';
+    const path = '/vector_stores/' + encodeURIComponent(vectorStoreID) + '/file_batches/' +
+      encodeURIComponent(batchID) + '/files';
     const body = await this.client.get(buildFileListPath(path, params));
     return JSON.parse(body) as VectorStoreFileListResponse;
   }

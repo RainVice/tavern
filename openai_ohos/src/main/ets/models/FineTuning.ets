@@ -10,7 +10,7 @@ import type { EvalGrader } from './Evals';
 
 /** Fine-tuning job 状态。API：Fine-tuning Jobs。说明：表示微调任务生命周期。 */
 export type FineTuningJobStatus =
-  'validating_files' | 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+  'validating_files' | 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'paused';
 
 /** Fine-tuning 方法类型。API：Create Fine-tuning Job。说明：当前常见为监督微调，也预留偏好优化等方法。 */
 export type FineTuningMethodType = 'supervised' | 'dpo' | 'reinforcement';
@@ -267,7 +267,7 @@ export interface FineTuningCheckpointPermission {
    * API：Fine-tuning checkpoint permissions。
    * 说明：固定为 `checkpoint.permission`。
    */
-  object: 'checkpoint.permission' | string;
+  object: 'checkpoint.permission';
 
   /**
    * 权限 ID。
@@ -347,7 +347,7 @@ export interface FineTuningCheckpointPermissionDeleted {
    * API：Delete checkpoint permission。
    * 说明：通常为 `checkpoint.permission`。
    */
-  object: 'checkpoint.permission' | string;
+  object: 'checkpoint.permission';
 
   /**
    * 权限 ID。

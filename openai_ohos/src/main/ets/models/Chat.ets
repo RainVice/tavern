@@ -689,6 +689,86 @@ export interface ChatCompletionDeleted {
 }
 
 /**
+ * 流式 chunk 增量内容。
+ *
+ * API：Chat Completions streaming。
+ * 说明：chunk 中每个 choice 的增量消息片段。
+ */
+export interface ChatCompletionChunkDelta {
+  /**
+   * 消息角色。
+   *
+   * API：Chat Completions streaming。
+   * 说明：通常在首个 chunk 中出现。
+   */
+  role?: string;
+
+  /**
+   * 文本内容增量。
+   *
+   * API：Chat Completions streaming。
+   * 说明：模型逐步生成的文本片段。
+   */
+  content?: string | null;
+
+  /**
+   * 工具调用增量。
+   *
+   * API：Chat Completions streaming。
+   * 说明：工具调用参数以流式方式分片返回。
+   */
+  tool_calls?: Array<ChatCompletionMessageToolCall>;
+
+  /**
+   * 拒答文本增量。
+   *
+   * API：Chat Completions streaming。
+   * 说明：模型拒绝回答时可能出现。
+   */
+  refusal?: string | null;
+}
+
+/**
+ * 流式 chunk 候选。
+ *
+ * API：Chat Completions streaming。
+ * 说明：`ChatCompletionChunk.choices` 中的每个候选。
+ */
+export interface ChatCompletionChunkChoice {
+  /**
+   * 候选索引。
+   *
+   * API：Chat Completions streaming。
+   * 说明：从 0 开始。
+   */
+  index: number;
+
+  /**
+   * 增量内容。
+   *
+   * API：Chat Completions streaming。
+   * 说明：本 chunk 新增的消息片段。
+   */
+  delta: ChatCompletionChunkDelta;
+
+  /**
+   * logprob 信息。
+   *
+   * API：Chat Completions streaming。
+   * 说明：仅请求 `logprobs` 时可能返回。
+   */
+  logprobs?: JsonObject | null;
+
+  /**
+   * 停止原因。
+   *
+   * API：Chat Completions streaming。
+   * 说明：仅在最后一个 chunk 中有值。
+   */
+  finish_reason: string | null;
+}
+
+/**
  * Chat Completion 流式 chunk。
  *
  * API：`POST /v1/chat/completions` 设置 `stream: true`。
@@ -733,5 +813,5 @@ export interface ChatCompletionChunk {
    * API：Chat Completions streaming。
    * 说明：包含本次事件新增的 delta。
    */
-  choices: Array<JsonObject>;
+  choices: Array<ChatCompletionChunkChoice>;
 }

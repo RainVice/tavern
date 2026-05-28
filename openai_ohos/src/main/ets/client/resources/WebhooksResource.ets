@@ -149,6 +149,7 @@ export class WebhooksResource implements OpenAIWebhooksResource {
       key.clearMem();
       return result.data;
     } catch (error) {
+      console.error('HMAC-SHA256 computation failed:', String(error));
       return null;
     }
   }

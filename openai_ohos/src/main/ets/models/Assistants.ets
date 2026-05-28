@@ -46,8 +46,30 @@ export interface AssistantCreateParams {
   metadata?: Metadata | null;
 }
 
-/** 更新 Assistant 参数。API：Modify Assistant。说明：更新 assistant 配置。 */
-export interface AssistantUpdateParams extends AssistantCreateParams {
+/** 更新 Assistant 参数。API：Modify Assistant。说明：更新 assistant 配置，所有字段均可选。 */
+export interface AssistantUpdateParams {
+  /** 模型。API：Modify Assistant。说明：assistant 默认模型。 */
+  model?: OpenAIModel;
+  /** 名称。API：Modify Assistant。说明：可选展示名。 */
+  name?: string | null;
+  /** 描述。API：Modify Assistant。说明：可选说明。 */
+  description?: string | null;
+  /** 指令。API：Modify Assistant。说明：系统指令。 */
+  instructions?: string | null;
+  /** 工具。API：Modify Assistant。说明：可用工具列表。 */
+  tools?: Array<AssistantTool>;
+  /** 工具资源。API：Modify Assistant。说明：工具可访问文件或向量库。 */
+  tool_resources?: AssistantToolResources | null;
+  /** 元数据。API：Modify Assistant。说明：开发者自定义键值对。 */
+  metadata?: Metadata | null;
+  /** 温度。API：Modify Assistant。说明：采样温度 0-2。 */
+  temperature?: number | null;
+  /** top_p。API：Modify Assistant。说明：核采样概率。 */
+  top_p?: number | null;
+  /** 推理力度。API：Modify Assistant。说明：控制推理模型推理时间。 */
+  reasoning_effort?: string | null;
+  /** 响应格式。API：Modify Assistant。说明：指定输出格式。 */
+  response_format?: JsonObject | null;
 }
 
 /** Assistant 对象。API：Assistants。说明：v2 assistant 配置。 */

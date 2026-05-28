@@ -13,7 +13,7 @@ import type { OpenAIStream } from './Types';
 export class OpenAIRealtimeWebSocket implements OpenAIStream {
   private socket: webSocket.WebSocket = webSocket.createWebSocket();
   private options: RealtimeWebSocketOptions;
-  private closed: boolean = false;
+  private _closed: boolean = false;
 
   constructor(options: RealtimeWebSocketOptions) {
     this.options = options;
@@ -21,6 +21,9 @@ export class OpenAIRealtimeWebSocket implements OpenAIStream {
 
   /** 建立 WebSocket 连接。API：Realtime WebSocket。说明：成功后可调用 sendEvent。 */
   async connect(): Promise<OpenAIRealtimeWebSocket> {
+    if (this._closed) {
+      throw new Error('Cannot connect: WebSocket has been closed');
+    }
     this.bindHandlers();
     if (this.options.cancelToken !== undefined) {
       this.options.cancelToken.onCancel(() => {
@@ -39,14 +42,19 @@ export class OpenAIRealtimeWebSocket implements OpenAIStream {
     await this.socket.send(JSON.stringify(event));
   }
 
-  /** 关闭连接。API：Realtime WebSocket。说明：释放底层 WebSocket。 */
+  /** 是否已关闭。API：Realtime WebSocket。说明：连接已关闭时为 true。 */
+  get closed(): boolean {
+    return this._closed;
+  }
+
+  /** 关闭连接。API：Realtime WebSocket。说明：释放底层 WebSocket。幂等操作。 */
   close(): void {
-    if (this.closed) {
+    if (this._closed) {
       return;
     }
-    this.closed = true;
+    this._closed = true;
     this.socket.close().catch(() => {
-      this.socket = webSocket.createWebSocket();
+      // 连接已处于异常/关闭状态，无需额外操作
     });
   }
 
@@ -61,7 +69,13 @@ export class OpenAIRealtimeWebSocket implements OpenAIStream {
         return;
       }
       const text = typeof data === 'string' ? data : decoder.decodeToString(new Uint8Array(data));
-      this.options.handlers.onEvent(JSON.parse(text) as RealtimeServerEvent);
+      try {
+        this.options.handlers.onEvent(JSON.parse(text) as RealtimeServerEvent);
+      } catch (parseError) {
+        if (this.options.handlers.onError !== undefined) {
+          this.options.handlers.onError('Failed to parse realtime event: ' + String(parseError));
+        }
+      }
     });
     this.socket.on('error', (err: BusinessError) => {
       if (this.options.handlers !== undefined && this.options.handlers.onError !== undefined) {

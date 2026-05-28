@@ -727,7 +727,7 @@ class OrganizationProjectRolesResource implements OpenAIOrganizationProjectRoles
   }
 
   private buildBasePath(projectID: string): string {
-    return '/projects/' + encodeURIComponent(projectID) + '/roles';
+    return '/organization/projects/' + encodeURIComponent(projectID) + '/roles';
   }
 }
 

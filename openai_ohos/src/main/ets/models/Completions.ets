@@ -29,7 +29,7 @@ export interface CompletionCreateParams {
    * API：Completions。
    * 说明：可传单条 prompt、多条 prompt、token 数组或多条 token 数组。
    */
-  prompt?: string | Array<string> | Array<number> | Array<Array<number>> | null;
+  prompt: string | Array<string> | Array<number> | Array<Array<number>>;
 
   /**
    * 最佳候选数量。

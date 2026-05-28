@@ -11,7 +11,7 @@ import type { CursorPageParams, JsonObject, Metadata, OpenAIListResponse } from 
 export type EvalRunStatus = 'queued' | 'in_progress' | 'failed' | 'completed' | 'canceled';
 
 /** Eval output item 状态。API：Eval Run Output Items。说明：表示单条评测结果通过或失败。 */
-export type EvalRunOutputItemStatus = 'pass' | 'failed' | string;
+export type EvalRunOutputItemStatus = 'pass' | 'failed';
 
 /** Eval 数据源配置。API：Create Eval。说明：定义评测数据 schema。 */
 export interface EvalDataSourceConfig {
@@ -49,13 +49,13 @@ export interface EvalTextSimilarityGrader extends EvalGraderBase {
   reference: string;
   /** 相似度指标。API：Graders。说明：例如 `fuzzy_match`、`bleu`、`rouge_l`。 */
   evaluation_metric: 'cosine' | 'fuzzy_match' | 'bleu' | 'gleu' | 'meteor' | 'rouge_1' | 'rouge_2' |
-    'rouge_3' | 'rouge_4' | 'rouge_5' | 'rouge_l' | string;
+    'rouge_3' | 'rouge_4' | 'rouge_5' | 'rouge_l';
 }
 
 /** Grader 内容项。API：Score/Label model grader。说明：模型 grader 的多模态输入块。 */
 export interface EvalGraderContentItem {
   /** 内容类型。API：Graders。说明：文本、输出文本、图像或音频输入。 */
-  type: 'input_text' | 'output_text' | 'input_image' | 'input_audio' | string;
+  type: 'input_text' | 'output_text' | 'input_image' | 'input_audio';
   /** 文本内容。API：Graders。说明：用于 `input_text` 或 `output_text`。 */
   text?: string;
   /** 图片 URL。API：Graders。说明：用于 `input_image`。 */
@@ -188,8 +188,8 @@ export interface EvalDeleted {
   object: string;
   /** 删除结果。API：Delete Eval。说明：true 表示已删除。 */
   deleted: boolean;
-  /** Eval ID。API：Delete Eval。说明：被删除的评测 ID。 */
-  eval_id: string;
+  /** ID。API：Delete Eval。说明：被删除的评测 ID。 */
+  id: string;
 }
 
 /** Eval JSONL file source。API：Create Eval Run。说明：从已上传 JSONL 文件读取评测数据。 */
@@ -257,8 +257,8 @@ export interface EvalRunDeleted {
   object: string;
   /** 删除结果。API：Delete Eval Run。说明：true 表示已删除。 */
   deleted: boolean;
-  /** Run ID。API：Delete Eval Run。说明：被删除的 run ID。 */
-  run_id: string;
+  /** ID。API：Delete Eval Run。说明：被删除的 run ID。 */
+  id: string;
 }
 
 /** Eval output item grader result。API：Eval Run Output Items。说明：单个 grader 的结果。 */

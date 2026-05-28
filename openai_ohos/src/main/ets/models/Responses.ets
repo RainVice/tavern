@@ -841,7 +841,7 @@ export interface ResponseCreateParams {
    * API：`POST /v1/responses`。
    * 说明：例如 `gpt-5.4`、`gpt-4.1`、`gpt-4o`。
    */
-  model?: ResponsesModel;
+  model: ResponsesModel;
 
   /**
    * 是否允许并行工具调用。
@@ -1233,7 +1233,7 @@ export interface ResponseShellToolCall {
  * 说明：描述模型请求创建、删除或更新文件。
  */
 export interface ResponseApplyPatchOperation {
-  type: 'create_file' | 'delete_file' | 'update_file' | string;
+  type: 'create_file' | 'delete_file' | 'update_file';
   path: string;
   diff?: string;
 }

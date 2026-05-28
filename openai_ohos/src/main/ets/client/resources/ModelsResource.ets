@@ -53,12 +53,12 @@ export class ModelsResource implements OpenAIModelsResource {
   }
 
   async retrieve(model: string): Promise<ModelObject> {
-    const body = await this.client.get('/models/' + model);
+    const body = await this.client.get('/models/' + encodeURIComponent(model));
     return JSON.parse(body) as ModelObject;
   }
 
   async delete(model: string): Promise<ModelDeleted> {
-    const body = await this.client.delete('/models/' + model);
+    const body = await this.client.delete('/models/' + encodeURIComponent(model));
     return JSON.parse(body) as ModelDeleted;
   }
 }

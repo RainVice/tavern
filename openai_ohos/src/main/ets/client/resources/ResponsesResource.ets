@@ -57,18 +57,18 @@ export class ResponsesResource implements OpenAIResponsesResource {
   }
 
   async retrieve(responseID: string): Promise<ResponseObject> {
-    const body = await this.client.get('/responses/' + responseID);
+    const body = await this.client.get('/responses/' + encodeURIComponent(responseID));
     return JSON.parse(body) as ResponseObject;
   }
 
   async delete(responseID: string): Promise<ResponseDeleted> {
-    const body = await this.client.delete('/responses/' + responseID);
+    const body = await this.client.delete('/responses/' + encodeURIComponent(responseID));
     return JSON.parse(body) as ResponseDeleted;
   }
 
   async cancel(responseID: string): Promise<ResponseObject> {
     const requestBody: EmptyRequestBody = {};
-    const body = await this.client.post('/responses/' + responseID + '/cancel', requestBody);
+    const body = await this.client.post('/responses/' + encodeURIComponent(responseID) + '/cancel', requestBody);
     return JSON.parse(body) as ResponseObject;
   }
 }

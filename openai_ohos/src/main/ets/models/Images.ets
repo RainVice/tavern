@@ -22,7 +22,7 @@ export type ImageSize = 'auto' | '256x256' | '512x512' | '1024x1024' | '1024x153
  * API：`POST /v1/images/generations`、`POST /v1/images/edits`。
  * 说明：仅在 `stream: true` 时使用；官方当前支持 0 到 3，0 表示只返回最终图。
  */
-export type ImagePartialImages = 0 | 1 | 2 | 3 | number;
+export type ImagePartialImages = 0 | 1 | 2 | 3;
 
 /**
  * 生成图像请求。
@@ -361,7 +361,7 @@ export interface ImageStreamingEventBase {
    * API：Image Streaming。
    * 说明：服务端实际使用的输出尺寸。
    */
-  size: ImageSize | string;
+  size: ImageSize;
 
   /**
    * 图片质量。
@@ -369,7 +369,7 @@ export interface ImageStreamingEventBase {
    * API：Image Streaming。
    * 说明：服务端实际使用的质量设置。
    */
-  quality: 'auto' | 'low' | 'medium' | 'high' | 'standard' | 'hd' | string;
+  quality: 'auto' | 'low' | 'medium' | 'high' | 'standard' | 'hd';
 
   /**
    * 背景设置。
@@ -377,7 +377,7 @@ export interface ImageStreamingEventBase {
    * API：Image Streaming。
    * 说明：服务端实际使用的背景设置。
    */
-  background: 'transparent' | 'opaque' | 'auto' | string;
+  background: 'transparent' | 'opaque' | 'auto';
 
   /**
    * 输出格式。
@@ -385,7 +385,7 @@ export interface ImageStreamingEventBase {
    * API：Image Streaming。
    * 说明：例如 `png`、`jpeg`、`webp`。
    */
-  output_format: 'png' | 'jpeg' | 'webp' | string;
+  output_format: 'png' | 'jpeg' | 'webp';
 }
 
 /**

@@ -116,7 +116,7 @@ export class VideosResource implements OpenAIVideosResource {
   }
 
   async retrieve(videoID: string): Promise<VideoJob> {
-    const body = await this.client.get('/videos/' + videoID);
+    const body = await this.client.get('/videos/' + encodeURIComponent(videoID));
     return JSON.parse(body) as VideoJob;
   }
 
@@ -125,7 +125,7 @@ export class VideosResource implements OpenAIVideosResource {
   }
 
   async remix(videoID: string, params: VideoRemixParams): Promise<VideoJob> {
-    const body = await this.client.post('/videos/' + videoID + '/remix', params);
+    const body = await this.client.post('/videos/' + encodeURIComponent(videoID) + '/remix', params);
     return JSON.parse(body) as VideoJob;
   }
 
@@ -140,7 +140,7 @@ export class VideosResource implements OpenAIVideosResource {
   }
 
   async delete(videoID: string): Promise<VideoDeleted> {
-    const body = await this.client.delete('/videos/' + videoID);
+    const body = await this.client.delete('/videos/' + encodeURIComponent(videoID));
     return JSON.parse(body) as VideoDeleted;
   }
 
@@ -179,11 +179,11 @@ export class VideosResource implements OpenAIVideosResource {
 
   private buildContentPath(videoID: string, params?: VideoDownloadContentParams): string {
     if (params === undefined) {
-      return '/videos/' + videoID + '/content';
+      return '/videos/' + encodeURIComponent(videoID) + '/content';
     }
     const query: Array<string> = [];
     appendStringQuery(query, 'variant', params.variant);
-    return buildPathWithQuery('/videos/' + videoID + '/content', query);
+    return buildPathWithQuery('/videos/' + encodeURIComponent(videoID) + '/content', query);
   }
 }
 
@@ -225,7 +225,7 @@ class VideoCharactersResource implements OpenAIVideoCharactersResource {
   }
 
   async retrieve(characterID: string): Promise<VideoCharacter> {
-    const body = await this.client.get('/videos/characters/' + characterID);
+    const body = await this.client.get('/videos/characters/' + encodeURIComponent(characterID));
     return JSON.parse(body) as VideoCharacter;
   }
 

@@ -1,5 +1,6 @@
 import type { ImageCreateVariationParams, ImageEditParams, ImageGenerateParams, ImagesResponse } from '../../models/Images';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
+import { buildTextPart, buildFilePart, fileNameFromPath } from '../core/RequestUtils';
 import type { OpenAIMultipartFormData } from '../core/Types';
 
 /**
@@ -57,94 +58,85 @@ export class ImagesResource implements OpenAIImagesResource {
     const imagePart: OpenAIMultipartFormData = {
       name: 'image',
       contentType: 'application/octet-stream',
-      remoteFileName: this.fileNameFromPath(params.image),
+      remoteFileName: fileNameFromPath(params.image),
       filePath: params.image,
     };
     parts.push(imagePart);
     if (params.model !== undefined && params.model !== null) {
-      parts.push(this.textPart('model', params.model));
+      parts.push(buildTextPart('model', params.model));
     }
     if (params.n !== undefined && params.n !== null) {
-      parts.push(this.textPart('n', params.n.toString()));
+      parts.push(buildTextPart('n', params.n.toString()));
     }
     if (params.response_format !== undefined && params.response_format !== null) {
-      parts.push(this.textPart('response_format', params.response_format));
+      parts.push(buildTextPart('response_format', params.response_format));
     }
     if (params.size !== undefined && params.size !== null) {
-      parts.push(this.textPart('size', params.size));
+      parts.push(buildTextPart('size', params.size));
     }
     if (params.user !== undefined) {
-      parts.push(this.textPart('user', params.user));
+      parts.push(buildTextPart('user', params.user));
     }
     const body = await this.client.postMultipart('/images/variations', parts);
     return JSON.parse(body) as ImagesResponse;
   }
 
-  private textPart(name: string, data: string): OpenAIMultipartFormData {
-    return {
-      name: name,
-      contentType: 'text/plain',
-      data: data,
-    };
-  }
-
   private buildEditParts(params: ImageEditParams): Array<OpenAIMultipartFormData> {
     const parts: Array<OpenAIMultipartFormData> = [];
     if (typeof params.image === 'string') {
-      parts.push(this.filePart('image', params.image));
+      parts.push(buildFilePart('image', params.image));
     } else {
       for (let index = 0; index < params.image.length; index++) {
-        parts.push(this.filePart('image', params.image[index]));
+        parts.push(buildFilePart('image', params.image[index]));
       }
     }
-    parts.push(this.textPart('prompt', params.prompt));
+    parts.push(buildTextPart('prompt', params.prompt));
     if (params.mask !== undefined && params.mask !== null) {
-      parts.push(this.filePart('mask', params.mask));
+      parts.push(buildFilePart('mask', params.mask));
     }
     if (params.model !== undefined && params.model !== null) {
-      parts.push(this.textPart('model', params.model));
+      parts.push(buildTextPart('model', params.model));
+    }
+    if (params.background !== undefined && params.background !== null) {
+      parts.push(buildTextPart('background', params.background));
+    }
+    if (params.moderation !== undefined && params.moderation !== null) {
+      parts.push(buildTextPart('moderation', params.moderation));
     }
     if (params.n !== undefined && params.n !== null) {
-      parts.push(this.textPart('n', params.n.toString()));
+      parts.push(buildTextPart('n', params.n.toString()));
+    }
+    if (params.output_compression !== undefined && params.output_compression !== null) {
+      parts.push(buildTextPart('output_compression', params.output_compression.toString()));
     }
     if (params.output_format !== undefined && params.output_format !== null) {
-      parts.push(this.textPart('output_format', params.output_format));
+      parts.push(buildTextPart('output_format', params.output_format));
     }
     if (params.partial_images !== undefined && params.partial_images !== null) {
-      parts.push(this.textPart('partial_images', params.partial_images.toString()));
+      parts.push(buildTextPart('partial_images', params.partial_images.toString()));
     }
     if (params.quality !== undefined && params.quality !== null) {
-      parts.push(this.textPart('quality', params.quality));
+      parts.push(buildTextPart('quality', params.quality));
     }
     if (params.response_format !== undefined && params.response_format !== null) {
-      parts.push(this.textPart('response_format', params.response_format));
+      parts.push(buildTextPart('response_format', params.response_format));
     }
     if (params.size !== undefined && params.size !== null) {
-      parts.push(this.textPart('size', params.size));
+      parts.push(buildTextPart('size', params.size));
+    }
+    if (params.stream !== undefined && params.stream !== null) {
+      parts.push(buildTextPart('stream', params.stream.toString()));
+    }
+    if (params.style !== undefined && params.style !== null) {
+      parts.push(buildTextPart('style', params.style));
     }
     if (params.user !== undefined) {
-      parts.push(this.textPart('user', params.user));
+      parts.push(buildTextPart('user', params.user));
     }
     if (params.input_fidelity !== undefined && params.input_fidelity !== null) {
-      parts.push(this.textPart('input_fidelity', params.input_fidelity));
+      parts.push(buildTextPart('input_fidelity', params.input_fidelity));
     }
     return parts;
   }
 
-  private filePart(name: string, path: string): OpenAIMultipartFormData {
-    return {
-      name: name,
-      contentType: 'application/octet-stream',
-      remoteFileName: this.fileNameFromPath(path),
-      filePath: path,
-    };
-  }
-
-  private fileNameFromPath(path: string): string {
-    const index = path.lastIndexOf('/');
-    if (index >= 0 && index < path.length - 1) {
-      return path.substring(index + 1);
-    }
-    return path;
-  }
 }

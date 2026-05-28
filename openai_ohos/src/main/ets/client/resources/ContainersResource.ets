@@ -45,8 +45,8 @@ export interface OpenAIContainerFilesResource {
   retrieve(containerID: string, fileID: string): Promise<ContainerFile>;
   /** 列出容器文件。API：List Container Files。说明：分页读取容器内文件。 */
   list(containerID: string, params?: ContainerFileListParams): Promise<ContainerFileListResponse>;
-  /** 读取容器文件内容。API：Retrieve Container File Content。说明：返回原始内容字符串。 */
-  content(containerID: string, fileID: string): Promise<string>;
+  /** 读取容器文件内容。API：Retrieve Container File Content。说明：返回原始内容字符串（文本）或 base64 编码字符串（二进制）。 */
+  content(containerID: string, fileID: string, options?: { responseDataType?: 'string' | 'arraybuffer' }): Promise<string>;
   /** 删除容器文件。API：Delete Container File。说明：删除容器内文件。 */
   delete(containerID: string, fileID: string): Promise<ContainerFileDeleted>;
 }
@@ -66,7 +66,7 @@ export class ContainersResource implements OpenAIContainersResource {
   }
 
   async retrieve(containerID: string): Promise<Container> {
-    const body = await this.client.get('/containers/' + containerID);
+    const body = await this.client.get('/containers/' + encodeURIComponent(containerID));
     return JSON.parse(body) as Container;
   }
 
@@ -76,7 +76,7 @@ export class ContainersResource implements OpenAIContainersResource {
   }
 
   async delete(containerID: string): Promise<ContainerDeleted> {
-    const body = await this.client.delete('/containers/' + containerID);
+    const body = await this.client.delete('/containers/' + encodeURIComponent(containerID));
     return JSON.parse(body) as ContainerDeleted;
   }
 }
@@ -89,31 +89,36 @@ class ContainerFilesResource implements OpenAIContainerFilesResource {
   }
 
   async create(containerID: string, params: ContainerFileCreateParams): Promise<ContainerFile> {
+    const encodedCID = encodeURIComponent(containerID);
     if (params.file !== undefined) {
       const part = buildFilePart('file', params.file);
-      const body = await this.client.postMultipart('/containers/' + containerID + '/files', [part]);
+      const body = await this.client.postMultipart('/containers/' + encodedCID + '/files', [part]);
       return JSON.parse(body) as ContainerFile;
     }
-    const body = await this.client.post('/containers/' + containerID + '/files', params);
+    const body = await this.client.post('/containers/' + encodedCID + '/files', params);
     return JSON.parse(body) as ContainerFile;
   }
 
   async retrieve(containerID: string, fileID: string): Promise<ContainerFile> {
-    const body = await this.client.get('/containers/' + containerID + '/files/' + fileID);
+    const body = await this.client.get('/containers/' + encodeURIComponent(containerID) + '/files/' + encodeURIComponent(fileID));
     return JSON.parse(body) as ContainerFile;
   }
 
   async list(containerID: string, params?: ContainerFileListParams): Promise<ContainerFileListResponse> {
-    const body = await this.client.get(buildCursorListPath('/containers/' + containerID + '/files', params));
+    const body = await this.client.get(buildCursorListPath('/containers/' + encodeURIComponent(containerID) + '/files', params));
     return JSON.parse(body) as ContainerFileListResponse;
   }
 
-  async content(containerID: string, fileID: string): Promise<string> {
-    return await this.client.get('/containers/' + containerID + '/files/' + fileID + '/content');
+  async content(containerID: string, fileID: string, options?: { responseDataType?: 'string' | 'arraybuffer' }): Promise<string> {
+    const path = '/containers/' + encodeURIComponent(containerID) + '/files/' + encodeURIComponent(fileID) + '/content';
+    if (options?.responseDataType === 'arraybuffer') {
+      return await this.client.getBinary(path);
+    }
+    return await this.client.get(path);
   }
 
   async delete(containerID: string, fileID: string): Promise<ContainerFileDeleted> {
-    const body = await this.client.delete('/containers/' + containerID + '/files/' + fileID);
+    const body = await this.client.delete('/containers/' + encodeURIComponent(containerID) + '/files/' + encodeURIComponent(fileID));
     return JSON.parse(body) as ContainerFileDeleted;
   }
 }
