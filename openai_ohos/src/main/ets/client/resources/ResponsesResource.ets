@@ -1,4 +1,4 @@
-import type { ResponseCreateParams, ResponseObject } from '../../models/Responses';
+import type { ResponseCreateParams, ResponseDeleted, ResponseObject } from '../../models/Responses';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
 
 /**
@@ -30,7 +30,7 @@ export interface OpenAIResponsesResource {
    * API：`DELETE /v1/responses/{response_id}`。
    * 说明：删除已存储的 response。
    */
-  delete(responseID: string): Promise<void>;
+  delete(responseID: string): Promise<ResponseDeleted>;
 
   /**
    * 取消后台 Response。
@@ -61,8 +61,9 @@ export class ResponsesResource implements OpenAIResponsesResource {
     return JSON.parse(body) as ResponseObject;
   }
 
-  async delete(responseID: string): Promise<void> {
-    await this.client.delete('/responses/' + responseID);
+  async delete(responseID: string): Promise<ResponseDeleted> {
+    const body = await this.client.delete('/responses/' + responseID);
+    return JSON.parse(body) as ResponseDeleted;
   }
 
   async cancel(responseID: string): Promise<ResponseObject> {

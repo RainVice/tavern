@@ -1414,6 +1414,38 @@ export interface ResponseObject {
 }
 
 /**
+ * 删除 Response 响应。
+ *
+ * API：`DELETE /v1/responses/{response_id}`。
+ * 说明：服务端删除成功后返回确认对象，调用方可检查 `deleted`。
+ */
+export interface ResponseDeleted {
+  /**
+   * Response ID。
+   *
+   * API：Delete Response。
+   * 说明：被删除的 Response。
+   */
+  id: string;
+
+  /**
+   * 对象类型。
+   *
+   * API：Delete Response。
+   * 说明：官方返回为 `response`。
+   */
+  object: 'response';
+
+  /**
+   * 是否已删除。
+   *
+   * API：Delete Response。
+   * 说明：成功删除时为 true。
+   */
+  deleted: boolean;
+}
+
+/**
  * Responses API 流式事件。
  *
  * API：`POST /v1/responses` 设置 `stream: true`。
