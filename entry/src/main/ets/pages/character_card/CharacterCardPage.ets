@@ -5,6 +5,7 @@ import {
   hdsMaterial,
   HdsNavDestination,
   PrefixImage,
+  ScrollEffectType,
   SuffixIcon
 } from '@kit.UIDesignKit'
 import { FullPercent, symbolModifier } from 'common'
@@ -13,6 +14,7 @@ import { CharacterCardViewModel } from './CharacterCardViewModel'
 import { CharacterCardListState } from './CharacterCardListState'
 import { CharacterCard } from '../../store/model/CharacterCard'
 import { ImageModifier } from '@kit.ArkUI'
+import { AppUtil } from '@pura/harmony-utils'
 
 @Route({ name: RouterName.CharacterCard })
 @ComponentV2
@@ -25,34 +27,6 @@ export struct CharacterCardPage {
       List({ space: 10 }) {
         Repeat(this.state.cards)
           .each((obj) => {
-            // HdsListItem({
-            //   hdsListItemCard: {
-            //     prefixItem: new PrefixImage({
-            //       image: obj.item.avatarUrl,
-            //       modifier: new ImageModifier().size({ width: 40, height: 40 })
-            //     }),
-            //     textItem: {
-            //       primaryText: { text: obj.item.name },
-            //       secondaryText: {
-            //         text: obj.item.description ?? obj.item.personality ?? '',
-            //       }
-            //     },
-            //     suffixItem: new SuffixIcon({
-            //       iconValue: {
-            //         symbol: symbolModifier($r("sys.symbol.chevron_right"))
-            //           .fontColor([$r("sys.color.font_tertiary")])
-            //       }
-            //     }),
-            //     onClick: (): void => {
-            //       this.vm.onCardClick(obj.index)
-            //     }
-            //   },
-            //   swipeActionOptions: {
-            //     deleteIconOptions: {
-            //       onAction: (): void => this.vm.onDeleteCard(obj.index)
-            //     }
-            //   }
-            // })
             CharacterCardItem({
               repeat: obj,
               onCardClick: () => this.vm.onCardClick(obj.item),
@@ -61,12 +35,14 @@ export struct CharacterCardPage {
           }).key((item: CharacterCard) => item.id + '_' + item.updateTime)
           .virtualScroll()
       }
-      .contentStartOffset(56)
+      .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .width(FullPercent)
       .height(FullPercent)
     }
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
+      avoidLayoutSafeArea: true,
       content: {
         title: { mainTitle: $r("app.string.character_card") },
         menu: {
@@ -83,6 +59,9 @@ export struct CharacterCardPage {
       style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
+        },
+        scrollEffectOpts: {
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
         }
       }
     })

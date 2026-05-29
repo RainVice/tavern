@@ -1,5 +1,6 @@
 import { Route } from '@hzw/zrouter'
-import { HdsListItem, hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit'
+import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
+import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent, symbolModifier } from 'common'
 import { RouterName, RVRouter } from 'router'
 import { CharacterCardDetailState } from './CharacterCardDetailState'
@@ -14,7 +15,6 @@ export struct CharacterCardDetailPage {
   build() {
     HdsNavDestination() {
       List({ space: 10 }) {
-        ListItem().height(56)
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.header() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.descriptionField() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.personalityField() } } })
@@ -22,6 +22,8 @@ export struct CharacterCardDetailPage {
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.firstMessageField() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.exampleMessagesField() } } })
       }
+      .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .width(FullPercent)
       .height(FullPercent)
     }
@@ -31,6 +33,7 @@ export struct CharacterCardDetailPage {
     })
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
+      avoidLayoutSafeArea: true,
       content: {
         title: { mainTitle: $r("app.string.character_card_detail") },
         menu: {
@@ -57,6 +60,9 @@ export struct CharacterCardDetailPage {
       style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
+        },
+        scrollEffectOpts: {
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
         }
       }
     })

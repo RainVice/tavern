@@ -1,15 +1,6 @@
 {
   "routerMap": [
     {
-      "name": "CharacterCardEdit",
-      "pageSourceFile": "src/main/ets/_generated/ZRCharacterCardEditPage.ets",
-      "buildFunction": "entryCharacterCardEditPageBuilder",
-      "data": {
-        "needLogin": "false",
-        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
-      }
-    },
-    {
       "name": "CharacterCard",
       "pageSourceFile": "src/main/ets/_generated/ZRCharacterCardPage.ets",
       "buildFunction": "entryCharacterCardPageBuilder",
@@ -22,6 +13,15 @@
       "name": "CharacterCardDetail",
       "pageSourceFile": "src/main/ets/_generated/ZRCharacterCardDetailPage.ets",
       "buildFunction": "entryCharacterCardDetailPageBuilder",
+      "data": {
+        "needLogin": "false",
+        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
+      }
+    },
+    {
+      "name": "CharacterCardEdit",
+      "pageSourceFile": "src/main/ets/_generated/ZRCharacterCardEditPage.ets",
+      "buildFunction": "entryCharacterCardEditPageBuilder",
       "data": {
         "needLogin": "false",
         "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="

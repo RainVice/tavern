@@ -1,5 +1,6 @@
 import { Route } from '@hzw/zrouter'
-import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit'
+import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
+import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent } from 'common'
 import { RouterName } from 'router'
 
@@ -9,21 +10,26 @@ export struct MessageListPage {
   build() {
     HdsNavDestination() {
       List({ space: 10 }) {
-        ListItem().height(56)
         ListItem() {
           MessageListEmpty()
         }
       }
+      .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .width(FullPercent)
       .height(FullPercent)
       .padding({ left: 12, right: 12 })
     }
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
+      avoidLayoutSafeArea: true,
       content: { title: { mainTitle: $r("app.string.message_list") } },
       style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
+        },
+        scrollEffectOpts: {
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
         }
       }
     })

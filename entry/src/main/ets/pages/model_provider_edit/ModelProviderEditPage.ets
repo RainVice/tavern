@@ -1,10 +1,11 @@
-import { HdsListItem, hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
+import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit';
 import { FullPercent, hdsAttribute, symbolGlyphAttribute, symbolModifier, symbolSpanAttribute } from 'common';
 import { RouterName } from 'router';
 import { ModelProviderEditViewModel } from './ModelProviderEditViewModel';
 import { LengthMetrics } from '@kit.ArkUI';
 import { ModelProviderEditState } from './ModelProviderEditState';
 import { Route } from '@hzw/zrouter';
+import { AppUtil } from '@pura/harmony-utils';
 
 
 @Route({ name: RouterName.ModelProviderEdit })
@@ -16,13 +17,18 @@ export struct ModelProviderEditPage {
   build() {
     HdsNavDestination() {
       List({ space: 10 }) {
-        ListItem().height(56)
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.providerNameInput() }, } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.baseUrlInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.apiKeyInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.modelListInput() } } })
-      }.width(FullPercent).height(FullPercent)
+      }
+      .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .width(FullPercent)
+      .height(FullPercent)
     }.backgroundColor($r("sys.color.background_secondary")).titleBar({
+      avoidLayoutSafeArea: true,
+
       content: {
         title: { mainTitle: $r("app.string.add_model_provider") }, menu: {
           value: [{
@@ -36,6 +42,9 @@ export struct ModelProviderEditPage {
       }, style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
+        },
+        scrollEffectOpts: {
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
         }
       }
     }).hideBackButton(false)

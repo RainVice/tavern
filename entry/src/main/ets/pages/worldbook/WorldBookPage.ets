@@ -1,5 +1,5 @@
 import { Route } from '@hzw/zrouter';
-import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
+import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit';
 import {  RouterName } from 'router';
 
 @Route({ name: RouterName.WorldBook })
@@ -11,10 +11,14 @@ export struct WorldBookPage {
     }
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
+      avoidLayoutSafeArea: true,
       content: { title: { mainTitle: $r("app.string.world_book") } },
       style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
+        },
+        scrollEffectOpts: {
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
         }
       }
     })

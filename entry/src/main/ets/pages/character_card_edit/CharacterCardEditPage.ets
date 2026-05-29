@@ -1,9 +1,10 @@
 import { Route } from '@hzw/zrouter';
-import { HdsListItem, hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit';
+import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
 import { RouterName } from 'router';
 import { CharacterCardEditViewModel } from './CharacterCardEditViewModel';
 import { CharacterCardEditState } from './CharacterCardEditState';
+import { AppUtil } from '@pura/harmony-utils';
 
 @Route({ name: RouterName.CharacterCardEdit })
 @ComponentV2
@@ -14,7 +15,6 @@ export struct CharacterCardEditPage {
   build() {
     HdsNavDestination() {
       List({ space: 10 }) {
-        ListItem().height(56)
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.avatarInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.nameInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.descriptionInput() } } })
@@ -22,10 +22,15 @@ export struct CharacterCardEditPage {
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.scenarioInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.firstMessageInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.exampleMessagesInput() } } })
-      }.width(FullPercent).height(FullPercent)
+      }
+      .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .width(FullPercent)
+      .height(FullPercent)
     }
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
+      avoidLayoutSafeArea: true,
       content: {
         title: { mainTitle: $r("app.string.add_character_card") }, menu: {
           value: [{
@@ -40,6 +45,9 @@ export struct CharacterCardEditPage {
       style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
+        },
+        scrollEffectOpts: {
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
         }
       }
     })
@@ -203,7 +211,10 @@ export struct CharacterCardEditPage {
         .fontColor($r("sys.color.font_secondary"))
         .padding({ left: 8 })
 
-      TextArea({ text: this.getExampleMessages(), placeholder: $r("app.string.character_card_example_messages_placeholder") })
+      TextArea({
+        text: this.getExampleMessages(),
+        placeholder: $r("app.string.character_card_example_messages_placeholder")
+      })
         .padding(8)
         .borderRadius(8)
         .width(FullPercent)

@@ -5,6 +5,7 @@ import { MessageListPage } from './pages/message_list/MessageListPage';
 import { CharacterCardPage } from './pages/character_card/CharacterCardPage';
 import { WorldBookPage } from './pages/worldbook/WorldBookPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { AppUtil } from '@pura/harmony-utils';
 
 @Entry
 @ComponentV2
@@ -54,7 +55,8 @@ struct Index {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE,
           materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE,
-        }
+        },
+        barBottomMargin: this.getUIContext().px2vp(AppUtil.getNavigationIndicatorHeight())
       })
     }
     .backgroundColor($r("sys.color.background_secondary"))

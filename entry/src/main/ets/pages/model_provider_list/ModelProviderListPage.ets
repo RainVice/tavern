@@ -5,6 +5,7 @@ import {
   HdsNavDestination,
   IconSize,
   PrefixIcon,
+  ScrollEffectType,
   SuffixIcon
 } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
@@ -12,6 +13,7 @@ import { RouterName } from 'router';
 import { ModelProviderListViewModel } from './ModelProviderListViewModel';
 import { ModelProvider } from '../../store/model/ModelProvider';
 import { ModelProviderListState } from './ModelProviderListState';
+import { AppUtil } from '@pura/harmony-utils';
 
 @Route({ name: RouterName.ModelProviderList })
 @ComponentV2
@@ -22,7 +24,6 @@ export struct ModelProviderListPage {
   build() {
     HdsNavDestination() {
       List({ space: 10 }) {
-        ListItem().height(56)
         Repeat<ModelProvider>(this.state.providers)
           .each((obj: RepeatItem<ModelProvider>) => {
             ModelProviderItem({
@@ -33,11 +34,14 @@ export struct ModelProviderListPage {
           }).key((item: ModelProvider) => item.id + '_' + item.updateTime)
           .virtualScroll()
       }
+      .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .width(FullPercent)
       .height(FullPercent)
     }
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
+      avoidLayoutSafeArea: true,
       content: {
         title: { mainTitle: $r("app.string.model_provider") },
         menu: {
@@ -54,6 +58,9 @@ export struct ModelProviderListPage {
       style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
+        },
+        scrollEffectOpts: {
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
         }
       }
     })

@@ -1,5 +1,6 @@
 import { Route } from '@hzw/zrouter'
-import { hdsMaterial, HdsNavDestination } from '@kit.UIDesignKit'
+import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
+import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent } from 'common'
 import { RouterName } from 'router'
 import { ChatMessageItem, ChatRole, ChatState } from './ChatState'
@@ -15,7 +16,6 @@ export struct ChatPage {
     HdsNavDestination() {
       Column() {
         List({ space: 12 }) {
-          ListItem().height(56)
           if (this.state.messages.length === 0) {
             ListItem() {
               EmptyConversation()
@@ -29,6 +29,8 @@ export struct ChatPage {
               .virtualScroll()
           }
         }
+        .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+        .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
         .layoutWeight(1)
         .width(FullPercent)
         .padding({ left: 12, right: 12 })
@@ -62,10 +64,14 @@ export struct ChatPage {
     }
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
+      avoidLayoutSafeArea: true,
       content: { title: { mainTitle: $r("app.string.chat") } },
       style: {
         systemMaterialEffect: {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
+        },
+        scrollEffectOpts: {
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
         }
       }
     })

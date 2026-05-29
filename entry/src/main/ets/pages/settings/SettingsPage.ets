@@ -1,5 +1,6 @@
 import { Route } from '@hzw/zrouter';
-import { HdsListItem, HdsNavDestination, IconSize, PrefixIcon, SuffixArrow } from '@kit.UIDesignKit';
+import { HdsListItem, HdsNavDestination, IconSize, PrefixIcon, ScrollEffectType, SuffixArrow } from '@kit.UIDesignKit';
+import { AppUtil } from '@pura/harmony-utils';
 import { FullPercent, symbolModifier } from 'common';
 import {  RouterName } from 'router';
 import { SettingsViewModel } from './SettingsViewModel';
@@ -12,7 +13,6 @@ export struct SettingsPage {
   build() {
     HdsNavDestination() {
       List({ space: 10, }) {
-        ListItem().height(56)
         HdsListItem({
           hdsListItemCard: {
             prefixItem: new PrefixIcon({
@@ -34,11 +34,21 @@ export struct SettingsPage {
           }
         })
       }
+      .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .width(FullPercent)
       .height(FullPercent)
     }
     .backgroundColor($r("sys.color.background_secondary"))
-    .titleBar({ content: { title: { mainTitle: $r("app.string.settings") } } })
+    .titleBar({
+      avoidLayoutSafeArea: true,
+      content: { title: { mainTitle: $r("app.string.settings") } },
+      style: {
+        scrollEffectOpts: {
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
+        }
+      }
+    })
     .hideBackButton(true)
   }
 }

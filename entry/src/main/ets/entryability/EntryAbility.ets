@@ -14,6 +14,9 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    windowStage.getMainWindow().then((window) => {
+      window.setWindowLayoutFullScreen(true)
+    })
     windowStage.loadContent('Index').catch(() => {
     });
   }
