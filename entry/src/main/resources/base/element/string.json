@@ -13,6 +13,18 @@
       "value": "label"
     },
     {
+      "name": "message_list",
+      "value": "消息"
+    },
+    {
+      "name": "message_list_empty_title",
+      "value": "暂无消息"
+    },
+    {
+      "name": "message_list_empty_description",
+      "value": "开始对话后，会在这里显示聊天记录"
+    },
+    {
       "name": "chat",
       "value": "聊天"
     },

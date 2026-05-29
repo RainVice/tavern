@@ -37,6 +37,15 @@
       }
     },
     {
+      "name": "MessageList",
+      "pageSourceFile": "src/main/ets/_generated/ZRMessageListPage.ets",
+      "buildFunction": "entryMessageListPageBuilder",
+      "data": {
+        "needLogin": "false",
+        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
+      }
+    },
+    {
       "name": "ModelProviderEdit",
       "pageSourceFile": "src/main/ets/_generated/ZRModelProviderEditPage.ets",
       "buildFunction": "entryModelProviderEditPageBuilder",
