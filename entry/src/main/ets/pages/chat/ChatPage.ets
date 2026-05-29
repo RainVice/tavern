@@ -5,6 +5,7 @@ import { FullPercent } from 'common'
 import { RouterName } from 'router'
 import { ChatMessageItem, ChatRole, ChatState } from './ChatState'
 import { ChatViewModel } from './ChatViewModel'
+import { LengthMetrics } from '@kit.ArkUI'
 
 @Route({ name: RouterName.Chat })
 @ComponentV2
@@ -14,7 +15,7 @@ export struct ChatPage {
 
   build() {
     HdsNavDestination() {
-      Column() {
+      Stack({ alignContent: Alignment.Bottom }) {
         List({ space: 12 }) {
           if (this.state.messages.length === 0) {
             ListItem() {
@@ -30,34 +31,12 @@ export struct ChatPage {
           }
         }
         .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
-        .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
-        .layoutWeight(1)
+        .contentEndOffset(112 + this.getUIContext().px2vp(AppUtil.getNavigationIndicatorHeight()))
         .width(FullPercent)
-        .padding({ left: 12, right: 12 })
+        .height(FullPercent)
+        .padding({ start: LengthMetrics.vp(12), end: LengthMetrics.vp(12) })
 
-        Row({ space: 8 }) {
-          TextInput({ placeholder: $r("app.string.chat_input_placeholder") })
-            .layoutWeight(1)
-            .height(44)
-            .padding({ left: 12, right: 12 })
-            .borderRadius(8)
-            .backgroundColor($r("sys.color.background_tertiary"))
-            .onChange((value: string) => this.vm.onInputChange(value))
-
-          Button() {
-            SymbolGlyph($r("sys.symbol.message_fill"))
-              .fontSize(20)
-              .fontColor([$r("sys.color.font_on_primary")])
-          }
-          .width(44)
-          .height(44)
-          .borderRadius(8)
-          .backgroundColor($r("sys.color.font_emphasize"))
-          .onClick(() => this.vm.onSend())
-        }
-        .width(FullPercent)
-        .padding({ left: 12, right: 12, top: 10, bottom: 96 })
-        .backgroundColor($r("sys.color.background_secondary"))
+        this.inputBar()
       }
       .width(FullPercent)
       .height(FullPercent)
@@ -71,11 +50,77 @@ export struct ChatPage {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
         },
         scrollEffectOpts: {
-          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
+          scrollEffectType: ScrollEffectType.GRADIENT_BLUR
         }
       }
     })
     .hideBackButton(true)
+  }
+
+  @Builder
+  private inputBar() {
+    Column() {
+      Row({ space: 8 }) {
+        Row({ space: 4 }) {
+          Button() {
+            SymbolGlyph($r("sys.symbol.plus"))
+              .fontSize(22)
+              .fontColor([$r("sys.color.font_secondary")])
+          }
+          .width(36)
+          .height(36)
+          .borderRadius(18)
+          .backgroundColor(Color.Transparent)
+
+          TextInput({ placeholder: $r("app.string.chat_input_placeholder") })
+            .layoutWeight(1)
+            .height(42)
+            .padding({ start: LengthMetrics.vp(0), end: LengthMetrics.vp(0) })
+            .fontSize(15)
+            .fontColor($r("sys.color.font_primary"))
+            .placeholderColor($r("sys.color.font_tertiary"))
+            .backgroundColor(Color.Transparent)
+            .onChange((value: string) => this.vm.onInputChange(value))
+        }
+        .height(48)
+        .layoutWeight(1)
+        .padding({ start: LengthMetrics.vp(6), end: LengthMetrics.vp(12) })
+        .borderRadius(24)
+        .border({ width: 0.5, color: '#1A000000' })
+        .shadow({
+          radius: 14,
+          color: '#12000000',
+          offsetX: 0,
+          offsetY: 4
+        })
+        .backgroundColor($r("sys.color.background_primary"))
+
+        Button() {
+          SymbolGlyph($r("sys.symbol.message_fill"))
+            .fontSize(20)
+            .fontColor([$r("sys.color.font_on_primary")])
+        }
+        .width(48)
+        .height(48)
+        .borderRadius(24)
+        .shadow({
+          radius: 14,
+          color: '#24000000',
+          offsetX: 0,
+          offsetY: 4
+        })
+        .backgroundColor($r("sys.color.font_emphasize"))
+        .onClick(() => this.vm.onSend())
+      }
+      .width(FullPercent)
+    }
+    .width(FullPercent)
+    .padding({
+      start: LengthMetrics.vp(12),
+      end: LengthMetrics.vp(12),
+      top: LengthMetrics.px(12),
+      bottom: LengthMetrics.px(AppUtil.getNavigationIndicatorHeight()),
+    })
   }
 }
 
@@ -135,7 +180,12 @@ struct ChatMessageBubble {
     }
     .alignItems(HorizontalAlign.Start)
     .constraintSize({ maxWidth: 280 })
-    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+    .padding({
+      start: LengthMetrics.vp(12),
+      end: LengthMetrics.vp(12),
+      top: LengthMetrics.vp(10),
+      bottom: LengthMetrics.vp(10)
+    })
     .borderRadius(8)
     .backgroundColor(backgroundColor)
   }

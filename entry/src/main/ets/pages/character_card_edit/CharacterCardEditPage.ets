@@ -1,4 +1,5 @@
 import { Route } from '@hzw/zrouter';
+import { LengthMetrics } from '@kit.ArkUI';
 import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
 import { RouterName } from 'router';
@@ -47,7 +48,7 @@ export struct CharacterCardEditPage {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
         },
         scrollEffectOpts: {
-          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
+          scrollEffectType: ScrollEffectType.GRADIENT_BLUR
         }
       }
     })
@@ -60,7 +61,7 @@ export struct CharacterCardEditPage {
       Text($r("app.string.character_card_name"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       TextInput({ text: this.getName(), placeholder: $r("app.string.character_card_name_placeholder") })
         .padding(8)
@@ -129,7 +130,7 @@ export struct CharacterCardEditPage {
       Text($r("app.string.character_card_description"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       TextArea({ text: this.getDescription(), placeholder: $r("app.string.character_card_description_placeholder") })
         .padding(8)
@@ -149,7 +150,7 @@ export struct CharacterCardEditPage {
       Text($r("app.string.character_card_personality"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       TextArea({ text: this.getPersonality(), placeholder: $r("app.string.character_card_personality_placeholder") })
         .padding(8)
@@ -169,7 +170,7 @@ export struct CharacterCardEditPage {
       Text($r("app.string.character_card_scenario"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       TextArea({ text: this.getScenario(), placeholder: $r("app.string.character_card_scenario_placeholder") })
         .padding(8)
@@ -189,7 +190,7 @@ export struct CharacterCardEditPage {
       Text($r("app.string.character_card_first_message"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       TextArea({ text: this.getFirstMessage(), placeholder: $r("app.string.character_card_first_message_placeholder") })
         .padding(8)
@@ -209,7 +210,7 @@ export struct CharacterCardEditPage {
       Text($r("app.string.character_card_example_messages"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       TextArea({
         text: this.getExampleMessages(),

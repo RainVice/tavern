@@ -45,7 +45,7 @@ export struct SettingsPage {
       content: { title: { mainTitle: $r("app.string.settings") } },
       style: {
         scrollEffectOpts: {
-          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
+          scrollEffectType: ScrollEffectType.GRADIENT_BLUR
         }
       }
     })

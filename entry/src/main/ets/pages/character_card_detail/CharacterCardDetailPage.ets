@@ -1,4 +1,5 @@
 import { Route } from '@hzw/zrouter'
+import { LengthMetrics } from '@kit.ArkUI'
 import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent, symbolModifier } from 'common'
@@ -62,7 +63,7 @@ export struct CharacterCardDetailPage {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
         },
         scrollEffectOpts: {
-          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
+          scrollEffectType: ScrollEffectType.GRADIENT_BLUR
         }
       }
     })
@@ -119,7 +120,7 @@ export struct CharacterCardDetailPage {
       Text($r("app.string.character_card_description"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       if (this.state.description.trim().length > 0) {
         Text(this.state.description)
@@ -145,7 +146,7 @@ export struct CharacterCardDetailPage {
       Text($r("app.string.character_card_personality"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       if (this.state.personality.trim().length > 0) {
         Text(this.state.personality)
@@ -171,7 +172,7 @@ export struct CharacterCardDetailPage {
       Text($r("app.string.character_card_scenario"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       if (this.state.scenario.trim().length > 0) {
         Text(this.state.scenario)
@@ -197,7 +198,7 @@ export struct CharacterCardDetailPage {
       Text($r("app.string.character_card_first_message"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       if (this.state.firstMessage.trim().length > 0) {
         Text(this.state.firstMessage)
@@ -223,7 +224,7 @@ export struct CharacterCardDetailPage {
       Text($r("app.string.character_card_example_messages"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
-        .padding({ left: 8 })
+        .padding({ start: LengthMetrics.vp(8) })
 
       if (this.state.exampleMessages.trim().length > 0) {
         Text(this.state.exampleMessages)

@@ -1,4 +1,5 @@
 import { Route } from '@hzw/zrouter'
+import { LengthMetrics } from '@kit.ArkUI'
 import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent } from 'common'
@@ -18,7 +19,7 @@ export struct MessageListPage {
       .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .width(FullPercent)
       .height(FullPercent)
-      .padding({ left: 12, right: 12 })
+      .padding({ start: LengthMetrics.vp(12), end: LengthMetrics.vp(12) })
     }
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
@@ -29,7 +30,7 @@ export struct MessageListPage {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
         },
         scrollEffectOpts: {
-          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
+          scrollEffectType: ScrollEffectType.GRADIENT_BLUR
         }
       }
     })

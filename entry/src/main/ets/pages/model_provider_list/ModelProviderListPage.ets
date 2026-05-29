@@ -60,7 +60,7 @@ export struct ModelProviderListPage {
           materialType: hdsMaterial.MaterialType.ADAPTIVE
         },
         scrollEffectOpts: {
-          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
+          scrollEffectType: ScrollEffectType.GRADIENT_BLUR
         }
       }
     })
