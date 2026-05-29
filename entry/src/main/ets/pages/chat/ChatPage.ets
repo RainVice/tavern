@@ -21,6 +21,22 @@ export struct ChatPage {
             ListItem() {
               EmptyConversation()
             }
+
+            ListItem() {
+              EmptyConversation()
+            }
+
+            ListItem() {
+              EmptyConversation()
+            }
+
+            ListItem() {
+              EmptyConversation()
+            }
+
+            ListItem() {
+              EmptyConversation()
+            }
           } else {
             Repeat<ChatMessageItem>(this.state.messages)
               .each((obj: RepeatItem<ChatMessageItem>) => {
@@ -59,63 +75,44 @@ export struct ChatPage {
 
   @Builder
   private inputBar() {
-    Column() {
-      Row({ space: 8 }) {
-        Row({ space: 4 }) {
-          Button() {
-            SymbolGlyph($r("sys.symbol.plus"))
-              .fontSize(22)
-              .fontColor([$r("sys.color.font_secondary")])
-          }
-          .width(36)
-          .height(36)
-          .borderRadius(18)
-          .backgroundColor(Color.Transparent)
+    Row({ space: 4 }) {
+      Button() {
+        SymbolGlyph($r("sys.symbol.plus"))
+          .fontColor([$r("sys.color.font_primary")])
+      }.padding(8)
+      .backgroundColor(Color.Transparent)
 
-          TextInput({ placeholder: $r("app.string.chat_input_placeholder") })
-            .layoutWeight(1)
-            .height(42)
-            .padding({ start: LengthMetrics.vp(0), end: LengthMetrics.vp(0) })
-            .fontSize(15)
-            .fontColor($r("sys.color.font_primary"))
-            .placeholderColor($r("sys.color.font_tertiary"))
-            .backgroundColor(Color.Transparent)
-            .onChange((value: string) => this.vm.onInputChange(value))
-        }
-        .height(48)
+      TextArea({ placeholder: $r("app.string.chat_input_placeholder") })
+        .barState(BarState.Off)
+        .padding(0)
+        .borderRadius(0)
+        .constraintSize({ maxHeight: 80 })
         .layoutWeight(1)
-        .padding({ start: LengthMetrics.vp(6), end: LengthMetrics.vp(12) })
-        .borderRadius(24)
-        .border({ width: 0.5, color: '#1A000000' })
-        .shadow({
-          radius: 14,
-          color: '#12000000',
-          offsetX: 0,
-          offsetY: 4
-        })
-        .backgroundColor($r("sys.color.background_primary"))
+        .placeholderColor($r("sys.color.font_tertiary"))
+        .fontColor($r("sys.color.font_primary"))
+        .backgroundColor(Color.Transparent)
+        .onChange((value: string) => this.vm.onInputChange(value))
 
-        Button() {
-          SymbolGlyph($r("sys.symbol.message_fill"))
-            .fontSize(20)
-            .fontColor([$r("sys.color.font_on_primary")])
-        }
-        .width(48)
-        .height(48)
-        .borderRadius(24)
-        .shadow({
-          radius: 14,
-          color: '#24000000',
-          offsetX: 0,
-          offsetY: 4
-        })
-        .backgroundColor($r("sys.color.font_emphasize"))
-        .onClick(() => this.vm.onSend())
+      Button() {
+        SymbolGlyph($r("sys.symbol.paperplane_right_fill"))
+          .fontColor([$r("sys.color.font_on_primary")])
       }
-      .width(FullPercent)
+      .padding(8)
+      .onClick(() => this.vm.onSend())
     }
-    .width(FullPercent)
+    .alignItems(VerticalAlign.Center)
+    .borderRadius(100)
+    .backgroundColor($r("sys.color.comp_background_tertiary"))
+    .backgroundBlurStyle(BlurStyle.COMPONENT_ULTRA_THIN, {
+      inactiveColor: $r("sys.color.background_fourth")
+    }, { disableSystemAdaptation: true })
     .padding({
+      start: LengthMetrics.vp(8),
+      end: LengthMetrics.vp(8),
+      top: LengthMetrics.vp(8),
+      bottom: LengthMetrics.vp(8)
+    })
+    .margin({
       start: LengthMetrics.vp(12),
       end: LengthMetrics.vp(12),
       top: LengthMetrics.px(12),
