@@ -23,7 +23,8 @@ export struct AddCharacterCardPage {
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.firstMessageInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.exampleMessagesInput() } } })
       }.width(FullPercent).height(FullPercent)
-    }.backgroundColor($r("sys.color.background_secondary"))
+    }
+    .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
       content: {
         title: { mainTitle: $r("app.string.add_character_card") }, menu: {

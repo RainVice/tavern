@@ -29,6 +29,22 @@
       "value": "添加角色卡"
     },
     {
+      "name": "character_card_detail",
+      "value": "角色详情"
+    },
+    {
+      "name": "edit_character_card",
+      "value": "编辑角色卡"
+    },
+    {
+      "name": "character_card_unnamed",
+      "value": "未命名角色"
+    },
+    {
+      "name": "character_card_detail_empty",
+      "value": "暂无内容"
+    },
+    {
       "name": "settings",
       "value": "设置"
     },

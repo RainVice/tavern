@@ -24,7 +24,7 @@ export class CharacterCardViewModel {
   }
 
   onCardClick(card: CharacterCard): void {
-    RVRouter.pushWithParam(RouterName.AddCharacterCard, card, () => {
+    RVRouter.pushWithParam(RouterName.CharacterCardDetail, card, () => {
       this.loadCards()
     })
   }

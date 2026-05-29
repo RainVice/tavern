@@ -19,6 +19,15 @@
       }
     },
     {
+      "name": "CharacterCardDetail",
+      "pageSourceFile": "src/main/ets/_generated/ZRCharacterCardDetailPage.ets",
+      "buildFunction": "entryCharacterCardDetailPageBuilder",
+      "data": {
+        "needLogin": "false",
+        "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
+      }
+    },
+    {
       "name": "Message",
       "pageSourceFile": "src/main/ets/_generated/ZRMessagePage.ets",
       "buildFunction": "entryMessagePageBuilder",
