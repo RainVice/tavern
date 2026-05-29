@@ -1,5 +1,5 @@
 import { ZRouter } from '@hzw/zrouter'
-import { RVRouter, RouterName } from 'router'
+import { RouterName, RVRouter } from 'router'
 import { characterCardStore } from '../../store/CharacterCardStore'
 import { CharacterCard } from '../../store/model/CharacterCard'
 import { CharacterCardDetailState } from './CharacterCardDetailState'
@@ -22,13 +22,13 @@ export class CharacterCardDetailViewModel {
     if (!this.state.id) {
       return
     }
-    RVRouter.pushWithParam(RouterName.AddCharacterCard, this.toCard(), () => {
+    RVRouter.pushWithParam(RouterName.CharacterCardEdit, this.toCard(), () => {
       this.loadCard(this.state.id)
     })
   }
 
   onStartConversation(): void {
-    // todo 到对话页
+    RVRouter.push(RouterName.Chat)
   }
 
   private loadCard(id: string): void {

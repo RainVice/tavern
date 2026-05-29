@@ -13,8 +13,20 @@
       "value": "label"
     },
     {
-      "name": "messages",
-      "value": "消息"
+      "name": "chat",
+      "value": "聊天"
+    },
+    {
+      "name": "chat_empty_title",
+      "value": "开始新的对话"
+    },
+    {
+      "name": "chat_empty_description",
+      "value": "选择角色后可以在这里继续对话"
+    },
+    {
+      "name": "chat_input_placeholder",
+      "value": "输入消息"
     },
     {
       "name": "character_card",

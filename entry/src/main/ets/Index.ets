@@ -1,7 +1,7 @@
 import { hdsMaterial, HdsNavigation, HdsTabs } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
 import { RVRouter } from 'router';
-import { MessagePage } from './pages/message/MessagePage';
+import { ChatPage } from './pages/chat/ChatPage';
 import { CharacterCardPage } from './pages/character_card/CharacterCardPage';
 import { WorldBookPage } from './pages/worldbook/WorldBookPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
@@ -13,12 +13,12 @@ struct Index {
     HdsNavigation(RVRouter.getNavStack()) {
       HdsTabs() {
         TabContent() {
-          MessagePage()
+          ChatPage()
         }
         .width(FullPercent)
         .height(FullPercent)
         .tabBar(new BottomTabBarStyle({ normal: symbolModifier($r("sys.symbol.message_fill")) },
-          $r('app.string.messages')))
+          $r('app.string.chat')))
 
         TabContent() {
           CharacterCardPage()

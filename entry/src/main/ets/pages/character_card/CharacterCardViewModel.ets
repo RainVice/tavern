@@ -18,7 +18,7 @@ export class CharacterCardViewModel {
   }
 
   onAdd(): void {
-    RVRouter.push(RouterName.AddCharacterCard, () => {
+    RVRouter.push(RouterName.CharacterCardEdit, () => {
       this.loadCards()
     })
   }

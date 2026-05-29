@@ -5,9 +5,9 @@ import { RouterName } from 'router';
 import { CharacterCardEditViewModel } from './CharacterCardEditViewModel';
 import { CharacterCardEditState } from './CharacterCardEditState';
 
-@Route({ name: RouterName.AddCharacterCard })
+@Route({ name: RouterName.CharacterCardEdit })
 @ComponentV2
-export struct AddCharacterCardPage {
+export struct CharacterCardEditPage {
   private readonly state = new CharacterCardEditState()
   private readonly vm = new CharacterCardEditViewModel(this.state)
 
@@ -48,11 +48,20 @@ export struct AddCharacterCardPage {
 
   @Builder
   private nameInput() {
-    CharacterCardField({
-      text: this.state.name!!,
-      title: $r("app.string.character_card_name"),
-      placeholder: $r("app.string.character_card_name_placeholder"),
-    })
+    Column({ space: 8 }) {
+      Text($r("app.string.character_card_name"))
+        .fontSize(12)
+        .fontColor($r("sys.color.font_secondary"))
+        .padding({ left: 8 })
+
+      TextInput({ text: this.getName(), placeholder: $r("app.string.character_card_name_placeholder") })
+        .padding(8)
+        .borderRadius(8)
+        .width(FullPercent)
+        .onChange((value: string) => this.state.name = value)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .padding(4)
   }
 
   @Builder
@@ -108,87 +117,125 @@ export struct AddCharacterCardPage {
 
   @Builder
   private descriptionInput() {
-    CharacterCardField({
-      text: this.state.description!!,
-      lines: 3,
-      title: $r("app.string.character_card_description"),
-      placeholder: $r("app.string.character_card_description_placeholder"),
-    })
-  }
-
-  @Builder
-  private personalityInput() {
-    CharacterCardField({
-      text: this.state.personality!!,
-      lines: 3,
-      title: $r("app.string.character_card_personality"),
-      placeholder: $r("app.string.character_card_personality_placeholder"),
-    })
-  }
-
-  @Builder
-  private scenarioInput() {
-    CharacterCardField({
-      text: this.state.scenario!!,
-      lines: 3,
-      title: $r("app.string.character_card_scenario"),
-      placeholder: $r("app.string.character_card_scenario_placeholder"),
-    })
-  }
-
-  @Builder
-  private firstMessageInput() {
-    CharacterCardField({
-      text: this.state.firstMessage!!,
-      lines: 4,
-      title: $r("app.string.character_card_first_message"),
-      placeholder: $r("app.string.character_card_first_message_placeholder"),
-    })
-  }
-
-  @Builder
-  private exampleMessagesInput() {
-    CharacterCardField({
-      text: this.state.exampleMessages!!,
-      lines: 4,
-      title: $r("app.string.character_card_example_messages"),
-      placeholder: $r("app.string.character_card_example_messages_placeholder"),
-    })
-  }
-}
-
-@ComponentV2
-struct CharacterCardField {
-  @Param text: ResourceStr = "";
-  @Event $text: (text: string) => void = (text: string) => {};
-  @Param title: ResourceStr = "";
-  @Param placeholder: ResourceStr = "";
-  @Param lines: number = 1;
-
-  build() {
     Column({ space: 8 }) {
-      Text(this.title)
+      Text($r("app.string.character_card_description"))
         .fontSize(12)
         .fontColor($r("sys.color.font_secondary"))
         .padding({ left: 8 })
 
-      if (this.lines > 1) {
-        TextArea({ text: this.text!!, placeholder: this.placeholder })
-          .padding(8)
-          .borderRadius(8)
-          .width(FullPercent)
-          .height(48 * this.lines)
-          .fontSize(14)
-          .onChange((value: string) => this.$text(value))
-      } else {
-        TextInput({ text: this.text!!, placeholder: this.placeholder })
-          .padding(8)
-          .borderRadius(8)
-          .width(FullPercent)
-          .onChange((value: string) => this.$text(value))
-      }
+      TextArea({ text: this.getDescription(), placeholder: $r("app.string.character_card_description_placeholder") })
+        .padding(8)
+        .borderRadius(8)
+        .width(FullPercent)
+        .height(144)
+        .fontSize(14)
+        .onChange((value: string) => this.state.description = value)
     }
     .alignItems(HorizontalAlign.Start)
     .padding(4)
+  }
+
+  @Builder
+  private personalityInput() {
+    Column({ space: 8 }) {
+      Text($r("app.string.character_card_personality"))
+        .fontSize(12)
+        .fontColor($r("sys.color.font_secondary"))
+        .padding({ left: 8 })
+
+      TextArea({ text: this.getPersonality(), placeholder: $r("app.string.character_card_personality_placeholder") })
+        .padding(8)
+        .borderRadius(8)
+        .width(FullPercent)
+        .height(144)
+        .fontSize(14)
+        .onChange((value: string) => this.state.personality = value)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .padding(4)
+  }
+
+  @Builder
+  private scenarioInput() {
+    Column({ space: 8 }) {
+      Text($r("app.string.character_card_scenario"))
+        .fontSize(12)
+        .fontColor($r("sys.color.font_secondary"))
+        .padding({ left: 8 })
+
+      TextArea({ text: this.getScenario(), placeholder: $r("app.string.character_card_scenario_placeholder") })
+        .padding(8)
+        .borderRadius(8)
+        .width(FullPercent)
+        .height(144)
+        .fontSize(14)
+        .onChange((value: string) => this.state.scenario = value)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .padding(4)
+  }
+
+  @Builder
+  private firstMessageInput() {
+    Column({ space: 8 }) {
+      Text($r("app.string.character_card_first_message"))
+        .fontSize(12)
+        .fontColor($r("sys.color.font_secondary"))
+        .padding({ left: 8 })
+
+      TextArea({ text: this.getFirstMessage(), placeholder: $r("app.string.character_card_first_message_placeholder") })
+        .padding(8)
+        .borderRadius(8)
+        .width(FullPercent)
+        .height(192)
+        .fontSize(14)
+        .onChange((value: string) => this.state.firstMessage = value)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .padding(4)
+  }
+
+  @Builder
+  private exampleMessagesInput() {
+    Column({ space: 8 }) {
+      Text($r("app.string.character_card_example_messages"))
+        .fontSize(12)
+        .fontColor($r("sys.color.font_secondary"))
+        .padding({ left: 8 })
+
+      TextArea({ text: this.getExampleMessages(), placeholder: $r("app.string.character_card_example_messages_placeholder") })
+        .padding(8)
+        .borderRadius(8)
+        .width(FullPercent)
+        .height(192)
+        .fontSize(14)
+        .onChange((value: string) => this.state.exampleMessages = value)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .padding(4)
+  }
+
+  private getName(): string {
+    return this.state.name
+  }
+
+  private getDescription(): string {
+    return this.state.description
+  }
+
+  private getPersonality(): string {
+    return this.state.personality
+  }
+
+  private getScenario(): string {
+    return this.state.scenario
+  }
+
+  private getFirstMessage(): string {
+    return this.state.firstMessage
+  }
+
+  private getExampleMessages(): string {
+    return this.state.exampleMessages
   }
 }

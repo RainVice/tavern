@@ -1,9 +1,9 @@
 {
   "routerMap": [
     {
-      "name": "AddCharacterCard",
-      "pageSourceFile": "src/main/ets/_generated/ZRAddCharacterCardPage.ets",
-      "buildFunction": "entryAddCharacterCardPageBuilder",
+      "name": "CharacterCardEdit",
+      "pageSourceFile": "src/main/ets/_generated/ZRCharacterCardEditPage.ets",
+      "buildFunction": "entryCharacterCardEditPageBuilder",
       "data": {
         "needLogin": "false",
         "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
@@ -28,9 +28,9 @@
       }
     },
     {
-      "name": "Message",
-      "pageSourceFile": "src/main/ets/_generated/ZRMessagePage.ets",
-      "buildFunction": "entryMessagePageBuilder",
+      "name": "Chat",
+      "pageSourceFile": "src/main/ets/_generated/ZRChatPage.ets",
+      "buildFunction": "entryChatPageBuilder",
       "data": {
         "needLogin": "false",
         "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="
