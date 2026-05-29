@@ -37,6 +37,10 @@
       "value": "编辑角色卡"
     },
     {
+      "name": "start_conversation",
+      "value": "开始对话"
+    },
+    {
       "name": "character_card_unnamed",
       "value": "未命名角色"
     },

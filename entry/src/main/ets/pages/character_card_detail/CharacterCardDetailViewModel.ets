@@ -27,6 +27,10 @@ export class CharacterCardDetailViewModel {
     })
   }
 
+  onStartConversation(): void {
+    // todo 到对话页
+  }
+
   private loadCard(id: string): void {
     characterCardStore.getCard(id).then((card) => {
       if (card) {

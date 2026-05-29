@@ -34,14 +34,24 @@ export struct CharacterCardDetailPage {
       content: {
         title: { mainTitle: $r("app.string.character_card_detail") },
         menu: {
-          value: [{
-            content: {
-              icon: symbolModifier($r("sys.symbol.square_and_pencil"))
-                .fontColor([$r('sys.color.font_primary')]),
-              label: $r("app.string.edit_character_card"),
-              action: () => this.vm.onEdit()
-            }
-          }]
+          value: [
+            {
+              content: {
+                icon: symbolModifier($r("sys.symbol.square_and_pencil"))
+                  .fontColor([$r('sys.color.font_primary')]),
+                label: $r("app.string.edit_character_card"),
+                action: () => this.vm.onEdit()
+              }
+            },
+            {
+              content: {
+                icon: symbolModifier($r("sys.symbol.message_fill"))
+                  .fontColor([$r('sys.color.font_primary')]),
+                label: $r("app.string.start_conversation"),
+                action: () => this.vm.onStartConversation()
+              }
+            },
+          ]
         }
       },
       style: {
@@ -77,21 +87,12 @@ export struct CharacterCardDetailPage {
         }
       }
 
-      if (this.state.name) {
-        Text(this.state.name)
-          .fontSize(20)
-          .fontWeight(FontWeight.Medium)
-          .fontColor($r("sys.color.font_primary"))
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-      } else {
-        Text($r("app.string.character_card_unnamed"))
-          .fontSize(20)
-          .fontWeight(FontWeight.Medium)
-          .fontColor($r("sys.color.font_primary"))
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-      }
+      Text(this.state.name || $r("app.string.character_card_unnamed"))
+        .fontSize(20)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r("sys.color.font_primary"))
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
 
       if (this.state.description) {
         Text(this.state.description)
