@@ -1,10 +1,8 @@
-import { BaseDao } from '@ohos/dataorm';
+import { BaseDao, Property } from '@ohos/dataorm';
 import {
   ModelDefinitionEntity,
   ModelProvider,
   ModelProviderEntity,
-  toModelProvider,
-  toModelProviderEntity
 } from './model/ModelProvider';
 import { systemDateTime } from '@kit.BasicServicesKit';
 import { tavernDatabase } from './TavernDatabase';
@@ -13,6 +11,9 @@ import { tavernDatabase } from './TavernDatabase';
  * 基于 dataorm 关系型数据库的模型提供商存储
  */
 class ModelProviderStore {
+  private static readonly DEFINITION_PROVIDER_ID: Property =
+    new Property(1, 'number', 'providerId', false, 'provider_id', false);
+
   private async getProviderDao(): Promise<BaseDao<ModelProviderEntity, number>> {
     return tavernDatabase.getModelProviderDao();
   }
@@ -28,7 +29,7 @@ class ModelProviderStore {
     const definitions = await definitionDao.loadAll();
     return providers
       .sort((left, right) => right.updateTime - left.updateTime)
-      .map((provider) => toModelProvider(provider, definitions));
+      .map((provider) => ModelProviderEntity.toModel(provider, definitions));
   }
 
   async getProvider(id: number): Promise<ModelProvider | undefined> {
@@ -37,31 +38,41 @@ class ModelProviderStore {
       return undefined;
     }
     const providerDao = await this.getProviderDao();
-    const definitionDao = await this.getDefinitionDao();
     const provider = await providerDao.load(providerId);
     if (!provider) {
       return undefined;
     }
-    const definitions = (await definitionDao.loadAll()).filter((definition) => definition.providerId === providerId);
-    return toModelProvider(provider, definitions);
+    return ModelProviderEntity.toModel(provider, await this.getDefinitions(providerId));
   }
 
   async saveProvider(provider: ModelProvider): Promise<number> {
     const providerDao = await this.getProviderDao();
     const updateTime = systemDateTime.getTime();
-    const entity = toModelProviderEntity(provider, updateTime);
+    const entity = ModelProviderEntity.fromModel(provider, updateTime);
+    let isNewProvider = false;
     if (entity.id) {
       const oldProvider = await providerDao.load(entity.id);
       if (oldProvider) {
         await providerDao.updateAsync(entity);
       } else {
         await providerDao.insert(entity);
+        isNewProvider = true;
       }
     } else {
       await providerDao.insert(entity);
+      isNewProvider = true;
     }
-    await this.replaceDefinitions(entity.id ?? 0, provider.modelDefinitions.map((definition) => definition.modelId));
-    return entity.id ?? 0;
+    const providerId = entity.id ?? 0;
+    this.assertSavedId(providerId, 'model provider');
+    try {
+      await this.replaceDefinitions(providerId, provider.modelDefinitions.map((definition) => definition.modelId));
+    } catch (e) {
+      if (isNewProvider) {
+        await providerDao.deleteByKeyAsync(providerId);
+      }
+      throw new Error('Failed to save model definitions');
+    }
+    return providerId;
   }
 
   async deleteProvider(id: number): Promise<void> {
@@ -76,14 +87,57 @@ class ModelProviderStore {
 
   private async replaceDefinitions(providerId: number, modelIds: string[]): Promise<void> {
     const definitionDao = await this.getDefinitionDao();
-    const oldDefinitions = (await definitionDao.loadAll()).filter((definition) => definition.providerId === providerId);
+    const normalizedModelIds = this.normalizeModelIds(modelIds);
+    const oldDefinitions = await this.getDefinitions(providerId);
+    const definitionIdsToDelete: number[] = [];
     for (const definition of oldDefinitions) {
-      if (definition.id) {
-        await definitionDao.deleteByKeyAsync(definition.id);
+      if (definition.id && normalizedModelIds.indexOf(definition.modelId) < 0) {
+        definitionIdsToDelete.push(definition.id);
       }
     }
-    for (let index = 0; index < modelIds.length; index++) {
-      await definitionDao.insert(new ModelDefinitionEntity(undefined, providerId, modelIds[index]));
+    if (definitionIdsToDelete.length > 0) {
+      await definitionDao.deleteByKeyInTxIterableAsync(definitionIdsToDelete);
+    }
+    const definitionsToInsert: ModelDefinitionEntity[] = [];
+    for (let index = 0; index < normalizedModelIds.length; index++) {
+      if (!this.hasDefinition(oldDefinitions, normalizedModelIds[index])) {
+        definitionsToInsert.push(new ModelDefinitionEntity(undefined, providerId, normalizedModelIds[index]));
+      }
+    }
+    if (definitionsToInsert.length > 0) {
+      await definitionDao.insertInTxIterableAsync(definitionsToInsert);
+    }
+  }
+
+  private async getDefinitions(providerId: number): Promise<ModelDefinitionEntity[]> {
+    const definitionDao = await this.getDefinitionDao();
+    return definitionDao.queryBuilder()
+      .where(ModelProviderStore.DEFINITION_PROVIDER_ID.eq(providerId))
+      .list();
+  }
+
+  private normalizeModelIds(modelIds: string[]): string[] {
+    const normalized: string[] = [];
+    for (const modelId of modelIds) {
+      if (modelId && normalized.indexOf(modelId) < 0) {
+        normalized.push(modelId);
+      }
+    }
+    return normalized;
+  }
+
+  private hasDefinition(definitions: ModelDefinitionEntity[], modelId: string): boolean {
+    for (const definition of definitions) {
+      if (definition.modelId === modelId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private assertSavedId(id: number, entityName: string): void {
+    if (!id) {
+      throw new Error('Failed to save ' + entityName);
     }
   }
 }

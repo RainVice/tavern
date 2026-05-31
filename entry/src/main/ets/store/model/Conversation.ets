@@ -22,36 +22,35 @@ export interface ConversationParticipant {
 }
 
 export interface Conversation {
-  id: string;
+  id: number;
   title: string;
   mode: ConversationMode;
   participants: ConversationParticipant[];
   messageCount: number;
-  updatetime: string;
+  updateTime: number;
 }
 
 export interface ConversationMessage {
-  id: string;
-  conversationId: string;
+  id: number;
+  conversationId: number;
   seq: number;
   role: ConversationRole;
   content: string;
   characterId: string | null;
   status: ConversationMessageStatus;
-  updatetime: string;
+  updateTime: number;
 }
 
 /**
  * 会话主表，对应表 `conversation`。
  *
- * `id` 是会话业务 ID，也是表主键。
+ * `id` 是数据库自增主键。
  */
 @Entity('conversation')
 export class ConversationEntity {
-  @NotNull()
-  @Id()
-  @Columns({ columnName: 'id', types: ColumnType.str })
-  id: string = '';
+  @Id({ autoincrement: true })
+  @Columns({ columnName: 'id', types: ColumnType.num })
+  id?: number;
 
   @NotNull()
   @Columns({ columnName: 'title', types: ColumnType.str })
@@ -66,24 +65,24 @@ export class ConversationEntity {
   messageCount: number = 0;
 
   @Index()
-  @Columns({ columnName: 'updatetime', types: ColumnType.str })
-  updatetime: string = '';
+  @Columns({ columnName: 'update_time', types: ColumnType.num })
+  updateTime: number = 0;
 
-  constructor(id?: string, title?: string, mode?: ConversationMode, messageCount?: number, updatetime?: string) {
-    this.id = id ?? '';
+  constructor(id?: number, title?: string, mode?: ConversationMode, messageCount?: number, updateTime?: number) {
+    this.id = id;
     this.title = title ?? '';
     this.mode = mode ?? ConversationMode.Single;
     this.messageCount = messageCount ?? 0;
-    this.updatetime = updatetime ?? '';
+    this.updateTime = updateTime ?? 0;
   }
 
   static fromModel(conversation: Conversation): ConversationEntity {
     return new ConversationEntity(
-      conversation.id,
+      conversation.id || undefined,
       conversation.title,
       conversation.mode,
       conversation.messageCount,
-      conversation.updatetime,
+      conversation.updateTime,
     );
   }
 
@@ -92,12 +91,12 @@ export class ConversationEntity {
       .filter((participant) => participant.conversationId === entity.id)
       .map((participant) => ({ characterId: participant.characterId } as ConversationParticipant));
     return {
-      id: entity.id,
+      id: entity.id ?? 0,
       title: entity.title,
       mode: ConversationEntity.normalizeMode(entity.mode),
       participants: matchedParticipants,
       messageCount: entity.messageCount,
-      updatetime: entity.updatetime,
+      updateTime: entity.updateTime,
     };
   }
 
@@ -113,53 +112,46 @@ export class ConversationEntity {
  */
 @Entity('conversation_participant', [{ value: 'conversationId, characterId', unique: true }])
 export class ConversationParticipantEntity {
-  @NotNull()
-  @Id()
-  @Columns({ columnName: 'id', types: ColumnType.str })
-  id: string = '';
+  @Id({ autoincrement: true })
+  @Columns({ columnName: 'id', types: ColumnType.num })
+  id?: number;
 
   @NotNull()
   @Index()
-  @Columns({ columnName: 'conversation_id', types: ColumnType.str })
-  conversationId: string = '';
+  @Columns({ columnName: 'conversation_id', types: ColumnType.num })
+  conversationId: number = 0;
 
   @NotNull()
   @Index()
   @Columns({ columnName: 'character_id', types: ColumnType.str })
   characterId: string = '';
 
-  constructor(id?: string, conversationId?: string, characterId?: string) {
-    this.id = id ?? '';
-    this.conversationId = conversationId ?? '';
+  constructor(id?: number, conversationId?: number, characterId?: string) {
+    this.id = id;
+    this.conversationId = conversationId ?? 0;
     this.characterId = characterId ?? '';
   }
 
-  static fromModel(conversationId: string, participant: ConversationParticipant): ConversationParticipantEntity {
-    return new ConversationParticipantEntity(ConversationParticipantEntity.createId(conversationId,
-      participant.characterId), conversationId, participant.characterId);
-  }
-
-  static createId(conversationId: string, characterId: string): string {
-    return conversationId + '_' + characterId;
+  static fromModel(conversationId: number, participant: ConversationParticipant): ConversationParticipantEntity {
+    return new ConversationParticipantEntity(undefined, conversationId, participant.characterId);
   }
 }
 
 /**
  * 会话消息表，对应表 `conversation_message`。
  *
- * `id` 是消息业务 ID，也是表主键。`conversationId + seq` 唯一，用于按会话内顺序读取。
+ * `id` 是数据库自增主键。`conversationId + seq` 唯一，用于按会话内顺序读取。
  */
 @Entity('conversation_message', [{ value: 'conversationId, seq', unique: true }])
 export class ConversationMessageEntity {
-  @NotNull()
-  @Id()
-  @Columns({ columnName: 'id', types: ColumnType.str })
-  id: string = '';
+  @Id({ autoincrement: true })
+  @Columns({ columnName: 'id', types: ColumnType.num })
+  id?: number;
 
   @NotNull()
   @Index()
-  @Columns({ columnName: 'conversation_id', types: ColumnType.str })
-  conversationId: string = '';
+  @Columns({ columnName: 'conversation_id', types: ColumnType.num })
+  conversationId: number = 0;
 
   @NotNull()
   @Index()
@@ -183,44 +175,44 @@ export class ConversationMessageEntity {
   status: string = ConversationMessageStatus.Done;
 
   @Index()
-  @Columns({ columnName: 'updatetime', types: ColumnType.str })
-  updatetime: string = '';
+  @Columns({ columnName: 'update_time', types: ColumnType.num })
+  updateTime: number = 0;
 
-  constructor(id?: string, conversationId?: string, seq?: number, role?: ConversationRole,
-    content?: string, characterId?: string, status?: ConversationMessageStatus, updatetime?: string) {
-    this.id = id ?? '';
-    this.conversationId = conversationId ?? '';
+  constructor(id?: number, conversationId?: number, seq?: number, role?: ConversationRole,
+    content?: string, characterId?: string, status?: ConversationMessageStatus, updateTime?: number) {
+    this.id = id;
+    this.conversationId = conversationId ?? 0;
     this.seq = seq ?? 0;
     this.role = role ?? ConversationRole.User;
     this.content = content ?? '';
     this.characterId = characterId ?? '';
     this.status = status ?? ConversationMessageStatus.Done;
-    this.updatetime = updatetime ?? '';
+    this.updateTime = updateTime ?? 0;
   }
 
   static fromModel(message: ConversationMessage): ConversationMessageEntity {
     return new ConversationMessageEntity(
-      message.id,
+      message.id || undefined,
       message.conversationId,
       message.seq,
       message.role,
       message.content,
       message.characterId ?? '',
       message.status,
-      message.updatetime,
+      message.updateTime,
     );
   }
 
   static toModel(entity: ConversationMessageEntity): ConversationMessage {
     return {
-      id: entity.id,
+      id: entity.id ?? 0,
       conversationId: entity.conversationId,
       seq: entity.seq,
       role: ConversationMessageEntity.normalizeRole(entity.role),
       content: entity.content,
       characterId: entity.characterId || null,
       status: ConversationMessageEntity.normalizeStatus(entity.status),
-      updatetime: entity.updatetime,
+      updateTime: entity.updateTime,
     };
   }
 

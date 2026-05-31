@@ -76,6 +76,38 @@ export class ModelProviderEntity {
     this.baseUrl = baseUrl ?? '';
     this.apiKey = apiKey ?? '';
   }
+
+  /**
+   * 将提供商主表实体和模型定义实体合并为页面/业务层模型。
+   */
+  static toModel(entity: ModelProviderEntity, definitions: ModelDefinitionEntity[]): ModelProvider {
+    const modelDefinitions = definitions
+      .filter((definition) => definition.providerId === entity.id)
+      .map((definition) => ({ modelId: definition.modelId } as ModelDefinition));
+    return {
+      id: entity.id ?? 0,
+      name: entity.name,
+      updateTime: entity.updateTime,
+      baseUrl: entity.baseUrl,
+      apiKey: entity.apiKey,
+      modelDefinitions: modelDefinitions,
+    };
+  }
+
+  /**
+   * 将页面/业务层提供商模型转成提供商主表实体。
+   *
+   * `modelDefinitions` 不在这里处理，由 Store 单独写入 `model_definition`。
+   */
+  static fromModel(provider: ModelProvider, updateTime: number): ModelProviderEntity {
+    return new ModelProviderEntity(
+      provider.id || undefined,
+      provider.name,
+      updateTime,
+      provider.baseUrl,
+      provider.apiKey,
+    );
+  }
 }
 
 /**
@@ -107,36 +139,4 @@ export class ModelDefinitionEntity {
     this.providerId = providerId ?? 0;
     this.modelId = modelId ?? '';
   }
-}
-
-/**
- * 将提供商主表实体和模型定义实体合并为页面/业务层模型。
- */
-export function toModelProvider(entity: ModelProviderEntity, definitions: ModelDefinitionEntity[]): ModelProvider {
-  const modelDefinitions = definitions
-    .filter((definition) => definition.providerId === entity.id)
-    .map((definition) => ({ modelId: definition.modelId } as ModelDefinition));
-  return {
-    id: entity.id ?? 0,
-    name: entity.name,
-    updateTime: entity.updateTime,
-    baseUrl: entity.baseUrl,
-    apiKey: entity.apiKey,
-    modelDefinitions: modelDefinitions,
-  };
-}
-
-/**
- * 将页面/业务层提供商模型转成提供商主表实体。
- *
- * `modelDefinitions` 不在这里处理，由 Store 单独写入 `model_definition`。
- */
-export function toModelProviderEntity(provider: ModelProvider, updateTime: number): ModelProviderEntity {
-  return new ModelProviderEntity(
-    provider.id || undefined,
-    provider.name,
-    updateTime,
-    provider.baseUrl,
-    provider.apiKey,
-  );
 }

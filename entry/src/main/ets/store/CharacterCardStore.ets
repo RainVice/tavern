@@ -1,10 +1,8 @@
-import { BaseDao } from '@ohos/dataorm';
+import { BaseDao, Property } from '@ohos/dataorm';
 import {
   CharacterCard,
   CharacterCardAssetEntity,
   CharacterCardEntity,
-  toCharacterCard,
-  toCharacterCardEntity
 } from './model/CharacterCard';
 import { systemDateTime } from '@kit.BasicServicesKit';
 import { tavernDatabase } from './TavernDatabase';
@@ -13,6 +11,9 @@ import { tavernDatabase } from './TavernDatabase';
  * 基于 dataorm 关系型数据库的角色卡存储
  */
 class CharacterCardStore {
+  private static readonly ASSET_CARD_ID: Property =
+    new Property(1, 'number', 'cardId', false, 'card_id', false);
+
   private async getCardDao(): Promise<BaseDao<CharacterCardEntity, number>> {
     return tavernDatabase.getCharacterCardDao();
   }
@@ -28,7 +29,7 @@ class CharacterCardStore {
     const assets = await assetDao.loadAll();
     return cards
       .sort((left, right) => right.updateTime - left.updateTime)
-      .map((card) => toCharacterCard(card, assets.find((asset) => asset.cardId === card.id)));
+      .map((card) => CharacterCardEntity.toModel(card, assets.find((asset) => asset.cardId === card.id)));
   }
 
   async getCard(id: number): Promise<CharacterCard | undefined> {
@@ -37,31 +38,41 @@ class CharacterCardStore {
       return undefined;
     }
     const cardDao = await this.getCardDao();
-    const assetDao = await this.getAssetDao();
     const card = await cardDao.load(cardId);
     if (!card) {
       return undefined;
     }
-    const assets = await assetDao.loadAll();
-    return toCharacterCard(card, assets.find((asset) => asset.cardId === cardId));
+    return CharacterCardEntity.toModel(card, await this.getAsset(cardId));
   }
 
   async saveCard(card: CharacterCard): Promise<number> {
     const cardDao = await this.getCardDao();
     const updateTime = systemDateTime.getTime();
-    const entity = toCharacterCardEntity(card, updateTime);
+    const entity = CharacterCardEntity.fromModel(card, updateTime);
+    let isNewCard = false;
     if (entity.id) {
       const oldCard = await cardDao.load(entity.id);
       if (oldCard) {
         await cardDao.updateAsync(entity);
       } else {
         await cardDao.insert(entity);
+        isNewCard = true;
       }
     } else {
       await cardDao.insert(entity);
+      isNewCard = true;
     }
-    await this.saveAsset(entity.id ?? 0, card.avatarUrl ?? '');
-    return entity.id ?? 0;
+    const cardId = entity.id ?? 0;
+    this.assertSavedId(cardId, 'character card');
+    try {
+      await this.saveAsset(cardId, card.avatarUrl ?? '');
+    } catch (e) {
+      if (isNewCard) {
+        await cardDao.deleteByKeyAsync(cardId);
+      }
+      throw new Error('Failed to save character card asset');
+    }
+    return cardId;
   }
 
   async deleteCard(id: number): Promise<void> {
@@ -71,8 +82,7 @@ class CharacterCardStore {
     }
     const cardDao = await this.getCardDao();
     const assetDao = await this.getAssetDao();
-    const assets = await assetDao.loadAll();
-    const asset = assets.find((item) => item.cardId === cardId);
+    const asset = await this.getAsset(cardId);
     if (asset?.id) {
       await assetDao.deleteByKeyAsync(asset.id);
     }
@@ -81,7 +91,7 @@ class CharacterCardStore {
 
   private async saveAsset(cardId: number, avatarUrl: string): Promise<void> {
     const assetDao = await this.getAssetDao();
-    const oldAsset = (await assetDao.loadAll()).find((asset) => asset.cardId === cardId);
+    const oldAsset = await this.getAsset(cardId);
     if (!avatarUrl) {
       if (oldAsset?.id) {
         await assetDao.deleteByKeyAsync(oldAsset.id);
@@ -93,6 +103,20 @@ class CharacterCardStore {
       await assetDao.updateAsync(asset);
     } else {
       await assetDao.insert(asset);
+    }
+  }
+
+  private async getAsset(cardId: number): Promise<CharacterCardAssetEntity | undefined> {
+    const assetDao = await this.getAssetDao();
+    const assets = await assetDao.queryBuilder()
+      .where(CharacterCardStore.ASSET_CARD_ID.eq(cardId))
+      .list();
+    return assets.length > 0 ? assets[0] : undefined;
+  }
+
+  private assertSavedId(id: number, entityName: string): void {
+    if (!id) {
+      throw new Error('Failed to save ' + entityName);
     }
   }
 }

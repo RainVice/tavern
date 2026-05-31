@@ -48,16 +48,16 @@ class TavernDatabase {
     return this.getDao<ModelDefinitionEntity, number>('ModelDefinitionEntity');
   }
 
-  getConversationDao(): Promise<BaseDao<ConversationEntity, string>> {
-    return this.getDao<ConversationEntity, string>('ConversationEntity');
+  getConversationDao(): Promise<BaseDao<ConversationEntity, number>> {
+    return this.getDao<ConversationEntity, number>('ConversationEntity');
   }
 
-  getConversationParticipantDao(): Promise<BaseDao<ConversationParticipantEntity, string>> {
-    return this.getDao<ConversationParticipantEntity, string>('ConversationParticipantEntity');
+  getConversationParticipantDao(): Promise<BaseDao<ConversationParticipantEntity, number>> {
+    return this.getDao<ConversationParticipantEntity, number>('ConversationParticipantEntity');
   }
 
-  getConversationMessageDao(): Promise<BaseDao<ConversationMessageEntity, string>> {
-    return this.getDao<ConversationMessageEntity, string>('ConversationMessageEntity');
+  getConversationMessageDao(): Promise<BaseDao<ConversationMessageEntity, number>> {
+    return this.getDao<ConversationMessageEntity, number>('ConversationMessageEntity');
   }
 }
 

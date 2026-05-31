@@ -91,6 +91,41 @@ export class CharacterCardEntity {
     this.firstMessage = firstMessage ?? '';
     this.exampleMessages = exampleMessages ?? '';
   }
+
+  /**
+   * 将数据库实体合并为页面/业务层角色卡模型。
+   */
+  static toModel(entity: CharacterCardEntity, asset?: CharacterCardAssetEntity): CharacterCard {
+    return {
+      id: entity.id ?? 0,
+      name: entity.name,
+      updateTime: entity.updateTime,
+      avatarUrl: asset?.avatarUrl || undefined,
+      description: entity.description || undefined,
+      personality: entity.personality || undefined,
+      scenario: entity.scenario || undefined,
+      firstMessage: entity.firstMessage || undefined,
+      exampleMessages: entity.exampleMessages || undefined,
+    };
+  }
+
+  /**
+   * 将页面/业务层角色卡模型转成角色卡主表实体。
+   *
+   * `avatarUrl` 不在这里处理，由 Store 单独写入 `character_card_asset`。
+   */
+  static fromModel(card: CharacterCard, updateTime: number): CharacterCardEntity {
+    return new CharacterCardEntity(
+      card.id || undefined,
+      card.name,
+      updateTime,
+      card.description ?? '',
+      card.personality ?? '',
+      card.scenario ?? '',
+      card.firstMessage ?? '',
+      card.exampleMessages ?? '',
+    );
+  }
 }
 
 /**
@@ -122,39 +157,4 @@ export class CharacterCardAssetEntity {
     this.cardId = cardId ?? 0;
     this.avatarUrl = avatarUrl ?? '';
   }
-}
-
-/**
- * 将数据库实体合并为页面/业务层角色卡模型。
- */
-export function toCharacterCard(entity: CharacterCardEntity, asset?: CharacterCardAssetEntity): CharacterCard {
-  return {
-    id: entity.id ?? 0,
-    name: entity.name,
-    updateTime: entity.updateTime,
-    avatarUrl: asset?.avatarUrl || undefined,
-    description: entity.description || undefined,
-    personality: entity.personality || undefined,
-    scenario: entity.scenario || undefined,
-    firstMessage: entity.firstMessage || undefined,
-    exampleMessages: entity.exampleMessages || undefined,
-  };
-}
-
-/**
- * 将页面/业务层角色卡模型转成角色卡主表实体。
- *
- * `avatarUrl` 不在这里处理，由 Store 单独写入 `character_card_asset`。
- */
-export function toCharacterCardEntity(card: CharacterCard, updateTime: number): CharacterCardEntity {
-  return new CharacterCardEntity(
-    card.id || undefined,
-    card.name,
-    updateTime,
-    card.description ?? '',
-    card.personality ?? '',
-    card.scenario ?? '',
-    card.firstMessage ?? '',
-    card.exampleMessages ?? '',
-  );
 }
