@@ -85,7 +85,7 @@ export class ModelProviderEditViewModel {
     }
     const state = this.state;
     const provider: ModelProvider = {
-      id: state.id.trim(),
+      id: state.id,
       name: state.name.trim(),
       baseUrl: state.baseUrl.trim(),
       apiKey: state.apiKey.trim(),

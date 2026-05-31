@@ -1,105 +1,90 @@
-import { distributedKVStore } from '@kit.ArkData';
-import { AppUtil, JSONUtil } from '@pura/harmony-utils';
-import { ModelProvider } from './model/ModelProvider';
-import { util } from '@kit.ArkTS';
+import { BaseDao } from '@ohos/dataorm';
+import {
+  ModelDefinitionEntity,
+  ModelProvider,
+  ModelProviderEntity,
+  toModelProvider,
+  toModelProviderEntity
+} from './model/ModelProvider';
 import { systemDateTime } from '@kit.BasicServicesKit';
+import { tavernDatabase } from './TavernDatabase';
 
 /**
- * 基于分布式KV数据库的模型提供商存储
- *
- * 每个 Provider 用 p_<id> 作为 key 单独存储，前缀确保 getEntries 正常工作
+ * 基于 dataorm 关系型数据库的模型提供商存储
  */
 class ModelProviderStore {
-  private kvManager: distributedKVStore.KVManager;
-  private storeId: string = 'model_provider_store';
-  private ready: Promise<distributedKVStore.SingleKVStore>;
-  private static readonly PREFIX = 'provider_';
-
-  constructor() {
-    const ctx = AppUtil.getContext();
-    this.kvManager = distributedKVStore.createKVManager({
-      bundleName: ctx.applicationInfo.name,
-      context: ctx,
-    });
-    this.ready = this.initStore();
+  private async getProviderDao(): Promise<BaseDao<ModelProviderEntity, number>> {
+    return tavernDatabase.getModelProviderDao();
   }
 
-  private initStore(): Promise<distributedKVStore.SingleKVStore> {
-    const options: distributedKVStore.Options = {
-      createIfMissing: true,
-      encrypt: true,
-      backup: true,
-      autoSync: true,
-      kvStoreType: distributedKVStore.KVStoreType.SINGLE_VERSION,
-      securityLevel: distributedKVStore.SecurityLevel.S4,
-    };
-    return this.kvManager.getKVStore<distributedKVStore.SingleKVStore>(this.storeId, options);
+  private async getDefinitionDao(): Promise<BaseDao<ModelDefinitionEntity, number>> {
+    return tavernDatabase.getModelDefinitionDao();
   }
 
-  // ====== 异步方法 ======
-
-  getAllProviders(): Promise<ModelProvider[]> {
-    return this.ready.then((store) => store.getEntries(ModelProviderStore.PREFIX).then((entries) => {
-      const result: ModelProvider[] = [];
-      entries.forEach((entry) => {
-        const value = entry.value.value;
-        if (typeof value !== 'string') {
-          return;
-        }
-        const provider = JSONUtil.jsonToBean<ModelProvider>(value);
-        if (provider) {
-          result.push(provider);
-        }
-      });
-      return result;
-    })).catch((e: Error) => {
-      throw e
-    })
+  async getAllProviders(): Promise<ModelProvider[]> {
+    const providerDao = await this.getProviderDao();
+    const definitionDao = await this.getDefinitionDao();
+    const providers = await providerDao.loadAll();
+    const definitions = await definitionDao.loadAll();
+    return providers
+      .sort((left, right) => right.updateTime - left.updateTime)
+      .map((provider) => toModelProvider(provider, definitions));
   }
 
-  getProvider(id: string): Promise<ModelProvider | undefined> {
-    return this.ready.then((store) =>
-    store.get(id).then((data) => {
-      if (typeof data !== 'string') {
-        return undefined;
+  async getProvider(id: number): Promise<ModelProvider | undefined> {
+    const providerId = id;
+    if (!providerId) {
+      return undefined;
+    }
+    const providerDao = await this.getProviderDao();
+    const definitionDao = await this.getDefinitionDao();
+    const provider = await providerDao.load(providerId);
+    if (!provider) {
+      return undefined;
+    }
+    const definitions = (await definitionDao.loadAll()).filter((definition) => definition.providerId === providerId);
+    return toModelProvider(provider, definitions);
+  }
+
+  async saveProvider(provider: ModelProvider): Promise<number> {
+    const providerDao = await this.getProviderDao();
+    const updateTime = systemDateTime.getTime();
+    const entity = toModelProviderEntity(provider, updateTime);
+    if (entity.id) {
+      const oldProvider = await providerDao.load(entity.id);
+      if (oldProvider) {
+        await providerDao.updateAsync(entity);
+      } else {
+        await providerDao.insert(entity);
       }
-      return JSONUtil.jsonToBean<ModelProvider>(data);
-    })
-    );
+    } else {
+      await providerDao.insert(entity);
+    }
+    await this.replaceDefinitions(entity.id ?? 0, provider.modelDefinitions.map((definition) => definition.modelId));
+    return entity.id ?? 0;
   }
 
-  saveProvider(provider: ModelProvider): Promise<string> {
-    return this.ready.then((store) => {
-      if (!provider.id) {
-        provider.id = ModelProviderStore.PREFIX + util.generateRandomUUID();
+  async deleteProvider(id: number): Promise<void> {
+    const providerId = id;
+    if (!providerId) {
+      return;
+    }
+    const providerDao = await this.getProviderDao();
+    await this.replaceDefinitions(providerId, []);
+    await providerDao.deleteByKeyAsync(providerId);
+  }
+
+  private async replaceDefinitions(providerId: number, modelIds: string[]): Promise<void> {
+    const definitionDao = await this.getDefinitionDao();
+    const oldDefinitions = (await definitionDao.loadAll()).filter((definition) => definition.providerId === providerId);
+    for (const definition of oldDefinitions) {
+      if (definition.id) {
+        await definitionDao.deleteByKeyAsync(definition.id);
       }
-      provider.updateTime = systemDateTime.getTime();
-      return store.put(provider.id, JSONUtil.beanToJsonStr(provider)).then(() => provider.id);
-    });
-  }
-
-  deleteProvider(id: string): Promise<void> {
-    return this.ready.then((store) => store.delete(id));
-  }
-
-  // ====== 订阅与同步 ======
-
-  onDataChange(callback: (data: distributedKVStore.ChangeNotification) => void): void {
-    this.ready.then((store) => {
-      store.on('dataChange', distributedKVStore.SubscribeType.SUBSCRIBE_TYPE_ALL, callback);
-    });
-  }
-
-  offDataChange(callback?: (data: distributedKVStore.ChangeNotification) => void): void {
-    this.ready.then((store) => {
-      store.off('dataChange', callback);
-    });
-  }
-
-  sync(deviceIds: string[], mode?: distributedKVStore.SyncMode): void {
-    this.ready.then((store) => {
-      store.sync(deviceIds, mode ?? distributedKVStore.SyncMode.PUSH_PULL);
-    });
+    }
+    for (let index = 0; index < modelIds.length; index++) {
+      await definitionDao.insert(new ModelDefinitionEntity(undefined, providerId, modelIds[index]));
+    }
   }
 }
 

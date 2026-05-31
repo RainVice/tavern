@@ -2,7 +2,7 @@ import { ModelDefinition } from '../../store/model/ModelProvider'
 
 @ObservedV2
 export class ModelProviderEditState {
-  @Trace id: string = ''
+  @Trace id: number = 0
   @Trace name: string = ''
   @Trace apiKey: string = ''
   @Trace baseUrl: string = ''

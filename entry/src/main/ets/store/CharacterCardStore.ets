@@ -1,81 +1,99 @@
-import { distributedKVStore } from '@kit.ArkData';
-import { AppUtil, JSONUtil } from '@pura/harmony-utils';
-import { CharacterCard } from './model/CharacterCard';
-import { util } from '@kit.ArkTS';
+import { BaseDao } from '@ohos/dataorm';
+import {
+  CharacterCard,
+  CharacterCardAssetEntity,
+  CharacterCardEntity,
+  toCharacterCard,
+  toCharacterCardEntity
+} from './model/CharacterCard';
 import { systemDateTime } from '@kit.BasicServicesKit';
+import { tavernDatabase } from './TavernDatabase';
 
 /**
- * 基于分布式KV数据库的角色卡存储
- *
- * 每个角色卡用 character_card_<id> 作为 key 单独存储
+ * 基于 dataorm 关系型数据库的角色卡存储
  */
 class CharacterCardStore {
-  private kvManager: distributedKVStore.KVManager;
-  private storeId: string = 'character_card_store';
-  private ready: Promise<distributedKVStore.SingleKVStore>;
-  private static readonly PREFIX = 'character_card_';
-
-  constructor() {
-    const ctx = AppUtil.getContext();
-    this.kvManager = distributedKVStore.createKVManager({
-      bundleName: ctx.applicationInfo.name,
-      context: ctx,
-    });
-    this.ready = this.initStore();
+  private async getCardDao(): Promise<BaseDao<CharacterCardEntity, number>> {
+    return tavernDatabase.getCharacterCardDao();
   }
 
-  private initStore(): Promise<distributedKVStore.SingleKVStore> {
-    const options: distributedKVStore.Options = {
-      createIfMissing: true,
-      encrypt: true,
-      backup: true,
-      autoSync: true,
-      kvStoreType: distributedKVStore.KVStoreType.SINGLE_VERSION,
-      securityLevel: distributedKVStore.SecurityLevel.S4,
-    };
-    return this.kvManager.getKVStore<distributedKVStore.SingleKVStore>(this.storeId, options);
+  private async getAssetDao(): Promise<BaseDao<CharacterCardAssetEntity, number>> {
+    return tavernDatabase.getCharacterCardAssetDao();
   }
 
-  getAllCards(): Promise<CharacterCard[]> {
-    return this.ready.then((store) => store.getEntries(CharacterCardStore.PREFIX).then((entries) => {
-      const result: CharacterCard[] = [];
-      entries.forEach((entry) => {
-        const value = entry.value.value;
-        if (typeof value !== 'string') {
-          return;
-        }
-        const card = JSONUtil.jsonToBean<CharacterCard>(value);
-        if (card) {
-          result.push(card);
-        }
-      });
-      return result;
-    }));
+  async getAllCards(): Promise<CharacterCard[]> {
+    const cardDao = await this.getCardDao();
+    const assetDao = await this.getAssetDao();
+    const cards = await cardDao.loadAll();
+    const assets = await assetDao.loadAll();
+    return cards
+      .sort((left, right) => right.updateTime - left.updateTime)
+      .map((card) => toCharacterCard(card, assets.find((asset) => asset.cardId === card.id)));
   }
 
-  getCard(id: string): Promise<CharacterCard | undefined> {
-    return this.ready.then((store) =>
-      store.get(id).then((data) => {
-        if (typeof data !== 'string') {
-          return undefined;
-        }
-        return JSONUtil.jsonToBean<CharacterCard>(data);
-      })
-    );
+  async getCard(id: number): Promise<CharacterCard | undefined> {
+    const cardId = id;
+    if (!cardId) {
+      return undefined;
+    }
+    const cardDao = await this.getCardDao();
+    const assetDao = await this.getAssetDao();
+    const card = await cardDao.load(cardId);
+    if (!card) {
+      return undefined;
+    }
+    const assets = await assetDao.loadAll();
+    return toCharacterCard(card, assets.find((asset) => asset.cardId === cardId));
   }
 
-  saveCard(card: CharacterCard): Promise<string> {
-    return this.ready.then((store) => {
-      if (!card.id) {
-        card.id = CharacterCardStore.PREFIX + util.generateRandomUUID();
+  async saveCard(card: CharacterCard): Promise<number> {
+    const cardDao = await this.getCardDao();
+    const updateTime = systemDateTime.getTime();
+    const entity = toCharacterCardEntity(card, updateTime);
+    if (entity.id) {
+      const oldCard = await cardDao.load(entity.id);
+      if (oldCard) {
+        await cardDao.updateAsync(entity);
+      } else {
+        await cardDao.insert(entity);
       }
-      card.updateTime = systemDateTime.getTime();
-      return store.put(card.id, JSONUtil.beanToJsonStr(card)).then(() => card.id);
-    });
+    } else {
+      await cardDao.insert(entity);
+    }
+    await this.saveAsset(entity.id ?? 0, card.avatarUrl ?? '');
+    return entity.id ?? 0;
   }
 
-  deleteCard(id: string): Promise<void> {
-    return this.ready.then((store) => store.delete(id));
+  async deleteCard(id: number): Promise<void> {
+    const cardId = id;
+    if (!cardId) {
+      return;
+    }
+    const cardDao = await this.getCardDao();
+    const assetDao = await this.getAssetDao();
+    const assets = await assetDao.loadAll();
+    const asset = assets.find((item) => item.cardId === cardId);
+    if (asset?.id) {
+      await assetDao.deleteByKeyAsync(asset.id);
+    }
+    await cardDao.deleteByKeyAsync(cardId);
+  }
+
+  private async saveAsset(cardId: number, avatarUrl: string): Promise<void> {
+    const assetDao = await this.getAssetDao();
+    const oldAsset = (await assetDao.loadAll()).find((asset) => asset.cardId === cardId);
+    if (!avatarUrl) {
+      if (oldAsset?.id) {
+        await assetDao.deleteByKeyAsync(oldAsset.id);
+      }
+      return;
+    }
+    const asset = new CharacterCardAssetEntity(oldAsset?.id ?? undefined, cardId, avatarUrl);
+    if (oldAsset?.id) {
+      await assetDao.updateAsync(asset);
+    } else {
+      await assetDao.insert(asset);
+    }
   }
 }
 

@@ -2,7 +2,7 @@ import { CharacterCard } from '../../store/model/CharacterCard'
 
 @ObservedV2
 export class CharacterCardDetailState {
-  @Trace id: string = ''
+  @Trace id: number = 0
   @Trace name: string = ''
   @Trace updateTime: number = 0
   @Trace avatarUrl: string = ''

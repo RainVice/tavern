@@ -31,7 +31,7 @@ export class CharacterCardDetailViewModel {
     RVRouter.push(RouterName.Chat)
   }
 
-  private loadCard(id: string): void {
+  private loadCard(id: number): void {
     characterCardStore.getCard(id).then((card) => {
       if (card) {
         this.state.updateFrom(card)
