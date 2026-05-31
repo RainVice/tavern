@@ -733,5 +733,42 @@ export interface ChatCompletionChunk {
    * API：Chat Completions streaming。
    * 说明：包含本次事件新增的 delta。
    */
-  choices: Array<JsonObject>;
+  choices: Array<ChatCompletionChunkChoice>;
+}
+
+/**
+ * Chat completion 流式候选。
+ *
+ * API：Chat Completions streaming。
+ * 说明：`choices[].delta` 中携带本次新增文本。
+ */
+export interface ChatCompletionChunkChoice {
+  /** 候选索引。API：Chat Completions streaming。 */
+  index: number;
+
+  /** 本次 SSE 事件新增的消息片段。 */
+  delta: ChatCompletionChunkDelta;
+
+  /** 停止原因；生成尚未结束时通常为空。 */
+  finish_reason?: 'stop' | 'length' | 'tool_calls' | 'content_filter' | 'function_call' | null;
+}
+
+/**
+ * Chat completion 流式增量内容。
+ *
+ * API：Chat Completions streaming。
+ * 说明：文本输出主要读取 `content` 字段。
+ */
+export interface ChatCompletionChunkDelta {
+  /** 首个 chunk 可能携带角色。 */
+  role?: 'assistant';
+
+  /** 本次新增文本。 */
+  content?: string | null;
+
+  /** 拒答文本增量。 */
+  refusal?: string | null;
+
+  /** 工具调用增量，当前业务暂不消费。 */
+  tool_calls?: Array<ChatCompletionMessageToolCall>;
 }

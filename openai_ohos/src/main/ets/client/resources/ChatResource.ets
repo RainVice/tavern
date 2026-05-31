@@ -1,5 +1,6 @@
 import type {
   ChatCompletion,
+  ChatCompletionChunk,
   ChatCompletionCreateParams,
   ChatCompletionDeleted,
   ChatCompletionListParams,
@@ -7,7 +8,19 @@ import type {
   ChatCompletionUpdateParams,
 } from '../../models/Chat';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
+import type { OpenAISSEEvent } from '../core/OpenAISSEParser';
 import { appendCursorQuery, appendStringQuery, buildPathWithQuery } from '../core/RequestUtils';
+import type { OpenAIRequestSettings, OpenAIStream } from '../core/Types';
+
+/** Chat Completions 流式回调。 */
+export interface ChatCompletionStreamHandlers {
+  /** 收到一条 SSE chunk。 */
+  onChunk(chunk: ChatCompletionChunk): void;
+  /** 流式请求发生错误。 */
+  onError?: (message: string) => void;
+  /** 底层连接结束。 */
+  onDone?: () => void;
+}
 
 /**
  * Chat Completions 资源入口。
@@ -23,6 +36,18 @@ export interface OpenAIChatCompletionsResource {
    * 说明：使用 messages 数组创建对话式模型响应。
    */
   create(params: ChatCompletionCreateParams): Promise<ChatCompletion>;
+
+  /**
+   * 创建流式 Chat Completion。
+   *
+   * API：`POST /v1/chat/completions`。
+   * 说明：自动设置 `stream: true`，并把 SSE 数据解析为 `ChatCompletionChunk`。
+   */
+  createStream(
+    params: ChatCompletionCreateParams,
+    handlers: ChatCompletionStreamHandlers,
+    options?: OpenAIRequestSettings
+  ): OpenAIStream;
 
   /**
    * 获取已存储 Chat Completion。
@@ -77,6 +102,20 @@ class ChatCompletionsResource implements OpenAIChatCompletionsResource {
   async create(params: ChatCompletionCreateParams): Promise<ChatCompletion> {
     const body = await this.client.post('/chat/completions', params);
     return JSON.parse(body) as ChatCompletion;
+  }
+
+  createStream(
+    params: ChatCompletionCreateParams,
+    handlers: ChatCompletionStreamHandlers,
+    options?: OpenAIRequestSettings
+  ): OpenAIStream {
+    params.stream = true;
+    return this.client.streamPost('/chat/completions', params, {}, (event: OpenAISSEEvent) => {
+      if (event.data === '[DONE]') {
+        return;
+      }
+      handlers.onChunk(JSON.parse(event.data) as ChatCompletionChunk);
+    }, handlers.onError, handlers.onDone, options);
   }
 
   async retrieve(completionID: string): Promise<ChatCompletion> {

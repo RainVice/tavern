@@ -13,6 +13,10 @@ export struct ChatPage {
   private readonly state = new ChatState()
   private readonly vm = new ChatViewModel(this.state)
 
+  aboutToDisappear(): void {
+    this.vm.dispose()
+  }
+
   build() {
     HdsNavDestination() {
       Stack({ alignContent: Alignment.Bottom }) {
@@ -82,7 +86,7 @@ export struct ChatPage {
       }.padding(8)
       .backgroundColor(Color.Transparent)
 
-      TextArea({ placeholder: $r("app.string.chat_input_placeholder") })
+      TextArea({ text: this.state.inputText, placeholder: $r("app.string.chat_input_placeholder") })
         .barState(BarState.Off)
         .padding(0)
         .borderRadius(0)
@@ -98,6 +102,7 @@ export struct ChatPage {
           .fontColor([$r("sys.color.font_on_primary")])
       }
       .padding(8)
+      .enabled(!this.state.isSending && this.state.inputText.trim().length > 0)
       .onClick(() => this.vm.onSend())
     }
     .alignItems(VerticalAlign.Center)

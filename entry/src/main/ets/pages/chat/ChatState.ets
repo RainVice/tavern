@@ -14,4 +14,5 @@ export interface ChatMessageItem {
 export class ChatState {
   @Trace inputText: string = ''
   @Trace messages: ChatMessageItem[] = []
+  @Trace isSending: boolean = false
 }
