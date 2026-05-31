@@ -1,6 +1,7 @@
 import { Route } from '@hzw/zrouter';
 import {
   HdsListItem,
+  HdsListItemCard,
   hdsMaterial,
   HdsNavDestination,
   IconSize,
@@ -76,35 +77,40 @@ struct ModelProviderItem {
 
   build() {
     HdsListItem({
-      hdsListItemCard: {
-        prefixItem: new PrefixIcon({
-          iconValue: {
-            symbol: symbolModifier($r("sys.symbol.cloud_and_arrow_up"))
-              .fontColor([$r("sys.color.font_emphasize")])
-          },
-          iconSize: IconSize.SYSTEM_ICON
-        }),
-        textItem: {
-          primaryText: {
-            text: this.repeat.item.name,
-          },
-          secondaryText: {
-            text: this.repeat.item.baseUrl,
-          }
-        },
-        suffixItem: new SuffixIcon({
-          iconValue: {
-            symbol: symbolModifier($r("sys.symbol.chevron_right"))
-              .fontColor([$r("sys.color.font_tertiary")])
-          }
-        }),
-        onClick: (): void => this.onProviderClick()
-      },
+      customItemBuilder: () => this.customItemBuilder(),
       swipeActionOptions: {
         deleteIconOptions: {
           onAction: (): void => this.onProviderDelete()
         }
       }
+    })
+  }
+
+  @Builder
+  customItemBuilder() {
+    HdsListItemCard({
+      prefixItem: new PrefixIcon({
+        iconValue: {
+          symbol: symbolModifier($r("sys.symbol.cloud_and_arrow_up"))
+            .fontColor([$r("sys.color.font_emphasize")])
+        },
+        iconSize: IconSize.SYSTEM_ICON
+      }),
+      textItem: {
+        primaryText: {
+          text: this.repeat.item.name,
+        },
+        secondaryText: {
+          text: this.repeat.item.baseUrl,
+        }
+      },
+      suffixItem: new SuffixIcon({
+        iconValue: {
+          symbol: symbolModifier($r("sys.symbol.chevron_right"))
+            .fontColor([$r("sys.color.font_tertiary")])
+        }
+      }),
+      onClick: (): void => this.onProviderClick()
     })
   }
 }
