@@ -1,6 +1,7 @@
 import { AppUtil } from '@pura/harmony-utils';
 import { BaseDao, DaoMaster, DaoSession, Database, OpenHelper } from '@ohos/dataorm';
 import { CharacterCardAssetEntity, CharacterCardEntity } from './model/CharacterCard';
+import { ConversationEntity, ConversationMessageEntity, ConversationParticipantEntity } from './model/Conversation';
 import { ModelDefinitionEntity, ModelProviderEntity } from './model/ModelProvider';
 import { common } from '@kit.AbilityKit';
 
@@ -20,30 +21,43 @@ class TavernDatabase {
 
   private async init(): Promise<DaoSession> {
     const helper = new TavernOpenHelper(AppUtil.getContext(), TavernDatabase.DB_NAME);
-    helper.setEntities(CharacterCardEntity, CharacterCardAssetEntity, ModelProviderEntity, ModelDefinitionEntity);
+    helper.setEntities(CharacterCardEntity, CharacterCardAssetEntity, ModelProviderEntity, ModelDefinitionEntity,
+      ConversationEntity, ConversationParticipantEntity, ConversationMessageEntity);
     const db: Database = await helper.getWritableDb();
     return new DaoMaster(db).newSession();
   }
 
-  private async getDao<T>(entityName: string): Promise<BaseDao<T, number>> {
+  private async getDao<T, K>(entityName: string): Promise<BaseDao<T, K>> {
     const session = await this.ready;
-    return session.getDao(entityName) as BaseDao<T, number>;
+    return session.getDao(entityName) as BaseDao<T, K>;
   }
 
   getCharacterCardDao(): Promise<BaseDao<CharacterCardEntity, number>> {
-    return this.getDao<CharacterCardEntity>('CharacterCardEntity');
+    return this.getDao<CharacterCardEntity, number>('CharacterCardEntity');
   }
 
   getCharacterCardAssetDao(): Promise<BaseDao<CharacterCardAssetEntity, number>> {
-    return this.getDao<CharacterCardAssetEntity>('CharacterCardAssetEntity');
+    return this.getDao<CharacterCardAssetEntity, number>('CharacterCardAssetEntity');
   }
 
   getModelProviderDao(): Promise<BaseDao<ModelProviderEntity, number>> {
-    return this.getDao<ModelProviderEntity>('ModelProviderEntity');
+    return this.getDao<ModelProviderEntity, number>('ModelProviderEntity');
   }
 
   getModelDefinitionDao(): Promise<BaseDao<ModelDefinitionEntity, number>> {
-    return this.getDao<ModelDefinitionEntity>('ModelDefinitionEntity');
+    return this.getDao<ModelDefinitionEntity, number>('ModelDefinitionEntity');
+  }
+
+  getConversationDao(): Promise<BaseDao<ConversationEntity, string>> {
+    return this.getDao<ConversationEntity, string>('ConversationEntity');
+  }
+
+  getConversationParticipantDao(): Promise<BaseDao<ConversationParticipantEntity, string>> {
+    return this.getDao<ConversationParticipantEntity, string>('ConversationParticipantEntity');
+  }
+
+  getConversationMessageDao(): Promise<BaseDao<ConversationMessageEntity, string>> {
+    return this.getDao<ConversationMessageEntity, string>('ConversationMessageEntity');
   }
 }
 
