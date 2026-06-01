@@ -1,5 +1,6 @@
 import {
   HdsListItem,
+  HdsListItemCard,
   hdsMaterial,
   HdsNavDestination,
   PrefixIcon,
@@ -27,18 +28,7 @@ export struct ModelProviderEditPage {
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.providerNameInput() }, } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.baseUrlInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.apiKeyInput() } } })
-        HdsListItem({
-          hdsListItemCard: {
-            prefixItem: new PrefixIcon({ iconValue: { symbol: $r("sys.symbol.checkmark") } }),
-            textItem: { primaryText: { text: $r("app.string.default_model_provider") }, },
-            suffixItem: new SuffixSwitch({
-              isCheck: this.state.isDefault,
-              onChange: (isCheck: boolean) => {
-                this.state.isDefault = isCheck
-              }
-            })
-          }
-        })
+        HdsListItem({ customItemBuilder: () => this.defaultItem() })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.modelListInput() } } })
       }
       .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
@@ -73,7 +63,7 @@ export struct ModelProviderEditPage {
   private providerNameInput() {
     ModelProviderInput({
       icon: $r("sys.symbol.person_text_rectangle_fill"),
-      text: this.state.name,
+      text: this.state.name!!,
       title: $r("app.string.provider_name"),
       placeholder: $r("app.string.provider_name_placeholder"),
     })
@@ -83,7 +73,7 @@ export struct ModelProviderEditPage {
   private baseUrlInput() {
     ModelProviderInput({
       icon: $r("sys.symbol.link"),
-      text: this.state.baseUrl,
+      text: this.state.baseUrl!!,
       title: $r("app.string.base_url"),
       placeholder: $r("app.string.base_url_placeholder"),
     })
@@ -93,7 +83,7 @@ export struct ModelProviderEditPage {
   private apiKeyInput() {
     ModelProviderInput({
       icon: $r("sys.symbol.key_fill"),
-      text: this.state.apiKey,
+      text: this.state.apiKey!!,
       title: $r("app.string.api_key"),
       placeholder: $r("app.string.api_key_placeholder"),
     })
@@ -102,6 +92,20 @@ export struct ModelProviderEditPage {
   @Builder
   private modelListInput() {
     ModelListInput({ state: this.state, vm: this.vm })
+  }
+
+  @Builder
+  private defaultItem() {
+    HdsListItemCard({
+      prefixItem: new PrefixIcon({ iconValue: { symbol: $r("sys.symbol.checkmark") } }),
+      textItem: { primaryText: { text: $r("app.string.default_model_provider") }, },
+      suffixItem: new SuffixSwitch({
+        isCheck: this.state.isDefault,
+        onChange: (isCheck: boolean) => {
+          this.state.isDefault = isCheck
+        }
+      })
+    })
   }
 }
 
@@ -158,7 +162,7 @@ struct ModelListInput {
       }
 
       Row({ space: 8 }) {
-        TextInput({ text: this.modelName, placeholder: $r("app.string.model_list_placeholder") })
+        TextInput({ text: this.modelName!!, placeholder: $r("app.string.model_list_placeholder") })
           .layoutWeight(1)
           .padding(8)
           .borderRadius(8)

@@ -1,6 +1,6 @@
 import { ErrorEvent, MessageEvents, worker } from '@kit.ArkTS'
 import { systemDateTime } from '@kit.BasicServicesKit'
-import { modelProviderStore } from '../../store/ModelProviderStore'
+import { appConfigStore } from '../../store/AppConfigStore'
 import {
   ChatRequest,
   ChatRequestType,
@@ -124,19 +124,18 @@ export class ChatViewModel {
     }
   }
 
-  /** 当前基础版本默认使用提供商列表里的第一个 provider 和第一个模型。 */
+  /** 使用设置页配置的默认提供商，并取该提供商的第一个模型。 */
   private resolveProvider(): Promise<ChatWorkerProviderConfig | undefined> {
-    return modelProviderStore.getAllProviders()
-      .then((providers) => {
-        if (providers.length === 0 || providers[0].modelDefinitions.length === 0) {
+    return appConfigStore.getDefaultProvider()
+      .then((provider) => {
+        if (!provider || provider.modelDefinitions.length === 0) {
           // 分支：没有 provider 或 provider 没有模型，交给 worker 返回配置错误。
           return undefined
         }
-        // 分支：使用最近的第一个 provider 和它的第一个模型。
         return {
-          apiKey: providers[0].apiKey,
-          baseUrl: providers[0].baseUrl,
-          model: providers[0].modelDefinitions[0].modelId,
+          apiKey: provider.apiKey,
+          baseUrl: provider.baseUrl,
+          model: provider.modelDefinitions[0].modelId,
         } as ChatWorkerProviderConfig
       })
   }

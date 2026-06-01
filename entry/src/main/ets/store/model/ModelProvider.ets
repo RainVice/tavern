@@ -1,4 +1,4 @@
-import { ColumnType, Columns, Entity, Id, Index, NotNull } from '@ohos/dataorm';
+import { Columns, ColumnType, Entity, Id, Index, NotNull, Property } from '@ohos/dataorm';
 
 /**
  * 页面和业务层使用的模型提供商模型。
@@ -43,6 +43,10 @@ export interface ModelDefinition {
  */
 @Entity('model_provider')
 export class ModelProviderEntity {
+  /**
+   * `updateTime` 对应的 dataorm 查询字段描述。
+   */
+  static readonly UPDATE_TIME_PROPERTY: Property = new Property(2, 'number', 'updateTime', false, 'update_time', false);
   /** 主键，自增整数。新建实体使用 undefined，让数据库分配 ID，dataorm 插入后会回写该字段。 */
   @Id({ autoincrement: true })
   @Columns({ columnName: 'id', types: ColumnType.num })
@@ -118,6 +122,13 @@ export class ModelProviderEntity {
  */
 @Entity('model_definition', [{ value: 'providerId, modelId', unique: true }])
 export class ModelDefinitionEntity {
+  /**
+   * `providerId` 对应的 dataorm 查询字段描述。
+   *
+   * Store 查询某个提供商的模型列表时使用它生成 `provider_id = ?` 条件。
+   */
+  static readonly PROVIDER_ID_PROPERTY: Property =
+    new Property(1, 'number', 'providerId', false, 'provider_id', false);
   /** 模型记录主键，自增整数。新建实体使用 undefined，让数据库分配 ID。 */
   @Id({ autoincrement: true })
   @Columns({ columnName: 'id', types: ColumnType.num })

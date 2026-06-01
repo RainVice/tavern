@@ -11,17 +11,16 @@ class AppConfigStore {
 
   async getDefaultProvider(): Promise<ModelProvider | undefined> {
     const store = await this.getStore();
-    const data = await store.get(AppConfigStore.key_default_provider_id)
-    if (typeof data == 'number') {
-      return await modelProviderStore.getProvider(data)
-    } else {
-      return undefined
+    const data = await store.get(AppConfigStore.key_default_provider_id);
+    if (typeof data === 'number') {
+      return await modelProviderStore.getProvider(data);
     }
+    return modelProviderStore.getFirstProvider();
   }
 
   async saveDefaultProvider(provider: ModelProvider): Promise<void> {
     const store = await this.getStore();
-    return store.put(AppConfigStore.key_default_provider_id, provider.id)
+    return await store.put(AppConfigStore.key_default_provider_id, provider.id)
   }
 
   private getStore(): Promise<distributedKVStore.SingleKVStore> {

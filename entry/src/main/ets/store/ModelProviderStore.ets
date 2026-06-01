@@ -1,19 +1,11 @@
-import { BaseDao, Property } from '@ohos/dataorm';
+import { BaseDao } from '@ohos/dataorm';
 import {
-  ModelDefinitionEntity,
-  ModelProvider,
-  ModelProviderEntity,
+  ModelDefinitionEntity, ModelProvider, ModelProviderEntity,
 } from './model/ModelProvider';
 import { systemDateTime } from '@kit.BasicServicesKit';
 import { tavernDatabase } from './TavernDatabase';
 
-/**
- * 基于 dataorm 关系型数据库的模型提供商存储
- */
 class ModelProviderStore {
-  private static readonly DEFINITION_PROVIDER_ID: Property =
-    new Property(1, 'number', 'providerId', false, 'provider_id', false);
-
   private async getProviderDao(): Promise<BaseDao<ModelProviderEntity, number>> {
     return tavernDatabase.getModelProviderDao();
   }
@@ -32,6 +24,31 @@ class ModelProviderStore {
       .map((provider) => ModelProviderEntity.toModel(provider, definitions));
   }
 
+  /**
+   * 获取最近更新的第一个模型提供商。
+   */
+  async getFirstProvider(): Promise<ModelProvider | undefined> {
+    const providerDao = await this.getProviderDao();
+    const providers = await providerDao.queryBuilder()
+      .orderDesc(ModelProviderEntity.UPDATE_TIME_PROPERTY)
+      .limit(1)
+      .list();
+    if (providers.length === 0) {
+      return undefined;
+    }
+    const provider = providers[0];
+    const providerId = provider.id;
+    if (!providerId) {
+      return undefined;
+    }
+    return ModelProviderEntity.toModel(providers[0], await this.getDefinitions(providerId));
+  }
+
+  /**
+   * 按主键 ID 获取单个模型提供商。
+   *
+   * 如果 id 无效或数据库中没有对应记录，返回 `undefined`。
+   */
   async getProvider(id: number): Promise<ModelProvider | undefined> {
     const providerId = id;
     if (!providerId) {
@@ -45,6 +62,13 @@ class ModelProviderStore {
     return ModelProviderEntity.toModel(provider, await this.getDefinitions(providerId));
   }
 
+  /**
+   * 新增或更新模型提供商。
+   *
+   * 主表保存提供商名称、接口地址、密钥和更新时间；模型列表由
+   * `replaceDefinitions()` 同步到 `model_definition`。如果新建 provider
+   * 后模型明细保存失败，会删除刚插入的主表记录，避免留下孤立提供商。
+   */
   async saveProvider(provider: ModelProvider): Promise<number> {
     const providerDao = await this.getProviderDao();
     const updateTime = systemDateTime.getTime();
@@ -75,6 +99,11 @@ class ModelProviderStore {
     return providerId;
   }
 
+  /**
+   * 删除模型提供商。
+   *
+   * 先清空该提供商关联的模型定义，再删除提供商主表记录，避免明细表残留。
+   */
   async deleteProvider(id: number): Promise<void> {
     const providerId = id;
     if (!providerId) {
@@ -85,6 +114,11 @@ class ModelProviderStore {
     await providerDao.deleteByKeyAsync(providerId);
   }
 
+  /**
+   * 用新的模型 ID 列表替换某个提供商的全部模型定义。
+   *
+   * 已不存在的旧模型会删除；新出现的模型会插入；仍存在的模型保持不动。
+   */
   private async replaceDefinitions(providerId: number, modelIds: string[]): Promise<void> {
     const definitionDao = await this.getDefinitionDao();
     const normalizedModelIds = this.normalizeModelIds(modelIds);
@@ -109,13 +143,19 @@ class ModelProviderStore {
     }
   }
 
+  /** 查询某个提供商关联的全部模型定义实体。 */
   private async getDefinitions(providerId: number): Promise<ModelDefinitionEntity[]> {
     const definitionDao = await this.getDefinitionDao();
     return definitionDao.queryBuilder()
-      .where(ModelProviderStore.DEFINITION_PROVIDER_ID.eq(providerId))
+      .where(ModelDefinitionEntity.PROVIDER_ID_PROPERTY.eq(providerId))
       .list();
   }
 
+  /**
+   * 归一化模型 ID 列表。
+   *
+   * 空字符串会被过滤；重复模型 ID 只保留第一次出现的值。
+   */
   private normalizeModelIds(modelIds: string[]): string[] {
     const normalized: string[] = [];
     for (const modelId of modelIds) {
@@ -126,6 +166,7 @@ class ModelProviderStore {
     return normalized;
   }
 
+  /** 判断旧模型定义中是否已经存在指定模型 ID。 */
   private hasDefinition(definitions: ModelDefinitionEntity[], modelId: string): boolean {
     for (const definition of definitions) {
       if (definition.modelId === modelId) {
@@ -135,6 +176,7 @@ class ModelProviderStore {
     return false;
   }
 
+  /** 校验自增主键是否已由 dataorm 回填。 */
   private assertSavedId(id: number, entityName: string): void {
     if (!id) {
       throw new Error('Failed to save ' + entityName);
