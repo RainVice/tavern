@@ -74,8 +74,8 @@ export struct CharacterCardDetailPage {
   private header() {
     Column({ space: 12 }) {
       Stack() {
-        if (this.state.avatarUrl) {
-          Image(this.state.avatarUrl)
+        if (this.state.getAvatarUrl()) {
+          Image(this.state.getAvatarUrl())
             .width(96)
             .height(96)
             .borderRadius(48)
@@ -94,15 +94,15 @@ export struct CharacterCardDetailPage {
         }
       }
 
-      Text(this.state.name || $r("app.string.character_card_unnamed"))
+      Text(this.state.getName() || $r("app.string.character_card_unnamed"))
         .fontSize(20)
         .fontWeight(FontWeight.Medium)
         .fontColor($r("sys.color.font_primary"))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-      if (this.state.description) {
-        Text(this.state.description)
+      if (this.state.getDescription()) {
+        Text(this.state.getDescription())
           .fontSize(14)
           .fontColor($r("sys.color.font_secondary"))
           .maxLines(2)
@@ -122,8 +122,8 @@ export struct CharacterCardDetailPage {
         .fontColor($r("sys.color.font_secondary"))
         .padding({ start: LengthMetrics.vp(8) })
 
-      if (this.state.description.trim().length > 0) {
-        Text(this.state.description)
+      if (this.state.getDescription().trim().length > 0) {
+        Text(this.state.getDescription())
           .fontSize(14)
           .fontColor($r("sys.color.font_primary"))
           .width(FullPercent)
@@ -148,8 +148,8 @@ export struct CharacterCardDetailPage {
         .fontColor($r("sys.color.font_secondary"))
         .padding({ start: LengthMetrics.vp(8) })
 
-      if (this.state.personality.trim().length > 0) {
-        Text(this.state.personality)
+      if (this.state.getPersonality().trim().length > 0) {
+        Text(this.state.getPersonality())
           .fontSize(14)
           .fontColor($r("sys.color.font_primary"))
           .width(FullPercent)
@@ -174,8 +174,8 @@ export struct CharacterCardDetailPage {
         .fontColor($r("sys.color.font_secondary"))
         .padding({ start: LengthMetrics.vp(8) })
 
-      if (this.state.scenario.trim().length > 0) {
-        Text(this.state.scenario)
+      if (this.state.getScenario().trim().length > 0) {
+        Text(this.state.getScenario())
           .fontSize(14)
           .fontColor($r("sys.color.font_primary"))
           .width(FullPercent)
@@ -200,8 +200,8 @@ export struct CharacterCardDetailPage {
         .fontColor($r("sys.color.font_secondary"))
         .padding({ start: LengthMetrics.vp(8) })
 
-      if (this.state.firstMessage.trim().length > 0) {
-        Text(this.state.firstMessage)
+      if (this.state.getFirstMessage().trim().length > 0) {
+        Text(this.state.getFirstMessage())
           .fontSize(14)
           .fontColor($r("sys.color.font_primary"))
           .width(FullPercent)
@@ -226,8 +226,8 @@ export struct CharacterCardDetailPage {
         .fontColor($r("sys.color.font_secondary"))
         .padding({ start: LengthMetrics.vp(8) })
 
-      if (this.state.exampleMessages.trim().length > 0) {
-        Text(this.state.exampleMessages)
+      if (this.state.getExampleMessages().trim().length > 0) {
+        Text(this.state.getExampleMessages())
           .fontSize(14)
           .fontColor($r("sys.color.font_primary"))
           .width(FullPercent)

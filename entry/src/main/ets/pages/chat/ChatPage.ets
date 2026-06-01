@@ -3,7 +3,7 @@ import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignK
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent } from 'common'
 import { RouterName } from 'router'
-import { ChatMessageItem, ChatRole, ChatState } from './ChatState'
+import { ChatState } from './ChatState'
 import { ChatViewModel } from './ChatViewModel'
 import { LengthMetrics } from '@kit.ArkUI'
 
@@ -21,36 +21,27 @@ export struct ChatPage {
     HdsNavDestination() {
       Stack({ alignContent: Alignment.Bottom }) {
         List({ space: 12 }) {
-          if (this.state.messages.length === 0) {
-            ListItem() {
-              EmptyConversation()
-            }
+          ListItem() {
+            EmptyConversation()
+          }
 
-            ListItem() {
-              EmptyConversation()
-            }
+          ListItem() {
+            EmptyConversation()
+          }
 
-            ListItem() {
-              EmptyConversation()
-            }
+          ListItem() {
+            EmptyConversation()
+          }
 
-            ListItem() {
-              EmptyConversation()
-            }
+          ListItem() {
+            EmptyConversation()
+          }
 
-            ListItem() {
-              EmptyConversation()
-            }
-          } else {
-            Repeat<ChatMessageItem>(this.state.messages)
-              .each((obj: RepeatItem<ChatMessageItem>) => {
-                ChatMessageBubble({ message: obj.item })
-              })
-              .key((item: ChatMessageItem) => item.id)
-              .virtualScroll()
+          ListItem() {
+            EmptyConversation()
           }
         }
-        .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+        .contentStartOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
         .contentEndOffset(112 + this.getUIContext().px2vp(AppUtil.getNavigationIndicatorHeight()))
         .width(FullPercent)
         .height(FullPercent)
@@ -66,12 +57,8 @@ export struct ChatPage {
       avoidLayoutSafeArea: true,
       content: { title: { mainTitle: $r("app.string.chat") } },
       style: {
-        systemMaterialEffect: {
-          materialType: hdsMaterial.MaterialType.ADAPTIVE
-        },
-        scrollEffectOpts: {
-          scrollEffectType: ScrollEffectType.GRADIENT_BLUR
-        }
+        systemMaterialEffect: { materialType: hdsMaterial.MaterialType.ADAPTIVE },
+        scrollEffectOpts: { scrollEffectType: ScrollEffectType.GRADIENT_BLUR }
       }
     })
     .hideBackButton(true)
@@ -102,7 +89,7 @@ export struct ChatPage {
           .fontColor([$r("sys.color.font_on_primary")])
       }
       .padding(8)
-      .enabled(!this.state.isSending && this.state.inputText.trim().length > 0)
+      .enabled(this.state.inputText.length > 0)
       .onClick(() => this.vm.onSend())
     }
     .alignItems(VerticalAlign.Center)
@@ -149,46 +136,5 @@ struct EmptyConversation {
     .alignItems(HorizontalAlign.Center)
     .width(FullPercent)
     .height(360)
-  }
-}
-
-@ComponentV2
-struct ChatMessageBubble {
-  @Require @Param message: ChatMessageItem
-
-  build() {
-    Row() {
-      if (this.message.role === ChatRole.User) {
-        Blank()
-        this.bubble($r("sys.color.font_emphasize"), $r("sys.color.font_on_primary"))
-      } else {
-        this.bubble($r("sys.color.comp_background_gray"), $r("sys.color.font_primary"))
-        Blank()
-      }
-    }
-    .width(FullPercent)
-  }
-
-  @Builder
-  private bubble(backgroundColor: ResourceColor, fontColor: ResourceColor) {
-    Column({ space: 6 }) {
-      Text(this.message.content)
-        .fontSize(15)
-        .fontColor(fontColor)
-
-      Text(this.message.time)
-        .fontSize(11)
-        .fontColor($r("sys.color.font_tertiary"))
-    }
-    .alignItems(HorizontalAlign.Start)
-    .constraintSize({ maxWidth: 280 })
-    .padding({
-      start: LengthMetrics.vp(12),
-      end: LengthMetrics.vp(12),
-      top: LengthMetrics.vp(10),
-      bottom: LengthMetrics.vp(10)
-    })
-    .borderRadius(8)
-    .backgroundColor(backgroundColor)
   }
 }

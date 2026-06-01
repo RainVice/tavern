@@ -2,25 +2,45 @@ import { CharacterCard } from '../../store/model/CharacterCard'
 
 @ObservedV2
 export class CharacterCardDetailState {
-  @Trace id: number = 0
-  @Trace name: string = ''
-  @Trace updateTime: number = 0
-  @Trace avatarUrl: string = ''
-  @Trace description: string = ''
-  @Trace personality: string = ''
-  @Trace scenario: string = ''
-  @Trace firstMessage: string = ''
-  @Trace exampleMessages: string = ''
+  private param?: CharacterCard = undefined
 
-  updateFrom(card: CharacterCard): void {
-    this.id = card.id
-    this.name = card.name
-    this.updateTime = card.updateTime ?? 0
-    this.avatarUrl = card.avatarUrl ?? ''
-    this.description = card.description ?? ''
-    this.personality = card.personality ?? ''
-    this.scenario = card.scenario ?? ''
-    this.firstMessage = card.firstMessage ?? ''
-    this.exampleMessages = card.exampleMessages ?? ''
+  setParam(param?: CharacterCard): void {
+    this.param = param
+  }
+
+  getParam(): CharacterCard | undefined {
+    return this.param
+  }
+
+  getId(): number {
+    return this.param?.id ?? 0
+  }
+
+  getName(): string {
+    return this.param?.name ?? ''
+  }
+
+  getAvatarUrl(): string {
+    return this.param?.avatarUrl ?? ''
+  }
+
+  getDescription(): string {
+    return this.param?.description ?? ''
+  }
+
+  getPersonality(): string {
+    return this.param?.personality ?? ''
+  }
+
+  getScenario(): string {
+    return this.param?.scenario ?? ''
+  }
+
+  getFirstMessage(): string {
+    return this.param?.firstMessage ?? ''
+  }
+
+  getExampleMessages(): string {
+    return this.param?.exampleMessages ?? ''
   }
 }

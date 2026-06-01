@@ -1,18 +1,7 @@
-export class ChatRole {
-  public static readonly Assistant: string = 'assistant'
-  public static readonly User: string = 'user'
-}
-
-export interface ChatMessageItem {
-  id: string
-  role: string
-  content: string
-  time: string
-}
+import { CharacterCard } from '../../store/model/CharacterCard'
 
 @ObservedV2
 export class ChatState {
+  private param?: CharacterCard = undefined
   @Trace inputText: string = ''
-  @Trace messages: ChatMessageItem[] = []
-  @Trace isSending: boolean = false
 }
