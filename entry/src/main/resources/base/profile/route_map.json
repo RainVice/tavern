@@ -28,9 +28,9 @@
       }
     },
     {
-      "name": "Chat",
-      "pageSourceFile": "src/main/ets/_generated/ZRChatPage.ets",
-      "buildFunction": "entryChatPageBuilder",
+      "name": "Conversation",
+      "pageSourceFile": "src/main/ets/_generated/ZRConversationPage.ets",
+      "buildFunction": "entryConversationPageBuilder",
       "data": {
         "needLogin": "false",
         "others": "eyJtb2R1bGVOYW1lIjoiZW50cnkiLCJ1c2VUZW1wbGF0ZSI6ZmFsc2UsInRpdGxlIjoiIiwiaGlkZVRpdGxlQmFyIjp0cnVlLCJ1c2VWMiI6ZmFsc2UsImxvQXR0cmlidXRlTmFtZSI6IiIsInBhcmFtIjoiIn0="

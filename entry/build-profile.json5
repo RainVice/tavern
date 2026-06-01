@@ -8,7 +8,7 @@
     },
     "sourceOption": {
       "workers": [
-        './src/main/ets/workers/ChatWorker.ets'
+        './src/main/ets/workers/ConversationWorker.ets'
       ]
     }
   },

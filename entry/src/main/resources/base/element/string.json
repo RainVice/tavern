@@ -25,19 +25,19 @@
       "value": "开始对话后，会在这里显示聊天记录"
     },
     {
-      "name": "chat",
+      "name": "conversation",
       "value": "聊天"
     },
     {
-      "name": "chat_empty_title",
+      "name": "conversation_empty_title",
       "value": "开始新的对话"
     },
     {
-      "name": "chat_empty_description",
+      "name": "conversation_empty_description",
       "value": "选择角色后可以在这里继续对话"
     },
     {
-      "name": "chat_input_placeholder",
+      "name": "conversation_input_placeholder",
       "value": "输入消息"
     },
     {

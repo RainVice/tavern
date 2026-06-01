@@ -21,6 +21,6 @@ export class CharacterCardDetailViewModel {
   }
 
   onStartConversation(): void {
-    RVRouter.pushWithParam(RouterName.Chat, this.state.getParam())
+    RVRouter.pushWithParam(RouterName.Conversation, this.state.getParam())
   }
 }

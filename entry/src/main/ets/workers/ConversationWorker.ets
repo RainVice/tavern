@@ -2,7 +2,7 @@ import { ErrorEvent, MessageEvents, ThreadWorkerGlobalScope, worker } from '@kit
 
 
 const workerPort: ThreadWorkerGlobalScope = worker.workerPort;
-/** 接收主线程发来的聊天请求，并分发到具体处理流程。 */
+/** 接收主线程发来的对话请求，并分发到具体处理流程。 */
 workerPort.onmessage = (event: MessageEvents) => {
 };
 
@@ -13,14 +13,14 @@ workerPort.onerror = (event: ErrorEvent) => {
 };
 
 
-/** 主线程发送给 ChatWorker 的请求类型。 */
-export enum ChatRequestType {
+/** 主线程发送给 ConversationWorker 的请求类型。 */
+export enum ConversationRequestType {
   /** 请求模型生成回复。 */
   Request,
 }
 
-/** ChatWorker 回传给主线程的响应类型。 */
-export enum ChatResponseType {
+/** ConversationWorker 回传给主线程的响应类型。 */
+export enum ConversationResponseType {
   /** worker 已收到请求，主线程可保持发送中状态。 */
   Started,
   /** 模型返回了一段增量文本。 */

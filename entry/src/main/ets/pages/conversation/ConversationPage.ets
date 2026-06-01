@@ -3,15 +3,15 @@ import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignK
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent } from 'common'
 import { RouterName } from 'router'
-import { ChatState } from './ChatState'
-import { ChatViewModel } from './ChatViewModel'
+import { ConversationState } from './ConversationState'
+import { ConversationViewModel } from './ConversationViewModel'
 import { LengthMetrics } from '@kit.ArkUI'
 
-@Route({ name: RouterName.Chat })
+@Route({ name: RouterName.Conversation })
 @ComponentV2
-export struct ChatPage {
-  private readonly state = new ChatState()
-  private readonly vm = new ChatViewModel(this.state)
+export struct ConversationPage {
+  private readonly state = new ConversationState()
+  private readonly vm = new ConversationViewModel(this.state)
 
   aboutToDisappear(): void {
     this.vm.dispose()
@@ -55,7 +55,7 @@ export struct ChatPage {
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
       avoidLayoutSafeArea: true,
-      content: { title: { mainTitle: $r("app.string.chat") } },
+      content: { title: { mainTitle: $r("app.string.conversation") } },
       style: {
         systemMaterialEffect: { materialType: hdsMaterial.MaterialType.ADAPTIVE },
         scrollEffectOpts: { scrollEffectType: ScrollEffectType.GRADIENT_BLUR }
@@ -73,7 +73,7 @@ export struct ChatPage {
       }.padding(8)
       .backgroundColor(Color.Transparent)
 
-      TextArea({ text: this.state.inputText, placeholder: $r("app.string.chat_input_placeholder") })
+      TextArea({ text: this.state.inputText, placeholder: $r("app.string.conversation_input_placeholder") })
         .barState(BarState.Off)
         .padding(0)
         .borderRadius(0)
@@ -121,12 +121,12 @@ struct EmptyConversation {
         .fontSize(44)
         .fontColor([$r("sys.color.font_tertiary")])
 
-      Text($r("app.string.chat_empty_title"))
+      Text($r("app.string.conversation_empty_title"))
         .fontSize(18)
         .fontWeight(FontWeight.Medium)
         .fontColor($r("sys.color.font_primary"))
 
-      Text($r("app.string.chat_empty_description"))
+      Text($r("app.string.conversation_empty_description"))
         .fontSize(14)
         .fontColor($r("sys.color.font_secondary"))
         .textAlign(TextAlign.Center)
