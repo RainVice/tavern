@@ -81,6 +81,10 @@
       "value": "模型提供商"
     },
     {
+      "name": "default_model_provider",
+      "value": "默认提供商"
+    },
+    {
       "name": "add_model_provider",
       "value": "添加提供商"
     },

@@ -2,6 +2,7 @@ import { LogUtil, ToastUtil } from '@pura/harmony-utils'
 import { OpenAI } from 'openai_ohos'
 import { RVRouter } from 'router'
 import { ModelDefinition, ModelProvider } from '../../store/model/ModelProvider'
+import { appConfigStore } from '../../store/AppConfigStore'
 import { modelProviderStore } from '../../store/ModelProviderStore'
 import { ModelProviderEditState } from './ModelProviderEditState'
 import { ZRouter } from '@hzw/zrouter'
@@ -15,6 +16,7 @@ export class ModelProviderEditViewModel {
     if (param) {
       this.initFromParam(param);
     }
+    this.loadDefaultProviderId()
   }
 
   private initFromParam(param: ModelProvider): void {
@@ -66,7 +68,7 @@ export class ModelProviderEditViewModel {
     this.state.modelList = this.state.modelList.filter(model => model !== item)
   }
 
-  onSave(): boolean {
+  async onSave(): Promise<boolean> {
     if (this.state.name.trim() === '') {
       ToastUtil.showToast($r("app.string.provider_name_placeholder"));
       return false;
@@ -91,9 +93,18 @@ export class ModelProviderEditViewModel {
       apiKey: state.apiKey.trim(),
       modelDefinitions: state.modelList,
     }
-    modelProviderStore.saveProvider(provider).then(() => {
-      RVRouter.pop(true)
-    })
+    const providerId = await modelProviderStore.saveProvider(provider)
+    provider.id = providerId
+    if (this.state.isDefault) {
+      await appConfigStore.saveDefaultProvider(provider)
+    }
+    RVRouter.pop(true)
     return true;
+  }
+
+  private loadDefaultProviderId(): void {
+    appConfigStore.getDefaultProvider().then((provider) => {
+      this.state.isDefault = (this.state.id === provider?.id)
+    })
   }
 }
