@@ -10,7 +10,7 @@ import {
   SuffixIcon
 } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
-import { RouterName } from 'router';
+import { RouterName, RVRouter } from 'router';
 import { ModelProviderListViewModel } from './ModelProviderListViewModel';
 import { ModelProvider } from '../../store/model/ModelProvider';
 import { ModelProviderListState } from './ModelProviderListState';
@@ -66,6 +66,10 @@ export struct ModelProviderListPage {
       }
     })
     .hideBackButton(false)
+  }
+
+  public static start(onPop?: () => void) {
+    RVRouter.push(RouterName.ModelProviderList, onPop)
   }
 }
 

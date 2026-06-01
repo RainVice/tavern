@@ -2,8 +2,9 @@ import { Route } from '@hzw/zrouter'
 import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent } from 'common'
-import { RouterName } from 'router'
-import { ConversationState } from './ConversationState'
+import { RouterName, RVRouter } from 'router'
+import { CharacterCard } from '../../store/model/CharacterCard'
+import { ConversationPageParam, ConversationState } from './ConversationState'
 import { ConversationViewModel } from './ConversationViewModel'
 import { LengthMetrics } from '@kit.ArkUI'
 
@@ -110,6 +111,10 @@ export struct ConversationPage {
       top: LengthMetrics.px(12),
       bottom: LengthMetrics.px(AppUtil.getNavigationIndicatorHeight()),
     })
+  }
+
+  public static startWithParam(param: ConversationPageParam, onPop?: () => void) {
+    RVRouter.pushWithParam(RouterName.Conversation, param, onPop)
   }
 }
 

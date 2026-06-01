@@ -1,6 +1,6 @@
-import { RVRouter, RouterName } from 'router'
 import { modelProviderStore } from '../../store/ModelProviderStore'
 import { ModelProvider } from '../../store/model/ModelProvider'
+import { ModelProviderEditPage } from '../model_provider_edit/ModelProviderEditPage'
 import { ModelProviderListState } from './ModelProviderListState'
 
 export class ModelProviderListViewModel {
@@ -18,13 +18,13 @@ export class ModelProviderListViewModel {
   }
 
   onAdd(): void {
-    RVRouter.push(RouterName.ModelProviderEdit, () => {
+    ModelProviderEditPage.start(() => {
       this.loadProviders()
     })
   }
 
   onProviderClick(provider: ModelProvider): void {
-    RVRouter.pushWithParam(RouterName.ModelProviderEdit, provider, () => {
+    ModelProviderEditPage.startWithParam(provider, () => {
       this.loadProviders()
     })
   }

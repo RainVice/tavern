@@ -4,6 +4,7 @@ import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent, symbolModifier } from 'common'
 import { RouterName, RVRouter } from 'router'
+import { CharacterCard } from '../../store/model/CharacterCard'
 import { CharacterCardDetailState } from './CharacterCardDetailState'
 import { CharacterCardDetailViewModel } from './CharacterCardDetailViewModel'
 
@@ -242,5 +243,9 @@ export struct CharacterCardDetailPage {
     }
     .alignItems(HorizontalAlign.Start)
     .padding(4)
+  }
+
+  public static startWithParam(param: CharacterCard, onPop?: () => void) {
+    RVRouter.pushWithParam(RouterName.CharacterCardDetail, param, onPop)
   }
 }

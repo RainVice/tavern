@@ -8,12 +8,13 @@ import {
   SuffixSwitch
 } from '@kit.UIDesignKit';
 import { FullPercent, hdsAttribute, symbolGlyphAttribute, symbolModifier, symbolSpanAttribute } from 'common';
-import { RouterName } from 'router';
+import { RouterName, RVRouter } from 'router';
 import { ModelProviderEditViewModel } from './ModelProviderEditViewModel';
 import { LengthMetrics } from '@kit.ArkUI';
 import { ModelProviderEditState } from './ModelProviderEditState';
 import { Route } from '@hzw/zrouter';
 import { AppUtil } from '@pura/harmony-utils';
+import { ModelProvider } from '../../store/model/ModelProvider';
 
 
 @Route({ name: RouterName.ModelProviderEdit })
@@ -107,6 +108,14 @@ export struct ModelProviderEditPage {
       })
     })
   }
+
+  public static start(onPop?: () => void) {
+    RVRouter.push(RouterName.ModelProviderEdit, onPop)
+  }
+
+  public static startWithParam(param: ModelProvider, onPop?: () => void) {
+    RVRouter.pushWithParam(RouterName.ModelProviderEdit, param, onPop)
+  }
 }
 
 @ComponentV2
@@ -133,6 +142,7 @@ struct ModelProviderInput {
         .onChange((text: string) => this.$text(text))
     }.alignItems(HorizontalAlign.Start).padding(4)
   }
+
 }
 
 @ComponentV2

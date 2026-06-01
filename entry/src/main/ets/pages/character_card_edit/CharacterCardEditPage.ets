@@ -2,10 +2,11 @@ import { Route } from '@hzw/zrouter';
 import { LengthMetrics } from '@kit.ArkUI';
 import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit';
 import { FullPercent, symbolModifier } from 'common';
-import { RouterName } from 'router';
+import { RouterName, RVRouter } from 'router';
 import { CharacterCardEditViewModel } from './CharacterCardEditViewModel';
 import { CharacterCardEditState } from './CharacterCardEditState';
 import { AppUtil } from '@pura/harmony-utils';
+import { CharacterCard } from '../../store/model/CharacterCard';
 
 @Route({ name: RouterName.CharacterCardEdit })
 @ComponentV2
@@ -249,5 +250,13 @@ export struct CharacterCardEditPage {
 
   private getExampleMessages(): string {
     return this.state.exampleMessages
+  }
+
+  public static start(onPop?: () => void) {
+    RVRouter.push(RouterName.CharacterCardEdit, onPop)
+  }
+
+  public static startWithParam(param: CharacterCard, onPop?: () => void) {
+    RVRouter.pushWithParam(RouterName.CharacterCardEdit, param, onPop)
   }
 }

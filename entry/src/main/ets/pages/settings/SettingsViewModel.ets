@@ -1,4 +1,4 @@
-import { RVRouter, RouterName } from 'router';
+import { ModelProviderListPage } from '../model_provider_list/ModelProviderListPage';
 
 export class SettingsViewModel {
   onAvatarClick() {
@@ -6,6 +6,6 @@ export class SettingsViewModel {
   }
 
   onModelProviderClick() {
-    RVRouter.push(RouterName.ModelProviderList)
+    ModelProviderListPage.start()
   }
 }

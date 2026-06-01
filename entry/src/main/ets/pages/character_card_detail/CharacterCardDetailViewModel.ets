@@ -1,6 +1,7 @@
 import { ZRouter } from '@hzw/zrouter'
-import { RouterName, RVRouter } from 'router'
 import { CharacterCard } from '../../store/model/CharacterCard'
+import { CharacterCardEditPage } from '../character_card_edit/CharacterCardEditPage'
+import { ConversationPage } from '../conversation/ConversationPage'
 import { CharacterCardDetailState } from './CharacterCardDetailState'
 
 export class CharacterCardDetailViewModel {
@@ -17,10 +18,15 @@ export class CharacterCardDetailViewModel {
     if (!card || !this.state.getId()) {
       return
     }
-    RVRouter.pushWithParam(RouterName.CharacterCardEdit, card)
+    CharacterCardEditPage.startWithParam(card)
   }
 
   onStartConversation(): void {
-    RVRouter.pushWithParam(RouterName.Conversation, this.state.getParam())
+    const card = this.state.getParam()
+    if (!card) {
+      return
+    }
+    // todo
+    // ConversationPage.startWithParam({ type: ConversationPageType.New, conversation: card })
   }
 }

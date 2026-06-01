@@ -21,7 +21,7 @@ export interface ConversationParticipant {
   characterId: string;
 }
 
-export interface Conversation {
+export interface ConversationModel {
   id: number;
   title: string;
   mode: ConversationMode;
@@ -76,7 +76,7 @@ export class ConversationEntity {
     this.updateTime = updateTime ?? 0;
   }
 
-  static fromModel(conversation: Conversation): ConversationEntity {
+  static fromModel(conversation: ConversationModel): ConversationEntity {
     return new ConversationEntity(
       conversation.id || undefined,
       conversation.title,
@@ -86,7 +86,7 @@ export class ConversationEntity {
     );
   }
 
-  static toModel(entity: ConversationEntity, participants: ConversationParticipantEntity[]): Conversation {
+  static toModel(entity: ConversationEntity, participants: ConversationParticipantEntity[]): ConversationModel {
     const matchedParticipants = participants
       .filter((participant) => participant.conversationId === entity.id)
       .map((participant) => ({ characterId: participant.characterId } as ConversationParticipant));

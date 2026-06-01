@@ -1,6 +1,7 @@
-import { RVRouter, RouterName } from 'router'
 import { characterCardStore } from '../../store/CharacterCardStore'
 import { CharacterCard } from '../../store/model/CharacterCard'
+import { CharacterCardDetailPage } from '../character_card_detail/CharacterCardDetailPage'
+import { CharacterCardEditPage } from '../character_card_edit/CharacterCardEditPage'
 import { CharacterCardListState } from './CharacterCardListState'
 
 export class CharacterCardViewModel {
@@ -18,13 +19,13 @@ export class CharacterCardViewModel {
   }
 
   onAdd(): void {
-    RVRouter.push(RouterName.CharacterCardEdit, () => {
+    CharacterCardEditPage.start(() => {
       this.loadCards()
     })
   }
 
   onCardClick(card: CharacterCard): void {
-    RVRouter.pushWithParam(RouterName.CharacterCardDetail, card, () => {
+    CharacterCardDetailPage.startWithParam(card, () => {
       this.loadCards()
     })
   }
