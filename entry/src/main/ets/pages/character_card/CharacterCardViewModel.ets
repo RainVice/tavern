@@ -1,5 +1,5 @@
-import { characterCardStore } from '../../store/CharacterCardStore'
-import { CharacterCard } from '../../store/model/CharacterCard'
+import { CharacterCardDao } from '../../db/dao/CharacterCardDao'
+import { CharacterCard } from '../../db/entity/CharacterCardEntity'
 import { CharacterCardDetailPage } from '../character_card_detail/CharacterCardDetailPage'
 import { CharacterCardEditPage } from '../character_card_edit/CharacterCardEditPage'
 import { CharacterCardListState } from './CharacterCardListState'
@@ -13,7 +13,7 @@ export class CharacterCardViewModel {
   }
 
   loadCards(): void {
-    characterCardStore.getAllCards().then((list) => {
+    CharacterCardDao.queryAll().then((list) => {
       this.state.cards = list
     })
   }
@@ -31,7 +31,7 @@ export class CharacterCardViewModel {
   }
 
   onDeleteCard(card: CharacterCard): void {
-    characterCardStore.deleteCard(card.id).then(() => {
+    CharacterCardDao.delete(card).then(() => {
       this.loadCards()
     })
   }

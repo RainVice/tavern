@@ -1,8 +1,8 @@
-import { ModelDefinition } from '../../store/model/ModelProvider'
+import { ModelDefinition } from "../../db/entity/ModelProviderEntity"
 
 @ObservedV2
 export class ModelProviderEditState {
-  @Trace id: number = 0
+  @Trace id?: number = undefined
   @Trace name: string = ''
   @Trace apiKey: string = ''
   @Trace baseUrl: string = ''

@@ -4,7 +4,7 @@ import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent, symbolModifier } from 'common'
 import { RouterName, RVRouter } from 'router'
-import { CharacterCard } from '../../store/model/CharacterCard'
+import { CharacterCard } from '../../db/entity/CharacterCardEntity'
 import { CharacterCardDetailState } from './CharacterCardDetailState'
 import { CharacterCardDetailViewModel } from './CharacterCardDetailViewModel'
 

@@ -12,9 +12,9 @@ import { FullPercent, symbolModifier } from 'common'
 import { RouterName } from 'router'
 import { CharacterCardViewModel } from './CharacterCardViewModel'
 import { CharacterCardListState } from './CharacterCardListState'
-import { CharacterCard } from '../../store/model/CharacterCard'
 import { ImageModifier } from '@kit.ArkUI'
 import { AppUtil } from '@pura/harmony-utils'
+import { CharacterCard } from '../../db/entity/CharacterCardEntity'
 
 @Route({ name: RouterName.CharacterCard })
 @ComponentV2

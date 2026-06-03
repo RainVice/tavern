@@ -1,4 +1,4 @@
-import { ModelProvider } from '../../store/model/ModelProvider'
+import { ModelProvider } from "../../db/entity/ModelProviderEntity";
 
 @ObservedV2
 export class ModelProviderListState {

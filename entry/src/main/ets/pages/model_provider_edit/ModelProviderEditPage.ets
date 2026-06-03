@@ -14,7 +14,7 @@ import { LengthMetrics } from '@kit.ArkUI';
 import { ModelProviderEditState } from './ModelProviderEditState';
 import { Route } from '@hzw/zrouter';
 import { AppUtil } from '@pura/harmony-utils';
-import { ModelProvider } from '../../store/model/ModelProvider';
+import { ModelProvider } from '../../db/entity/ModelProviderEntity';
 
 
 @Route({ name: RouterName.ModelProviderEdit })
@@ -142,7 +142,6 @@ struct ModelProviderInput {
         .onChange((text: string) => this.$text(text))
     }.alignItems(HorizontalAlign.Start).padding(4)
   }
-
 }
 
 @ComponentV2
@@ -207,7 +206,7 @@ struct ModelListInput {
             .backgroundColor($r('sys.color.background_fourth'))
             .borderRadius(100)
             .attributeModifier(hdsAttribute())
-          }).key(item => item.modelId)
+          }).key((item, index) => `${item.modelId ?? index}`)
         }
       }
     }.alignItems(HorizontalAlign.Start).padding(4)

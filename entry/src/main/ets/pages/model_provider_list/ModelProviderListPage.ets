@@ -12,9 +12,9 @@ import {
 import { FullPercent, symbolModifier } from 'common';
 import { RouterName, RVRouter } from 'router';
 import { ModelProviderListViewModel } from './ModelProviderListViewModel';
-import { ModelProvider } from '../../store/model/ModelProvider';
 import { ModelProviderListState } from './ModelProviderListState';
 import { AppUtil } from '@pura/harmony-utils';
+import { ModelProvider } from '../../db/entity/ModelProviderEntity';
 
 @Route({ name: RouterName.ModelProviderList })
 @ComponentV2

@@ -3,7 +3,6 @@ import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignK
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent } from 'common'
 import { RouterName, RVRouter } from 'router'
-import { CharacterCard } from '../../store/model/CharacterCard'
 import { ConversationPageParam, ConversationState } from './ConversationState'
 import { ConversationViewModel } from './ConversationViewModel'
 import { LengthMetrics } from '@kit.ArkUI'

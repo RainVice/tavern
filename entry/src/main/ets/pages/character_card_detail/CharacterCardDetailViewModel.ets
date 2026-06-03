@@ -1,7 +1,6 @@
 import { ZRouter } from '@hzw/zrouter'
-import { CharacterCard } from '../../store/model/CharacterCard'
+import { CharacterCard } from '../../db/entity/CharacterCardEntity'
 import { CharacterCardEditPage } from '../character_card_edit/CharacterCardEditPage'
-import { ConversationPage } from '../conversation/ConversationPage'
 import { CharacterCardDetailState } from './CharacterCardDetailState'
 
 export class CharacterCardDetailViewModel {

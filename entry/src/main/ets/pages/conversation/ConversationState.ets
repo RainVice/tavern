@@ -1,4 +1,4 @@
-import { ConversationMode, ConversationModel } from "../../store/model/Conversation"
+import { Conversation } from "openai_ohos"
 
 @ObservedV2
 export class ConversationState {
@@ -14,5 +14,5 @@ export enum ConversationPageType {
 
 export interface ConversationPageParam {
   type: ConversationPageType
-  conversation?: ConversationModel
+  conversation?: Conversation
 }

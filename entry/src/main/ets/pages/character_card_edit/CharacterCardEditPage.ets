@@ -6,7 +6,7 @@ import { RouterName, RVRouter } from 'router';
 import { CharacterCardEditViewModel } from './CharacterCardEditViewModel';
 import { CharacterCardEditState } from './CharacterCardEditState';
 import { AppUtil } from '@pura/harmony-utils';
-import { CharacterCard } from '../../store/model/CharacterCard';
+import { CharacterCard } from '../../db/entity/CharacterCardEntity';
 
 @Route({ name: RouterName.CharacterCardEdit })
 @ComponentV2

@@ -1,5 +1,5 @@
-import { modelProviderStore } from '../../store/ModelProviderStore'
-import { ModelProvider } from '../../store/model/ModelProvider'
+import { ModelProviderDao } from '../../db/dao/ModelProviderDao'
+import { ModelProvider } from '../../db/entity/ModelProviderEntity'
 import { ModelProviderEditPage } from '../model_provider_edit/ModelProviderEditPage'
 import { ModelProviderListState } from './ModelProviderListState'
 
@@ -12,7 +12,7 @@ export class ModelProviderListViewModel {
   }
 
   loadProviders(): void {
-    modelProviderStore.getAllProviders().then((list) => {
+    ModelProviderDao.queryAll().then((list) => {
       this.state.providers = list
     })
   }
@@ -30,7 +30,7 @@ export class ModelProviderListViewModel {
   }
 
   onDeleteProvider(provider: ModelProvider): void {
-    modelProviderStore.deleteProvider(provider.id).then(() => {
+    ModelProviderDao.delete(provider).then(() => {
       this.loadProviders()
     })
   }
