@@ -12,7 +12,7 @@ import type {
   VideoRemixParams,
 } from '../../models/Videos';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
-import { appendStringQuery, buildFilePart, buildPathWithQuery, buildTextPart } from '../core/RequestUtils';
+import { appendStringQuery, buildFilePart, buildPathWithQuery, buildTextPart, encodePathParam } from '../core/RequestUtils';
 import type { OpenAIMultipartFormData } from '../core/Types';
 
 /**
@@ -116,7 +116,7 @@ export class VideosResource implements OpenAIVideosResource {
   }
 
   async retrieve(videoID: string): Promise<VideoJob> {
-    const body = await this.client.get('/videos/' + videoID);
+    const body = await this.client.get('/videos/' + encodePathParam(videoID));
     return JSON.parse(body) as VideoJob;
   }
 
@@ -125,7 +125,7 @@ export class VideosResource implements OpenAIVideosResource {
   }
 
   async remix(videoID: string, params: VideoRemixParams): Promise<VideoJob> {
-    const body = await this.client.post('/videos/' + videoID + '/remix', params);
+    const body = await this.client.post('/videos/' + encodePathParam(videoID) + '/remix', params);
     return JSON.parse(body) as VideoJob;
   }
 
@@ -140,7 +140,7 @@ export class VideosResource implements OpenAIVideosResource {
   }
 
   async delete(videoID: string): Promise<VideoDeleted> {
-    const body = await this.client.delete('/videos/' + videoID);
+    const body = await this.client.delete('/videos/' + encodePathParam(videoID));
     return JSON.parse(body) as VideoDeleted;
   }
 
@@ -178,12 +178,13 @@ export class VideosResource implements OpenAIVideosResource {
   }
 
   private buildContentPath(videoID: string, params?: VideoDownloadContentParams): string {
+    const encodedVideoID = encodePathParam(videoID);
     if (params === undefined) {
-      return '/videos/' + videoID + '/content';
+      return '/videos/' + encodedVideoID + '/content';
     }
     const query: Array<string> = [];
     appendStringQuery(query, 'variant', params.variant);
-    return buildPathWithQuery('/videos/' + videoID + '/content', query);
+    return buildPathWithQuery('/videos/' + encodedVideoID + '/content', query);
   }
 }
 
@@ -225,7 +226,7 @@ class VideoCharactersResource implements OpenAIVideoCharactersResource {
   }
 
   async retrieve(characterID: string): Promise<VideoCharacter> {
-    const body = await this.client.get('/videos/characters/' + characterID);
+    const body = await this.client.get('/videos/characters/' + encodePathParam(characterID));
     return JSON.parse(body) as VideoCharacter;
   }
 

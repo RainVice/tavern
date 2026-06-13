@@ -2,7 +2,6 @@ import { http } from '@kit.NetworkKit';
 import util from '@ohos.util';
 import { OpenAINetworkError } from './OpenAIAPIError';
 import type {
-  OpenAIHttpMethod,
   OpenAIMultipartFormData,
   OpenAIRequestOptions,
   OpenAIResponse,

@@ -9,9 +9,8 @@ import type {
   ConversationItemRetrieveParams,
   ConversationUpdateParams,
 } from '../../models/Conversations';
-import type { CursorPageParams } from '../../models/Common';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
-import { appendCursorQuery, appendStringArrayQuery, buildPathWithQuery } from '../core/RequestUtils';
+import { appendCursorQuery, appendStringArrayQuery, buildPathWithQuery, encodePathParam } from '../core/RequestUtils';
 
 /**
  * Conversations 资源入口。
@@ -64,17 +63,17 @@ export class ConversationsResource implements OpenAIConversationsResource {
   }
 
   async retrieve(conversationID: string): Promise<Conversation> {
-    const body = await this.client.get('/conversations/' + conversationID);
+    const body = await this.client.get('/conversations/' + encodePathParam(conversationID));
     return JSON.parse(body) as Conversation;
   }
 
   async update(conversationID: string, params: ConversationUpdateParams): Promise<Conversation> {
-    const body = await this.client.post('/conversations/' + conversationID, params);
+    const body = await this.client.post('/conversations/' + encodePathParam(conversationID), params);
     return JSON.parse(body) as Conversation;
   }
 
   async delete(conversationID: string): Promise<ConversationDeleted> {
-    const body = await this.client.delete('/conversations/' + conversationID);
+    const body = await this.client.delete('/conversations/' + encodePathParam(conversationID));
     return JSON.parse(body) as ConversationDeleted;
   }
 }
@@ -87,24 +86,24 @@ class ConversationItemsResource implements OpenAIConversationItemsResource {
   }
 
   async create(conversationID: string, params: ConversationItemCreateParams): Promise<ConversationItem> {
-    const body = await this.client.post('/conversations/' + conversationID + '/items', params);
+    const body = await this.client.post('/conversations/' + encodePathParam(conversationID) + '/items', params);
     return JSON.parse(body) as ConversationItem;
   }
 
   async retrieve(conversationID: string, itemID: string, params?: ConversationItemRetrieveParams): Promise<ConversationItem> {
-    const path = buildConversationItemRetrievePath('/conversations/' + conversationID + '/items/' + itemID, params);
+    const path = buildConversationItemRetrievePath('/conversations/' + encodePathParam(conversationID) + '/items/' + encodePathParam(itemID), params);
     const body = await this.client.get(path);
     return JSON.parse(body) as ConversationItem;
   }
 
   async list(conversationID: string, params?: ConversationItemListParams): Promise<ConversationItemListResponse> {
-    const path = buildConversationItemListPath('/conversations/' + conversationID + '/items', params);
+    const path = buildConversationItemListPath('/conversations/' + encodePathParam(conversationID) + '/items', params);
     const body = await this.client.get(path);
     return JSON.parse(body) as ConversationItemListResponse;
   }
 
   async delete(conversationID: string, itemID: string): Promise<Conversation> {
-    const body = await this.client.delete('/conversations/' + conversationID + '/items/' + itemID);
+    const body = await this.client.delete('/conversations/' + encodePathParam(conversationID) + '/items/' + encodePathParam(itemID));
     return JSON.parse(body) as Conversation;
   }
 }

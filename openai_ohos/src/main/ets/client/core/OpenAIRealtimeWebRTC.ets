@@ -9,7 +9,7 @@ import type {
   AudioSource,
   MediaStreamTrack,
   PeerConnectionFactory,
-} from 'libohos_webrtc.so';
+} from '@ohos/webrtc/src/main/libohos_webrtc';
 import type { RealtimeClientEvent, RealtimeIceServer, RealtimeServerEvent, RealtimeWebRTCOptions } from '../../models/Realtime';
 import { OpenAIRequestClient } from './OpenAIRequestClient';
 import type { OpenAIStream } from './Types';
@@ -31,7 +31,6 @@ export class OpenAIRealtimeWebRTC implements OpenAIStream {
   private dataChannel: RTCDataChannel | null = null;
   private audioDeviceModule: AudioDeviceModule | null = null;
   private audioTrack: MediaStreamTrack | null = null;
-  private peerConnectionFactory: PeerConnectionFactory | null = null;
   private closed: boolean = false;
 
   constructor(client: OpenAIRequestClient, options: RealtimeWebRTCOptions) {
@@ -42,7 +41,6 @@ export class OpenAIRealtimeWebRTC implements OpenAIStream {
   /** 建立 WebRTC 连接。API：Realtime WebRTC。说明：创建 offer、交换 SDP、设置 remote answer。 */
   async connect(): Promise<OpenAIRealtimeWebRTC> {
     const factory = this.createPeerConnectionFactory();
-    this.peerConnectionFactory = factory;
     const peerConnection = this.createPeerConnection(factory);
     this.peerConnection = peerConnection;
     this.dataChannel = peerConnection.createDataChannel('oai-events');

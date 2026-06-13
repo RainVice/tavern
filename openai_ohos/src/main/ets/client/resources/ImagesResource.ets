@@ -6,7 +6,7 @@ import type { OpenAIMultipartFormData } from '../core/Types';
  * Images 资源入口。
  *
  * API：`/v1/images/*`。
- * 说明：当前实现 JSON 请求形态的生成和编辑；multipart 文件上传能力后续在 upload 层补齐。
+ * 说明：覆盖图像生成、multipart 编辑和图像变体创建。
  */
 export interface OpenAIImagesResource {
   /**
@@ -21,7 +21,7 @@ export interface OpenAIImagesResource {
    * 编辑图像。
    *
    * API：`POST /v1/images/edits`。
-   * 说明：当前以模型层字符串字段承载图片引用，实际 multipart 文件上传后续增强。
+   * 说明：使用 multipart 上传图片、mask 和文本参数。
    */
   edit(params: ImageEditParams): Promise<ImagesResponse>;
 

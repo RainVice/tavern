@@ -1,10 +1,10 @@
 import type { JsonObject, OpenAIModel } from './Common';
 
 /**
- * Realtime REST API model。
+ * Realtime REST API 模型。
  *
  * API：`/v1/realtime/client_secrets`、`/v1/realtime/transcription_sessions`。
- * 说明：用于创建客户端可用的短期 Realtime 凭证和转写 session。WebSocket/WebRTC 事件流由后续 transport 扩展实现。
+ * 说明：用于创建客户端可用的短期 Realtime 凭证、转写 session，以及 WebSocket/WebRTC 事件流配置。
  */
 
 /** Realtime session 类型。API：Realtime。说明：对话 session 为 `realtime`，转写 session 为 `transcription`。 */

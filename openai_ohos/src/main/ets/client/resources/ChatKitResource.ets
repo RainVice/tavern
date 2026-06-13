@@ -9,7 +9,7 @@ import type {
   ChatKitThreadListResponse,
 } from '../../models/ChatKit';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
-import { appendCursorQuery, appendStringQuery, buildCursorListPath, buildPathWithQuery } from '../core/RequestUtils';
+import { appendCursorQuery, appendStringQuery, buildCursorListPath, buildPathWithQuery, encodePathParam } from '../core/RequestUtils';
 
 interface EmptyRequestBody {
 }
@@ -81,7 +81,7 @@ class ChatKitSessionsResource implements OpenAIChatKitSessionsResource {
 
   async cancel(sessionID: string): Promise<ChatKitSession> {
     const requestBody: EmptyRequestBody = {};
-    const body = await this.client.post('/chatkit/sessions/' + sessionID + '/cancel', requestBody, CHATKIT_BETA_HEADERS);
+    const body = await this.client.post('/chatkit/sessions/' + encodePathParam(sessionID) + '/cancel', requestBody, CHATKIT_BETA_HEADERS);
     return JSON.parse(body) as ChatKitSession;
   }
 }
@@ -101,12 +101,12 @@ class ChatKitThreadsResource implements OpenAIChatKitThreadsResource {
   }
 
   async retrieve(threadID: string): Promise<ChatKitThread> {
-    const body = await this.client.get('/chatkit/threads/' + threadID, CHATKIT_BETA_HEADERS);
+    const body = await this.client.get('/chatkit/threads/' + encodePathParam(threadID), CHATKIT_BETA_HEADERS);
     return JSON.parse(body) as ChatKitThread;
   }
 
   async delete(threadID: string): Promise<ChatKitThreadDeleted> {
-    const body = await this.client.delete('/chatkit/threads/' + threadID, CHATKIT_BETA_HEADERS);
+    const body = await this.client.delete('/chatkit/threads/' + encodePathParam(threadID), CHATKIT_BETA_HEADERS);
     return JSON.parse(body) as ChatKitThreadDeleted;
   }
 
@@ -129,7 +129,7 @@ class ChatKitThreadItemsResource implements OpenAIChatKitThreadItemsResource {
   }
 
   async list(threadID: string, params?: ChatKitThreadItemListParams): Promise<ChatKitThreadItemListResponse> {
-    const path = buildCursorListPath('/chatkit/threads/' + threadID + '/items', params);
+    const path = buildCursorListPath('/chatkit/threads/' + encodePathParam(threadID) + '/items', params);
     const body = await this.client.get(path, CHATKIT_BETA_HEADERS);
     return JSON.parse(body) as ChatKitThreadItemListResponse;
   }

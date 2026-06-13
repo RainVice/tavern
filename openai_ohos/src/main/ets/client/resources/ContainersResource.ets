@@ -11,7 +11,7 @@ import type {
   ContainerListResponse,
 } from '../../models/Containers';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
-import { buildCursorListPath, buildFilePart } from '../core/RequestUtils';
+import { buildCursorListPath, buildFilePart, encodePathParam } from '../core/RequestUtils';
 
 /**
  * Containers 资源入口。
@@ -66,7 +66,7 @@ export class ContainersResource implements OpenAIContainersResource {
   }
 
   async retrieve(containerID: string): Promise<Container> {
-    const body = await this.client.get('/containers/' + containerID);
+    const body = await this.client.get('/containers/' + encodePathParam(containerID));
     return JSON.parse(body) as Container;
   }
 
@@ -76,7 +76,7 @@ export class ContainersResource implements OpenAIContainersResource {
   }
 
   async delete(containerID: string): Promise<ContainerDeleted> {
-    const body = await this.client.delete('/containers/' + containerID);
+    const body = await this.client.delete('/containers/' + encodePathParam(containerID));
     return JSON.parse(body) as ContainerDeleted;
   }
 }
@@ -89,31 +89,32 @@ class ContainerFilesResource implements OpenAIContainerFilesResource {
   }
 
   async create(containerID: string, params: ContainerFileCreateParams): Promise<ContainerFile> {
+    const encodedContainerID = encodePathParam(containerID);
     if (params.file !== undefined) {
       const part = buildFilePart('file', params.file);
-      const body = await this.client.postMultipart('/containers/' + containerID + '/files', [part]);
+      const body = await this.client.postMultipart('/containers/' + encodedContainerID + '/files', [part]);
       return JSON.parse(body) as ContainerFile;
     }
-    const body = await this.client.post('/containers/' + containerID + '/files', params);
+    const body = await this.client.post('/containers/' + encodedContainerID + '/files', params);
     return JSON.parse(body) as ContainerFile;
   }
 
   async retrieve(containerID: string, fileID: string): Promise<ContainerFile> {
-    const body = await this.client.get('/containers/' + containerID + '/files/' + fileID);
+    const body = await this.client.get('/containers/' + encodePathParam(containerID) + '/files/' + encodePathParam(fileID));
     return JSON.parse(body) as ContainerFile;
   }
 
   async list(containerID: string, params?: ContainerFileListParams): Promise<ContainerFileListResponse> {
-    const body = await this.client.get(buildCursorListPath('/containers/' + containerID + '/files', params));
+    const body = await this.client.get(buildCursorListPath('/containers/' + encodePathParam(containerID) + '/files', params));
     return JSON.parse(body) as ContainerFileListResponse;
   }
 
   async content(containerID: string, fileID: string): Promise<string> {
-    return await this.client.get('/containers/' + containerID + '/files/' + fileID + '/content');
+    return await this.client.get('/containers/' + encodePathParam(containerID) + '/files/' + encodePathParam(fileID) + '/content');
   }
 
   async delete(containerID: string, fileID: string): Promise<ContainerFileDeleted> {
-    const body = await this.client.delete('/containers/' + containerID + '/files/' + fileID);
+    const body = await this.client.delete('/containers/' + encodePathParam(containerID) + '/files/' + encodePathParam(fileID));
     return JSON.parse(body) as ContainerFileDeleted;
   }
 }

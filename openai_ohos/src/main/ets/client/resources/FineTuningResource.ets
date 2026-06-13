@@ -17,7 +17,7 @@ import type {
   FineTuningJobListResponse,
 } from '../../models/FineTuning';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
-import { appendCursorQuery, appendStringQuery, buildCursorListPath, buildPathWithQuery } from '../core/RequestUtils';
+import { appendCursorQuery, appendStringQuery, buildCursorListPath, buildPathWithQuery, encodePathParam } from '../core/RequestUtils';
 
 interface EmptyRequestBody {
 }
@@ -147,35 +147,35 @@ class FineTuningJobsResource implements OpenAIFineTuningJobsResource {
   }
 
   async retrieve(fineTuningJobID: string): Promise<FineTuningJob> {
-    const body = await this.client.get('/fine_tuning/jobs/' + fineTuningJobID);
+    const body = await this.client.get('/fine_tuning/jobs/' + encodePathParam(fineTuningJobID));
     return JSON.parse(body) as FineTuningJob;
   }
 
   async cancel(fineTuningJobID: string): Promise<FineTuningJob> {
     const requestBody: EmptyRequestBody = {};
-    const body = await this.client.post('/fine_tuning/jobs/' + fineTuningJobID + '/cancel', requestBody);
+    const body = await this.client.post('/fine_tuning/jobs/' + encodePathParam(fineTuningJobID) + '/cancel', requestBody);
     return JSON.parse(body) as FineTuningJob;
   }
 
   async pause(fineTuningJobID: string): Promise<FineTuningJob> {
     const requestBody: EmptyRequestBody = {};
-    const body = await this.client.post('/fine_tuning/jobs/' + fineTuningJobID + '/pause', requestBody);
+    const body = await this.client.post('/fine_tuning/jobs/' + encodePathParam(fineTuningJobID) + '/pause', requestBody);
     return JSON.parse(body) as FineTuningJob;
   }
 
   async resume(fineTuningJobID: string): Promise<FineTuningJob> {
     const requestBody: EmptyRequestBody = {};
-    const body = await this.client.post('/fine_tuning/jobs/' + fineTuningJobID + '/resume', requestBody);
+    const body = await this.client.post('/fine_tuning/jobs/' + encodePathParam(fineTuningJobID) + '/resume', requestBody);
     return JSON.parse(body) as FineTuningJob;
   }
 
   async listEvents(fineTuningJobID: string, params?: FineTuningJobEventListParams): Promise<FineTuningJobEventListResponse> {
-    const body = await this.client.get(buildCursorListPath('/fine_tuning/jobs/' + fineTuningJobID + '/events', params));
+    const body = await this.client.get(buildCursorListPath('/fine_tuning/jobs/' + encodePathParam(fineTuningJobID) + '/events', params));
     return JSON.parse(body) as FineTuningJobEventListResponse;
   }
 
   async listCheckpoints(fineTuningJobID: string, params?: FineTuningJobCheckpointListParams): Promise<FineTuningJobCheckpointListResponse> {
-    const body = await this.client.get(buildCursorListPath('/fine_tuning/jobs/' + fineTuningJobID + '/checkpoints', params));
+    const body = await this.client.get(buildCursorListPath('/fine_tuning/jobs/' + encodePathParam(fineTuningJobID) + '/checkpoints', params));
     return JSON.parse(body) as FineTuningJobCheckpointListResponse;
   }
 }
@@ -198,7 +198,7 @@ class FineTuningCheckpointPermissionsResource implements OpenAIFineTuningCheckpo
   }
 
   async delete(fineTunedModelCheckpoint: string, permissionID: string): Promise<FineTuningCheckpointPermissionDeleted> {
-    const body = await this.client.delete(this.buildBasePath(fineTunedModelCheckpoint) + '/' + encodeURIComponent(permissionID));
+    const body = await this.client.delete(this.buildBasePath(fineTunedModelCheckpoint) + '/' + encodePathParam(permissionID));
     return JSON.parse(body) as FineTuningCheckpointPermissionDeleted;
   }
 
@@ -214,6 +214,6 @@ class FineTuningCheckpointPermissionsResource implements OpenAIFineTuningCheckpo
   }
 
   private buildBasePath(fineTunedModelCheckpoint: string): string {
-    return '/fine_tuning/checkpoints/' + encodeURIComponent(fineTunedModelCheckpoint) + '/permissions';
+    return '/fine_tuning/checkpoints/' + encodePathParam(fineTunedModelCheckpoint) + '/permissions';
   }
 }

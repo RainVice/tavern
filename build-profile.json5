@@ -65,6 +65,18 @@
       ]
     },
     {
+      "name": "tavern_ohos",
+      "srcPath": "./tavern_ohos",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
       "name": "router",
       "srcPath": "./router",
     },

@@ -27,7 +27,7 @@ import { WebhooksResource, type OpenAIWebhooksResource } from './resources/Webho
  * OpenAI SDK 入口。
  *
  * API：所有 OpenAI REST API。
- * 说明：当前先实现 `models.list()`，后续可继续挂载 `responses`、`chat`、`embeddings` 等资源。
+ * 说明：挂载 Models、Responses、Chat、Files、Realtime 等资源入口。
  *
  * 示例：
  * ```ts

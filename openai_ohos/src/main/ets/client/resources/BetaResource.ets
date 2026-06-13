@@ -29,7 +29,7 @@ import type {
 import type { JsonObject } from '../../models/Common';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
 import type { OpenAISSEEvent } from '../core/OpenAISSEParser';
-import { appendCursorQuery, appendStringQuery, buildCursorListPath, buildPathWithQuery } from '../core/RequestUtils';
+import { appendCursorQuery, appendStringQuery, buildCursorListPath, buildPathWithQuery, encodePathParam } from '../core/RequestUtils';
 import type { OpenAIRequestSettings, OpenAIStream } from '../core/Types';
 
 interface EmptyRequestBody {
@@ -126,17 +126,17 @@ class AssistantsResource implements OpenAIAssistantsResource {
   }
 
   async retrieve(assistantID: string): Promise<AssistantObject> {
-    const body = await this.client.get('/assistants/' + assistantID, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.get('/assistants/' + encodePathParam(assistantID), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as AssistantObject;
   }
 
   async update(assistantID: string, params: AssistantUpdateParams): Promise<AssistantObject> {
-    const body = await this.client.post('/assistants/' + assistantID, params, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.post('/assistants/' + encodePathParam(assistantID), params, ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as AssistantObject;
   }
 
   async delete(assistantID: string): Promise<AssistantDeleted> {
-    const body = await this.client.delete('/assistants/' + assistantID, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.delete('/assistants/' + encodePathParam(assistantID), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as AssistantDeleted;
   }
 }
@@ -159,17 +159,17 @@ class ThreadsResource implements OpenAIThreadsResource {
   }
 
   async retrieve(threadID: string): Promise<AssistantThread> {
-    const body = await this.client.get('/threads/' + threadID, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.get('/threads/' + encodePathParam(threadID), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as AssistantThread;
   }
 
   async update(threadID: string, params: ThreadUpdateParams): Promise<AssistantThread> {
-    const body = await this.client.post('/threads/' + threadID, params, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.post('/threads/' + encodePathParam(threadID), params, ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as AssistantThread;
   }
 
   async delete(threadID: string): Promise<AssistantThreadDeleted> {
-    const body = await this.client.delete('/threads/' + threadID, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.delete('/threads/' + encodePathParam(threadID), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as AssistantThreadDeleted;
   }
 
@@ -199,7 +199,7 @@ class ThreadMessagesResource implements OpenAIThreadMessagesResource {
   }
 
   async create(threadID: string, params: MessageCreateParams): Promise<ThreadMessage> {
-    const body = await this.client.post('/threads/' + threadID + '/messages', params, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.post('/threads/' + encodePathParam(threadID) + '/messages', params, ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadMessage;
   }
 
@@ -209,28 +209,29 @@ class ThreadMessagesResource implements OpenAIThreadMessagesResource {
   }
 
   async retrieve(threadID: string, messageID: string): Promise<ThreadMessage> {
-    const body = await this.client.get('/threads/' + threadID + '/messages/' + messageID, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.get('/threads/' + encodePathParam(threadID) + '/messages/' + encodePathParam(messageID), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadMessage;
   }
 
   async update(threadID: string, messageID: string, params: MessageUpdateParams): Promise<ThreadMessage> {
-    const body = await this.client.post('/threads/' + threadID + '/messages/' + messageID, params, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.post('/threads/' + encodePathParam(threadID) + '/messages/' + encodePathParam(messageID), params, ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadMessage;
   }
 
   async delete(threadID: string, messageID: string): Promise<ThreadMessageDeleted> {
-    const body = await this.client.delete('/threads/' + threadID + '/messages/' + messageID, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.delete('/threads/' + encodePathParam(threadID) + '/messages/' + encodePathParam(messageID), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadMessageDeleted;
   }
 
   private buildListPath(threadID: string, params?: ThreadMessageListParams): string {
+    const encodedThreadID = encodePathParam(threadID);
     if (params === undefined) {
-      return '/threads/' + threadID + '/messages';
+      return '/threads/' + encodedThreadID + '/messages';
     }
     const query: Array<string> = [];
     appendStringQuery(query, 'run_id', params.run_id);
     appendCursorQuery(query, params);
-    return buildPathWithQuery('/threads/' + threadID + '/messages', query);
+    return buildPathWithQuery('/threads/' + encodedThreadID + '/messages', query);
   }
 }
 
@@ -244,46 +245,46 @@ class ThreadRunsResource implements OpenAIThreadRunsResource {
   }
 
   async create(threadID: string, params: RunCreateParams): Promise<ThreadRun> {
-    const body = await this.client.post('/threads/' + threadID + '/runs', params, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.post('/threads/' + encodePathParam(threadID) + '/runs', params, ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadRun;
   }
 
   async list(threadID: string, params?: ThreadRunListParams): Promise<ThreadRunListResponse> {
-    const body = await this.client.get(buildCursorListPath('/threads/' + threadID + '/runs', params), ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.get(buildCursorListPath('/threads/' + encodePathParam(threadID) + '/runs', params), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadRunListResponse;
   }
 
   async retrieve(threadID: string, runID: string): Promise<ThreadRun> {
-    const body = await this.client.get('/threads/' + threadID + '/runs/' + runID, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.get('/threads/' + encodePathParam(threadID) + '/runs/' + encodePathParam(runID), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadRun;
   }
 
   async update(threadID: string, runID: string, params: ThreadUpdateParams): Promise<ThreadRun> {
-    const body = await this.client.post('/threads/' + threadID + '/runs/' + runID, params, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.post('/threads/' + encodePathParam(threadID) + '/runs/' + encodePathParam(runID), params, ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadRun;
   }
 
   async cancel(threadID: string, runID: string): Promise<ThreadRun> {
     const requestBody: EmptyRequestBody = {};
-    const body = await this.client.post('/threads/' + threadID + '/runs/' + runID + '/cancel', requestBody, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.post('/threads/' + encodePathParam(threadID) + '/runs/' + encodePathParam(runID) + '/cancel', requestBody, ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadRun;
   }
 
   async submitToolOutputs(threadID: string, runID: string, params: RunSubmitToolOutputsParams): Promise<ThreadRun> {
-    const body = await this.client.post('/threads/' + threadID + '/runs/' + runID + '/submit_tool_outputs', params, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.post('/threads/' + encodePathParam(threadID) + '/runs/' + encodePathParam(runID) + '/submit_tool_outputs', params, ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as ThreadRun;
   }
 
   createStream(threadID: string, params: RunCreateParams, handlers: AssistantStreamHandlers, options?: OpenAIRequestSettings): OpenAIStream {
     params.stream = true;
-    return this.client.streamPost('/threads/' + threadID + '/runs', params, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
+    return this.client.streamPost('/threads/' + encodePathParam(threadID) + '/runs', params, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
       handlers.onEvent(buildAssistantStreamEvent(event));
     }, handlers.onError, handlers.onDone, options);
   }
 
   submitToolOutputsStream(threadID: string, runID: string, params: RunSubmitToolOutputsParams, handlers: AssistantStreamHandlers, options?: OpenAIRequestSettings): OpenAIStream {
     params.stream = true;
-    return this.client.streamPost('/threads/' + threadID + '/runs/' + runID + '/submit_tool_outputs', params, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
+    return this.client.streamPost('/threads/' + encodePathParam(threadID) + '/runs/' + encodePathParam(runID) + '/submit_tool_outputs', params, ASSISTANTS_BETA_HEADERS, (event: OpenAISSEEvent) => {
       handlers.onEvent(buildAssistantStreamEvent(event));
     }, handlers.onError, handlers.onDone, options);
   }
@@ -297,13 +298,13 @@ class RunStepsResource implements OpenAIRunStepsResource {
   }
 
   async list(threadID: string, runID: string, params?: RunStepListParams): Promise<RunStepListResponse> {
-    const path = '/threads/' + threadID + '/runs/' + runID + '/steps';
+    const path = '/threads/' + encodePathParam(threadID) + '/runs/' + encodePathParam(runID) + '/steps';
     const body = await this.client.get(buildCursorListPath(path, params), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as RunStepListResponse;
   }
 
   async retrieve(threadID: string, runID: string, stepID: string): Promise<RunStep> {
-    const body = await this.client.get('/threads/' + threadID + '/runs/' + runID + '/steps/' + stepID, ASSISTANTS_BETA_HEADERS);
+    const body = await this.client.get('/threads/' + encodePathParam(threadID) + '/runs/' + encodePathParam(runID) + '/steps/' + encodePathParam(stepID), ASSISTANTS_BETA_HEADERS);
     return JSON.parse(body) as RunStep;
   }
 }

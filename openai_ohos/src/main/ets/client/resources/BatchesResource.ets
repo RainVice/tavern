@@ -1,5 +1,6 @@
 import type { BatchCreateParams, BatchListResponse, BatchObject } from '../../models/Batches';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
+import { encodePathParam } from '../core/RequestUtils';
 
 interface EmptyRequestBody {
 }
@@ -57,7 +58,7 @@ export class BatchesResource implements OpenAIBatchesResource {
   }
 
   async retrieve(batchID: string): Promise<BatchObject> {
-    const body = await this.client.get('/batches/' + batchID);
+    const body = await this.client.get('/batches/' + encodePathParam(batchID));
     return JSON.parse(body) as BatchObject;
   }
 
@@ -68,7 +69,7 @@ export class BatchesResource implements OpenAIBatchesResource {
 
   async cancel(batchID: string): Promise<BatchObject> {
     const requestBody: EmptyRequestBody = {};
-    const body = await this.client.post('/batches/' + batchID + '/cancel', requestBody);
+    const body = await this.client.post('/batches/' + encodePathParam(batchID) + '/cancel', requestBody);
     return JSON.parse(body) as BatchObject;
   }
 }

@@ -1,6 +1,6 @@
 {
   "module": {
-    "name": "library_test",
+    "name": "openai_ohos_test",
     "type": "feature",
     "deviceTypes": [
       "default"

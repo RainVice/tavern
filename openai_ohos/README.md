@@ -5,6 +5,12 @@ HarmonyOS/ArkTS 版 OpenAI SDK 当前提供两层能力：
 - `models/*`：核心 OpenAI API 的输入/输出模型对象，字段带中文说明和对应 API 标注。
 - `client/*`：可真实发起请求的 SDK 入口，使用方式尽量贴近官方 SDK。
 
+## 官方版本对齐
+
+- 当前已对齐官方 npm 包：`openai@6.42.0`，对应官方仓库标签 `openai-node v6.42.0`。
+- 官方发布时间：`2026-06-03`。
+- 本次对齐重点：`Responses` 和 `Chat Completions` 的 `moderation` moderated completions 请求/响应字段。
+
 ## 基础用法
 
 ```ts
@@ -357,5 +363,5 @@ await client.completions.create({
 
 - 当前请求层覆盖 JSON 请求、multipart 上传、普通 GET、DELETE、二进制响应转 base64。
 - 默认会对 408、409、429 和 5xx 临时错误自动重试 2 次，可通过 `maxRetries` 调整。
-- SSE streaming、Realtime WebSocket/WebRTC transport、文件内容落盘下载还未实现；`files.content()` 已可读取文本内容。
+- 已提供 SSE streaming、Realtime WebSocket/WebRTC transport、`files.content()` 文本读取和 `files.download()` 文件落盘。
 - HAR 已声明 `ohos.permission.INTERNET`；如果宿主应用没有合并权限，需要在 entry 模块也声明。

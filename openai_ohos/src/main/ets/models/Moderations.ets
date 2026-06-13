@@ -121,6 +121,158 @@ export type ModerationCategories = Record<string, boolean>;
 export type ModerationCategoryScores = Record<string, number>;
 
 /**
+ * Moderation 类别适用输入类型。
+ *
+ * API：Responses moderated completions、Chat Completions moderated completions。
+ * 说明：官方会标记每个分类分数对应文本、图片或二者。
+ */
+export type ModerationAppliedInputType = 'text' | 'image';
+
+/**
+ * Moderation 类别适用输入类型映射。
+ *
+ * API：Responses moderated completions、Chat Completions moderated completions。
+ * 说明：键名由官方安全分类定义，值表示该分数参考的输入模态。
+ */
+export type ModerationCategoryAppliedInputTypes = Record<string, Array<ModerationAppliedInputType>>;
+
+/**
+ * Moderated completions 成功结果。
+ *
+ * API：Responses moderated completions、Chat Completions moderated completions。
+ * 说明：用于描述输入或输出一侧的审核结果。
+ */
+export interface ModerationResult {
+  /**
+   * 类别布尔结果。
+   *
+   * API：Moderated completions。
+   * 说明：键名由官方安全分类定义。
+   */
+  categories: ModerationCategories;
+
+  /**
+   * 类别适用输入类型。
+   *
+   * API：Moderated completions。
+   * 说明：表示每个分类分数对应的输入模态。
+   */
+  category_applied_input_types: ModerationCategoryAppliedInputTypes;
+
+  /**
+   * 类别分数。
+   *
+   * API：Moderated completions。
+   * 说明：分数越高表示越可能命中该类别。
+   */
+  category_scores: ModerationCategoryScores;
+
+  /**
+   * 是否整体违规。
+   *
+   * API：Moderated completions。
+   * 说明：任一关键类别命中时通常为 true。
+   */
+  flagged: boolean;
+
+  /**
+   * 生成该审核结果的模型。
+   *
+   * API：Moderated completions。
+   * 说明：例如 `omni-moderation-latest`。
+   */
+  model: string;
+
+  /**
+   * 结果类型。
+   *
+   * API：Moderated completions。
+   * 说明：成功审核结果固定为 `moderation_result`。
+   */
+  type: 'moderation_result';
+}
+
+/**
+ * Moderated completions 审核错误。
+ *
+ * API：Responses moderated completions、Chat Completions moderated completions。
+ * 说明：输入或输出审核失败时返回。
+ */
+export interface ModerationError {
+  /**
+   * 错误代码。
+   *
+   * API：Moderated completions。
+   * 说明：由服务端返回。
+   */
+  code: string;
+
+  /**
+   * 错误信息。
+   *
+   * API：Moderated completions。
+   * 说明：用于排查审核失败原因。
+   */
+  message: string;
+
+  /**
+   * 结果类型。
+   *
+   * API：Moderated completions。
+   * 说明：失败时固定为 `error`。
+   */
+  type: 'error';
+}
+
+/**
+ * Responses moderated completions 单侧审核结果。
+ *
+ * API：Responses moderated completions。
+ * 说明：input/output 各自可能是成功审核结果，也可能是审核错误。
+ */
+export type ModerationOutcome = ModerationResult | ModerationError;
+
+/**
+ * Chat Completions moderated completions 成功结果集合。
+ *
+ * API：Chat Completions moderated completions。
+ * 说明：Chat 接口会把一侧审核结果包成 `moderation_results` 对象。
+ */
+export interface ModerationResults {
+  /**
+   * 使用的审核模型。
+   *
+   * API：Chat Completions moderated completions。
+   * 说明：例如 `omni-moderation-latest`。
+   */
+  model: string;
+
+  /**
+   * 审核结果列表。
+   *
+   * API：Chat Completions moderated completions。
+   * 说明：顺序与对应输入或输出内容一致。
+   */
+  results: Array<ModerationResult>;
+
+  /**
+   * 结果集合类型。
+   *
+   * API：Chat Completions moderated completions。
+   * 说明：固定为 `moderation_results`。
+   */
+  type: 'moderation_results';
+}
+
+/**
+ * Chat Completions moderated completions 单侧审核结果。
+ *
+ * API：Chat Completions moderated completions。
+ * 说明：input/output 各自可能是成功结果集合，也可能是审核错误。
+ */
+export type ModerationResultsOutcome = ModerationResults | ModerationError;
+
+/**
  * Moderation 单条结果。
  *
  * API：Moderations 响应。

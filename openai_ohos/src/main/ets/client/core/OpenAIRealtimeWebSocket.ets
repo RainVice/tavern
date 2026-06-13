@@ -30,13 +30,25 @@ export class OpenAIRealtimeWebSocket implements OpenAIStream {
     const requestOptions: webSocket.WebSocketRequestOptions = {
       header: this.buildHeaders(),
     };
-    await this.socket.connect(this.buildURL(), requestOptions);
+    try {
+      await this.socket.connect(this.buildURL(), requestOptions);
+    } catch (error) {
+      const message = this.stringifyError(error);
+      this.notifyError(message);
+      throw new Error(message);
+    }
     return this;
   }
 
   /** 发送客户端事件。API：Realtime WebSocket。说明：例如 session.update、response.create。 */
   async sendEvent(event: RealtimeClientEvent): Promise<void> {
-    await this.socket.send(JSON.stringify(event));
+    try {
+      await this.socket.send(JSON.stringify(event));
+    } catch (error) {
+      const message = this.stringifyError(error);
+      this.notifyError(message);
+      throw new Error(message);
+    }
   }
 
   /** 关闭连接。API：Realtime WebSocket。说明：释放底层 WebSocket。 */
@@ -61,12 +73,14 @@ export class OpenAIRealtimeWebSocket implements OpenAIStream {
         return;
       }
       const text = typeof data === 'string' ? data : decoder.decodeToString(new Uint8Array(data));
-      this.options.handlers.onEvent(JSON.parse(text) as RealtimeServerEvent);
+      try {
+        this.options.handlers.onEvent(JSON.parse(text) as RealtimeServerEvent);
+      } catch (error) {
+        this.notifyError(this.stringifyError(error));
+      }
     });
     this.socket.on('error', (err: BusinessError) => {
-      if (this.options.handlers !== undefined && this.options.handlers.onError !== undefined) {
-        this.options.handlers.onError(err.message);
-      }
+      this.notifyError(err.message);
     });
     this.socket.on('close', (_err: BusinessError, _result: webSocket.CloseResult) => {
       if (this.options.handlers !== undefined && this.options.handlers.onClose !== undefined) {
@@ -95,5 +109,18 @@ export class OpenAIRealtimeWebSocket implements OpenAIStream {
       }
     }
     return headers;
+  }
+
+  private notifyError(message: string): void {
+    if (this.options.handlers !== undefined && this.options.handlers.onError !== undefined) {
+      this.options.handlers.onError(message);
+    }
+  }
+
+  private stringifyError(error: Object): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return String(error);
   }
 }

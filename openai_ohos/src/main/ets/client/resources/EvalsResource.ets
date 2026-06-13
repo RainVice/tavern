@@ -15,7 +15,7 @@ import type {
   EvalUpdateParams,
 } from '../../models/Evals';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
-import { appendCursorQuery, appendStringQuery, buildPathWithQuery } from '../core/RequestUtils';
+import { appendCursorQuery, appendStringQuery, buildPathWithQuery, encodePathParam } from '../core/RequestUtils';
 
 /**
  * Evals 资源入口。
@@ -80,17 +80,17 @@ export class EvalsResource implements OpenAIEvalsResource {
   }
 
   async retrieve(evalID: string): Promise<EvalObject> {
-    const body = await this.client.get('/evals/' + evalID);
+    const body = await this.client.get('/evals/' + encodePathParam(evalID));
     return JSON.parse(body) as EvalObject;
   }
 
   async update(evalID: string, params: EvalUpdateParams): Promise<EvalObject> {
-    const body = await this.client.post('/evals/' + evalID, params);
+    const body = await this.client.post('/evals/' + encodePathParam(evalID), params);
     return JSON.parse(body) as EvalObject;
   }
 
   async delete(evalID: string): Promise<EvalDeleted> {
-    const body = await this.client.delete('/evals/' + evalID);
+    const body = await this.client.delete('/evals/' + encodePathParam(evalID));
     return JSON.parse(body) as EvalDeleted;
   }
 }
@@ -105,22 +105,22 @@ class EvalRunsResource implements OpenAIEvalRunsResource {
   }
 
   async create(evalID: string, params: EvalRunCreateParams): Promise<EvalRun> {
-    const body = await this.client.post('/evals/' + evalID + '/runs', params);
+    const body = await this.client.post('/evals/' + encodePathParam(evalID) + '/runs', params);
     return JSON.parse(body) as EvalRun;
   }
 
   async list(evalID: string, params?: EvalRunListParams): Promise<EvalRunListResponse> {
-    const body = await this.client.get(buildEvalRunListPath('/evals/' + evalID + '/runs', params));
+    const body = await this.client.get(buildEvalRunListPath('/evals/' + encodePathParam(evalID) + '/runs', params));
     return JSON.parse(body) as EvalRunListResponse;
   }
 
   async retrieve(evalID: string, runID: string): Promise<EvalRun> {
-    const body = await this.client.get('/evals/' + evalID + '/runs/' + runID);
+    const body = await this.client.get('/evals/' + encodePathParam(evalID) + '/runs/' + encodePathParam(runID));
     return JSON.parse(body) as EvalRun;
   }
 
   async delete(evalID: string, runID: string): Promise<EvalRunDeleted> {
-    const body = await this.client.delete('/evals/' + evalID + '/runs/' + runID);
+    const body = await this.client.delete('/evals/' + encodePathParam(evalID) + '/runs/' + encodePathParam(runID));
     return JSON.parse(body) as EvalRunDeleted;
   }
 }
@@ -133,13 +133,13 @@ class EvalRunOutputItemsResource implements OpenAIEvalRunOutputItemsResource {
   }
 
   async list(evalID: string, runID: string, params?: EvalRunOutputItemListParams): Promise<EvalRunOutputItemListResponse> {
-    const path = '/evals/' + evalID + '/runs/' + runID + '/output_items';
+    const path = '/evals/' + encodePathParam(evalID) + '/runs/' + encodePathParam(runID) + '/output_items';
     const body = await this.client.get(buildEvalOutputItemListPath(path, params));
     return JSON.parse(body) as EvalRunOutputItemListResponse;
   }
 
   async retrieve(evalID: string, runID: string, outputItemID: string): Promise<EvalRunOutputItem> {
-    const body = await this.client.get('/evals/' + evalID + '/runs/' + runID + '/output_items/' + outputItemID);
+    const body = await this.client.get('/evals/' + encodePathParam(evalID) + '/runs/' + encodePathParam(runID) + '/output_items/' + encodePathParam(outputItemID));
     return JSON.parse(body) as EvalRunOutputItem;
   }
 }

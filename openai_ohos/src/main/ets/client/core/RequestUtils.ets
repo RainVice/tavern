@@ -22,6 +22,16 @@ export function buildPathWithQuery(path: string, query: Array<string>): string {
 }
 
 /**
+ * 编码 URL path 参数。
+ *
+ * API：所有包含 `{id}` 的 REST API。
+ * 说明：OpenAI 的部分 ID 会包含 `:` 等特殊字符，统一编码可以避免路径被错误解析。
+ */
+export function encodePathParam(value: string): string {
+  return encodeURIComponent(value);
+}
+
+/**
  * 构建游标分页路径。
  *
  * API：所有游标分页列表 API。

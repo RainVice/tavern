@@ -10,14 +10,14 @@ import type {
   FileObject,
 } from '../../models/Files';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
-import { appendCursorQuery, appendStringQuery, buildFilePart, buildPathWithQuery, buildTextPart } from '../core/RequestUtils';
+import { appendCursorQuery, appendStringQuery, buildFilePart, buildPathWithQuery, buildTextPart, encodePathParam } from '../core/RequestUtils';
 import type { OpenAIMultipartFormData } from '../core/Types';
 
 /**
  * Files 资源入口。
  *
  * API：`/v1/files`。
- * 说明：当前实现列表、获取和删除；multipart 上传需要单独的文件上传 transport 后续补齐。
+ * 说明：覆盖 multipart 上传、列表、获取、删除、内容读取和文件落盘下载。
  */
 export interface OpenAIFilesResource {
   /**
@@ -71,11 +71,35 @@ export interface OpenAIFilesResource {
 
 class HarmonyFileContentWriter implements FileContentWriter {
   write(destinationPath: string, contentBody: string): number {
-    const file = fileIo.openSync(destinationPath, fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC | fileIo.OpenMode.WRITE_ONLY);
+    const file = this.openFile(destinationPath);
     try {
-      return fileIo.writeSync(file.fd, contentBody);
+      return this.writeContent(file.fd, contentBody);
     } finally {
+      this.closeFile(file);
+    }
+  }
+
+  private openFile(destinationPath: string): fileIo.File {
+    try {
+      return fileIo.openSync(destinationPath, fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC | fileIo.OpenMode.WRITE_ONLY);
+    } catch (error) {
+      throw new Error('打开文件失败: ' + String(error));
+    }
+  }
+
+  private writeContent(fd: number, contentBody: string): number {
+    try {
+      return fileIo.writeSync(fd, contentBody);
+    } catch (error) {
+      throw new Error('写入文件失败: ' + String(error));
+    }
+  }
+
+  private closeFile(file: fileIo.File): void {
+    try {
       fileIo.closeSync(file);
+    } catch (error) {
+      throw new Error('关闭文件失败: ' + String(error));
     }
   }
 }
@@ -101,17 +125,17 @@ export class FilesResource implements OpenAIFilesResource {
   }
 
   async retrieve(fileID: string): Promise<FileObject> {
-    const body = await this.client.get('/files/' + fileID);
+    const body = await this.client.get('/files/' + encodePathParam(fileID));
     return JSON.parse(body) as FileObject;
   }
 
   async delete(fileID: string): Promise<FileDeleted> {
-    const body = await this.client.delete('/files/' + fileID);
+    const body = await this.client.delete('/files/' + encodePathParam(fileID));
     return JSON.parse(body) as FileDeleted;
   }
 
   async content(fileID: string): Promise<string> {
-    return await this.client.get('/files/' + fileID + '/content');
+    return await this.client.get('/files/' + encodePathParam(fileID) + '/content');
   }
 
   async download(fileID: string, destinationPath: string, options?: FileDownloadOptions): Promise<FileDownloadResult> {

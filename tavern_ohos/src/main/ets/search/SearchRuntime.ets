@@ -1,0 +1,424 @@
+import { EventBus } from '../runtime/EventBus';
+import type {
+  SearchDocument,
+  SearchDocumentMetadata,
+  SearchFilterEntity,
+  SearchFilterInput,
+  SearchHit,
+  SearchIndexedPayload,
+  SearchQuery,
+  SearchRemovedPayload,
+  SearchResult,
+} from './SearchModels';
+
+export class SearchRuntime {
+  private events: EventBus;
+  private documents: Map<string, SearchDocument> = new Map<string, SearchDocument>();
+
+  constructor(events: EventBus) {
+    this.events = events;
+  }
+
+  upsertDocument(document: SearchDocument): SearchDocument {
+    const copy = this.copyDocument(document);
+    this.documents.set(copy.id, copy);
+    const payload: SearchIndexedPayload = {
+      document: this.copyDocument(copy),
+    };
+    this.events.publish<SearchIndexedPayload>('search.indexed', payload);
+    return this.copyDocument(copy);
+  }
+
+  removeDocument(documentId: string): boolean {
+    const removed = this.documents.delete(documentId);
+    if (removed) {
+      const payload: SearchRemovedPayload = {
+        documentId: documentId,
+      };
+      this.events.publish<SearchRemovedPayload>('search.removed', payload);
+    }
+    return removed;
+  }
+
+  searchText(text: string): Array<SearchHit> {
+    return this.search({
+      text: text,
+      domains: new Array<string>(),
+      tags: new Array<string>(),
+      metadataKey: '',
+      metadataValue: '',
+      limit: 50,
+    });
+  }
+
+  isFilterState(left: string, right: string): boolean {
+    return this.normalizeFilterState(left) === this.normalizeFilterState(right);
+  }
+
+  hasAnyFilter(filter: SearchFilterInput): boolean {
+    return filter.search.length > 0 ||
+      filter.selectedTags.length > 0 ||
+      filter.excludedTags.length > 0 ||
+      filter.favoriteOnly ||
+      filter.groupOnly ||
+      filter.folderOnly;
+  }
+
+  filterEntities(entities: Array<SearchFilterEntity>, filter: SearchFilterInput): Array<SearchFilterEntity> {
+    const result = new Array<SearchFilterEntity>();
+    for (let index = 0; index < entities.length; index += 1) {
+      if (this.matchesEntityFilter(entities[index], filter)) {
+        result.push(this.copyFilterEntity(entities[index]));
+      }
+    }
+    result.sort((left: SearchFilterEntity, right: SearchFilterEntity) => {
+      const leftScore = this.scoreFilterEntity(left, filter.search);
+      const rightScore = this.scoreFilterEntity(right, filter.search);
+      if (leftScore !== rightScore) {
+        return rightScore - leftScore;
+      }
+      return left.title.localeCompare(right.title);
+    });
+    return result;
+  }
+
+  searchByTag(tag: string): Array<SearchHit> {
+    return this.search({
+      text: '',
+      domains: new Array<string>(),
+      tags: [tag],
+      metadataKey: '',
+      metadataValue: '',
+      limit: 50,
+    });
+  }
+
+  searchMetadata(key: string, value: string): Array<SearchHit> {
+    return this.search({
+      text: '',
+      domains: new Array<string>(),
+      tags: new Array<string>(),
+      metadataKey: key,
+      metadataValue: value,
+      limit: 50,
+    });
+  }
+
+  search(query: SearchQuery): Array<SearchHit> {
+    const hits = new Array<SearchHit>();
+    const values = Array.from(this.documents.values());
+    for (let index = 0; index < values.length; index += 1) {
+      const document = values[index];
+      if (!this.matchesDomains(document, query.domains)) {
+        continue;
+      }
+      if (!this.matchesTags(document, query.tags)) {
+        continue;
+      }
+      if (!this.matchesMetadata(document, query.metadataKey, query.metadataValue)) {
+        continue;
+      }
+      const score = this.scoreDocument(document, query.text, query.tags, query.metadataKey, query.metadataValue);
+      if (score <= 0) {
+        continue;
+      }
+      hits.push(this.toHit(document, score, query.text));
+    }
+    hits.sort((left: SearchHit, right: SearchHit) => {
+      if (left.score !== right.score) {
+        return right.score - left.score;
+      }
+      return left.documentId.localeCompare(right.documentId);
+    });
+    const limited = this.applyLimit(hits, query.limit);
+    const result: SearchResult = {
+      query: this.copyQuery(query),
+      total: hits.length,
+      hits: this.copyHits(limited),
+    };
+    this.events.publish<SearchResult>('search.result', result);
+    return limited;
+  }
+
+  listDocuments(): Array<SearchDocument> {
+    const result = new Array<SearchDocument>();
+    const values = Array.from(this.documents.values());
+    values.sort((left: SearchDocument, right: SearchDocument) => left.id.localeCompare(right.id));
+    for (let index = 0; index < values.length; index += 1) {
+      result.push(this.copyDocument(values[index]));
+    }
+    return result;
+  }
+
+  private matchesDomains(document: SearchDocument, domains: Array<string>): boolean {
+    if (domains.length === 0) {
+      return true;
+    }
+    for (let index = 0; index < domains.length; index += 1) {
+      if (document.domain === domains[index]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private matchesEntityFilter(entity: SearchFilterEntity, filter: SearchFilterInput): boolean {
+    if (filter.favoriteOnly && !entity.favorite) {
+      return false;
+    }
+    if (filter.groupOnly && !entity.group) {
+      return false;
+    }
+    if (filter.folderOnly && !entity.folder) {
+      return false;
+    }
+    for (let index = 0; index < filter.excludedTags.length; index += 1) {
+      if (this.entityHasTag(entity, filter.excludedTags[index])) {
+        return false;
+      }
+    }
+    for (let index = 0; index < filter.selectedTags.length; index += 1) {
+      if (!this.entityHasTag(entity, filter.selectedTags[index])) {
+        return false;
+      }
+    }
+    if (filter.search.length === 0) {
+      return true;
+    }
+    return this.scoreFilterEntity(entity, filter.search) > 0;
+  }
+
+  private entityHasTag(entity: SearchFilterEntity, tag: string): boolean {
+    for (let index = 0; index < entity.tags.length; index += 1) {
+      if (entity.tags[index] === tag) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private scoreFilterEntity(entity: SearchFilterEntity, search: string): number {
+    const needle = search.toLowerCase();
+    if (needle.length === 0) {
+      return 1;
+    }
+    let score = 0;
+    if (entity.title.toLowerCase().indexOf(needle) >= 0) {
+      score += 5;
+    }
+    if (entity.body.toLowerCase().indexOf(needle) >= 0) {
+      score += 2;
+    }
+    for (let index = 0; index < entity.tags.length; index += 1) {
+      if (entity.tags[index].toLowerCase().indexOf(needle) >= 0) {
+        score += 3;
+      }
+    }
+    return score;
+  }
+
+  private copyFilterEntity(entity: SearchFilterEntity): SearchFilterEntity {
+    return {
+      id: entity.id,
+      type: entity.type,
+      title: entity.title,
+      body: entity.body,
+      tags: this.copyStrings(entity.tags),
+      favorite: entity.favorite,
+      group: entity.group,
+      folder: entity.folder,
+    };
+  }
+
+  private normalizeFilterState(value: string): string {
+    if (value === 'selected') {
+      return 'SELECTED';
+    }
+    if (value === 'excluded') {
+      return 'EXCLUDED';
+    }
+    if (value === 'undefined') {
+      return 'UNDEFINED';
+    }
+    return value;
+  }
+
+  private matchesTags(document: SearchDocument, tags: Array<string>): boolean {
+    if (tags.length === 0) {
+      return true;
+    }
+    for (let tagIndex = 0; tagIndex < tags.length; tagIndex += 1) {
+      if (!this.hasTag(document, tags[tagIndex])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private matchesMetadata(document: SearchDocument, key: string, value: string): boolean {
+    if (key.length === 0) {
+      return true;
+    }
+    for (let index = 0; index < document.metadata.length; index += 1) {
+      const item = document.metadata[index];
+      if (item.key === key && (value.length === 0 || item.value === value)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private scoreDocument(
+    document: SearchDocument,
+    text: string,
+    tags: Array<string>,
+    metadataKey: string,
+    metadataValue: string,
+  ): number {
+    let score = 0;
+    const needle = text.toLowerCase();
+    if (needle.length > 0) {
+      const title = document.title.toLowerCase();
+      const body = document.body.toLowerCase();
+      const path = document.path.toLowerCase();
+      if (title.indexOf(needle) >= 0) {
+        score += 5;
+      }
+      if (body.indexOf(needle) >= 0) {
+        score += 2;
+      }
+      if (path.indexOf(needle) >= 0) {
+        score += 1;
+      }
+      for (let index = 0; index < document.tags.length; index += 1) {
+        if (document.tags[index].toLowerCase().indexOf(needle) >= 0) {
+          score += 3;
+        }
+      }
+      for (let index = 0; index < document.metadata.length; index += 1) {
+        if (document.metadata[index].value.toLowerCase().indexOf(needle) >= 0) {
+          score += 1;
+        }
+      }
+    }
+    if (tags.length > 0) {
+      score += tags.length * 3;
+    }
+    if (metadataKey.length > 0) {
+      score += metadataValue.length > 0 ? 2 : 1;
+    }
+    if (text.length === 0 && tags.length === 0 && metadataKey.length === 0) {
+      score = 1;
+    }
+    return score;
+  }
+
+  private hasTag(document: SearchDocument, tag: string): boolean {
+    for (let index = 0; index < document.tags.length; index += 1) {
+      if (document.tags[index] === tag) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private toHit(document: SearchDocument, score: number, queryText: string): SearchHit {
+    return {
+      documentId: document.id,
+      domain: document.domain,
+      title: document.title,
+      snippet: this.makeSnippet(document, queryText),
+      score: score,
+      path: document.path,
+      tags: this.copyStrings(document.tags),
+      metadata: this.copyMetadata(document.metadata),
+    };
+  }
+
+  private makeSnippet(document: SearchDocument, queryText: string): string {
+    if (queryText.length === 0) {
+      return document.body.length > 80 ? document.body.substring(0, 80) : document.body;
+    }
+    const lower = document.body.toLowerCase();
+    const index = lower.indexOf(queryText.toLowerCase());
+    if (index < 0) {
+      return document.body.length > 80 ? document.body.substring(0, 80) : document.body;
+    }
+    const start = Math.max(0, index - 20);
+    const end = Math.min(document.body.length, index + queryText.length + 40);
+    return document.body.substring(start, end);
+  }
+
+  private applyLimit(hits: Array<SearchHit>, limit: number): Array<SearchHit> {
+    const max = limit <= 0 ? hits.length : Math.min(limit, hits.length);
+    const result = new Array<SearchHit>();
+    for (let index = 0; index < max; index += 1) {
+      result.push(this.copyHit(hits[index]));
+    }
+    return result;
+  }
+
+  private copyHits(hits: Array<SearchHit>): Array<SearchHit> {
+    const result = new Array<SearchHit>();
+    for (let index = 0; index < hits.length; index += 1) {
+      result.push(this.copyHit(hits[index]));
+    }
+    return result;
+  }
+
+  private copyHit(hit: SearchHit): SearchHit {
+    return {
+      documentId: hit.documentId,
+      domain: hit.domain,
+      title: hit.title,
+      snippet: hit.snippet,
+      score: hit.score,
+      path: hit.path,
+      tags: this.copyStrings(hit.tags),
+      metadata: this.copyMetadata(hit.metadata),
+    };
+  }
+
+  private copyQuery(query: SearchQuery): SearchQuery {
+    return {
+      text: query.text,
+      domains: this.copyStrings(query.domains),
+      tags: this.copyStrings(query.tags),
+      metadataKey: query.metadataKey,
+      metadataValue: query.metadataValue,
+      limit: query.limit,
+    };
+  }
+
+  private copyDocument(document: SearchDocument): SearchDocument {
+    return {
+      id: document.id,
+      domain: document.domain,
+      title: document.title,
+      body: document.body,
+      tags: this.copyStrings(document.tags),
+      path: document.path,
+      metadata: this.copyMetadata(document.metadata),
+      updatedAt: document.updatedAt,
+    };
+  }
+
+  private copyMetadata(metadata: Array<SearchDocumentMetadata>): Array<SearchDocumentMetadata> {
+    const result = new Array<SearchDocumentMetadata>();
+    for (let index = 0; index < metadata.length; index += 1) {
+      result.push({
+        key: metadata[index].key,
+        value: metadata[index].value,
+      });
+    }
+    return result;
+  }
+
+  private copyStrings(values: Array<string>): Array<string> {
+    const result = new Array<string>();
+    for (let index = 0; index < values.length; index += 1) {
+      result.push(values[index]);
+    }
+    return result;
+  }
+}

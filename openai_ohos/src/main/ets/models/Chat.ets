@@ -1,4 +1,5 @@
 import type { CompletionUsage, CursorPageParams, JsonObject, Metadata, OpenAIListResponse, OpenAIModel } from './Common';
+import type { ModerationResultsOutcome } from './Moderations';
 
 /**
  * Chat Completions 常见模型 ID。
@@ -233,6 +234,46 @@ export interface ChatCompletionResponseFormat {
 }
 
 /**
+ * Chat Completions moderated completions 配置。
+ *
+ * API：`POST /v1/chat/completions`。
+ * 说明：开启后服务端会审核请求输入和生成输出。
+ */
+export interface ChatCompletionModerationConfig {
+  /**
+   * 审核模型。
+   *
+   * API：`POST /v1/chat/completions`。
+   * 说明：例如 `omni-moderation-latest`。
+   */
+  model: string;
+}
+
+/**
+ * Chat Completions moderated completions 结果。
+ *
+ * API：Chat Completions 响应和流式 chunk。
+ * 说明：包含输入和输出两侧的审核结果集合或审核错误。
+ */
+export interface ChatCompletionModeration {
+  /**
+   * 输入审核结果。
+   *
+   * API：Chat Completions。
+   * 说明：可能是成功审核结果集合，也可能是审核错误。
+   */
+  input: ModerationResultsOutcome;
+
+  /**
+   * 输出审核结果。
+   *
+   * API：Chat Completions。
+   * 说明：可能是成功审核结果集合，也可能是审核错误。
+   */
+  output: ModerationResultsOutcome;
+}
+
+/**
  * 创建 Chat Completion 请求。
  *
  * API：`POST /v1/chat/completions`。
@@ -294,6 +335,14 @@ export interface ChatCompletionCreateParams {
    * 说明：通常为 `text`，支持音频的模型可请求 `audio`。
    */
   modalities?: Array<'text' | 'audio'> | null;
+
+  /**
+   * Moderated completions 配置。
+   *
+   * API：`POST /v1/chat/completions`。
+   * 说明：开启后服务端会审核请求输入和生成输出。
+   */
+  moderation?: ChatCompletionModerationConfig | null;
 
   /**
    * 生成候选数量。
@@ -624,6 +673,14 @@ export interface ChatCompletion {
   choices: Array<ChatCompletionChoice>;
 
   /**
+   * Moderated completions 审核结果。
+   *
+   * API：Chat Completions 响应。
+   * 说明：仅在请求传入 moderation 配置时返回。
+   */
+  moderation?: ChatCompletionModeration | null;
+
+  /**
    * token 用量。
    *
    * API：Chat Completions 响应。
@@ -733,42 +790,13 @@ export interface ChatCompletionChunk {
    * API：Chat Completions streaming。
    * 说明：包含本次事件新增的 delta。
    */
-  choices: Array<ChatCompletionChunkChoice>;
-}
+  choices: Array<JsonObject>;
 
-/**
- * Chat completion 流式候选。
- *
- * API：Chat Completions streaming。
- * 说明：`choices[].delta` 中携带本次新增文本。
- */
-export interface ChatCompletionChunkChoice {
-  /** 候选索引。API：Chat Completions streaming。 */
-  index: number;
-
-  /** 本次 SSE 事件新增的消息片段。 */
-  delta: ChatCompletionChunkDelta;
-
-  /** 停止原因；生成尚未结束时通常为空。 */
-  finish_reason?: 'stop' | 'length' | 'tool_calls' | 'content_filter' | 'function_call' | null;
-}
-
-/**
- * Chat completion 流式增量内容。
- *
- * API：Chat Completions streaming。
- * 说明：文本输出主要读取 `content` 字段。
- */
-export interface ChatCompletionChunkDelta {
-  /** 首个 chunk 可能携带角色。 */
-  role?: 'assistant';
-
-  /** 本次新增文本。 */
-  content?: string | null;
-
-  /** 拒答文本增量。 */
-  refusal?: string | null;
-
-  /** 工具调用增量，当前业务暂不消费。 */
-  tool_calls?: Array<ChatCompletionMessageToolCall>;
+  /**
+   * Moderated completions 审核结果。
+   *
+   * API：Chat Completions streaming。
+   * 说明：开启 moderation 时，审核 chunk 上会携带该字段。
+   */
+  moderation?: ChatCompletionModeration | null;
 }

@@ -9,6 +9,7 @@ import {
   type AssistantThreadDeleted,
   type BatchObject,
   type ChatCompletion,
+  type ChatCompletionChunk,
   type ChatCompletionDeleted,
   type ChatCompletionListResponse,
   type ChatKitSession,
@@ -434,19 +435,25 @@ export default function modelsUnitTest() {
 
     it('createsResponseWithOpenAIClient', 0, async () => {
       const transport = new FakeTransport();
-      transport.nextBody = '{"id":"resp_123","object":"response","created_at":1710000000,"status":"completed","output_text":"你好","model":"gpt-5.4","output":[],"error":null,"incomplete_details":null,"metadata":null}';
+      transport.nextBody = '{"id":"resp_123","object":"response","created_at":1710000000,"status":"completed","output_text":"你好","model":"gpt-5.4","moderation":{"input":{"type":"moderation_result","flagged":false,"model":"omni-moderation-latest","categories":{"violence":false},"category_scores":{"violence":0.01},"category_applied_input_types":{"violence":["text"]}},"output":{"type":"error","code":"moderation_unavailable","message":"temporarily unavailable"}},"output":[],"error":null,"incomplete_details":null,"metadata":null}';
       const client = new OpenAI({ apiKey: 'sk-test', baseURL: 'https://example.test/v1', transport: transport });
 
       const response: ResponseObject = await client.responses.create({
         model: 'gpt-5.4',
         input: '你好',
+        moderation: {
+          model: 'omni-moderation-latest',
+        },
       });
 
       expect(transport.latestUrl).assertEqual('https://example.test/v1/responses');
       expect(transport.latestMethod).assertEqual('POST');
       expect(transport.latestBody).assertContain('"input":"你好"');
+      expect(transport.latestBody).assertContain('"moderation":{"model":"omni-moderation-latest"}');
       expect(response.id).assertEqual('resp_123');
       expect(response.output_text).assertEqual('你好');
+      expect(response.moderation!.input.type).assertEqual('moderation_result');
+      expect(response.moderation!.output.type).assertEqual('error');
     });
 
     it('constructsResponsesAdvancedTools', 0, () => {
@@ -493,18 +500,33 @@ export default function modelsUnitTest() {
 
     it('createsChatCompletionWithOpenAIClient', 0, async () => {
       const transport = new FakeTransport();
-      transport.nextBody = '{"id":"chatcmpl_123","object":"chat.completion","created":1710000000,"model":"gpt-5.4","choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"你好"}}]}';
+      transport.nextBody = '{"id":"chatcmpl_123","object":"chat.completion","created":1710000000,"model":"gpt-5.4","moderation":{"input":{"type":"moderation_results","model":"omni-moderation-latest","results":[{"type":"moderation_result","flagged":false,"model":"omni-moderation-latest","categories":{"violence":false},"category_scores":{"violence":0.01},"category_applied_input_types":{"violence":["text"]}}]},"output":{"type":"error","code":"moderation_unavailable","message":"temporarily unavailable"}},"choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"你好"}}]}';
       const client = new OpenAI({ apiKey: 'sk-test', baseURL: 'https://example.test/v1', transport: transport });
 
       const response: ChatCompletion = await client.chat.completions.create({
         model: 'gpt-5.4',
         messages: [{ role: 'user', content: '你好' }],
+        moderation: {
+          model: 'omni-moderation-latest',
+        },
       });
 
       expect(transport.latestUrl).assertEqual('https://example.test/v1/chat/completions');
       expect(transport.latestMethod).assertEqual('POST');
       expect(transport.latestBody).assertContain('"messages"');
+      expect(transport.latestBody).assertContain('"moderation":{"model":"omni-moderation-latest"}');
       expect(response.choices[0].message.content).assertEqual('你好');
+      expect(response.moderation!.input.type).assertEqual('moderation_results');
+      expect(response.moderation!.output.type).assertEqual('error');
+      const chunk: ChatCompletionChunk = {
+        id: 'chatcmpl_123',
+        object: 'chat.completion.chunk',
+        created: 1710000000,
+        model: 'gpt-5.4',
+        choices: [],
+        moderation: response.moderation,
+      };
+      expect(chunk.moderation!.input.type).assertEqual('moderation_results');
     });
 
     it('listsAndDeletesStoredChatCompletionWithOpenAIClient', 0, async () => {
@@ -641,14 +663,14 @@ export default function modelsUnitTest() {
 
     it('retrievesModelWithOpenAIClient', 0, async () => {
       const transport = new FakeTransport();
-      transport.nextBody = '{"id":"gpt-4o","object":"model","created":1710000000,"owned_by":"openai"}';
+      transport.nextBody = '{"id":"ft:gpt-4o-mini:org:test:abc123","object":"model","created":1710000000,"owned_by":"openai"}';
       const client = new OpenAI({ apiKey: 'sk-test', baseURL: 'https://example.test/v1', transport: transport });
 
-      const response: ModelObject = await client.models.retrieve('gpt-4o');
+      const response: ModelObject = await client.models.retrieve('ft:gpt-4o-mini:org:test:abc123');
 
-      expect(transport.latestUrl).assertEqual('https://example.test/v1/models/gpt-4o');
+      expect(transport.latestUrl).assertEqual('https://example.test/v1/models/ft%3Agpt-4o-mini%3Aorg%3Atest%3Aabc123');
       expect(transport.latestMethod).assertEqual('GET');
-      expect(response.id).assertEqual('gpt-4o');
+      expect(response.id).assertEqual('ft:gpt-4o-mini:org:test:abc123');
     });
 
     it('listsFilesWithOpenAIClient', 0, async () => {

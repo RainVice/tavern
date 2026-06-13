@@ -1,0 +1,9 @@
+{
+  "module": {
+    "name": "tavern_ohos",
+    "type": "har",
+    "deviceTypes": [
+      "default"
+    ]
+  }
+}

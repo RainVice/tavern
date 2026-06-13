@@ -1,6 +1,6 @@
 import type { Upload, UploadCompleteParams, UploadCreateParams, UploadPart, UploadPartCreateParams } from '../../models/Uploads';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
-import { buildFilePart } from '../core/RequestUtils';
+import { buildFilePart, encodePathParam } from '../core/RequestUtils';
 
 interface EmptyRequestBody {
 }
@@ -48,13 +48,13 @@ export class UploadsResource implements OpenAIUploadsResource {
   }
 
   async complete(uploadID: string, params: UploadCompleteParams): Promise<Upload> {
-    const body = await this.client.post('/uploads/' + uploadID + '/complete', params);
+    const body = await this.client.post('/uploads/' + encodePathParam(uploadID) + '/complete', params);
     return JSON.parse(body) as Upload;
   }
 
   async cancel(uploadID: string): Promise<Upload> {
     const requestBody: EmptyRequestBody = {};
-    const body = await this.client.post('/uploads/' + uploadID + '/cancel', requestBody);
+    const body = await this.client.post('/uploads/' + encodePathParam(uploadID) + '/cancel', requestBody);
     return JSON.parse(body) as Upload;
   }
 }
@@ -68,7 +68,7 @@ class UploadPartsResource implements OpenAIUploadPartsResource {
 
   async create(uploadID: string, params: UploadPartCreateParams): Promise<UploadPart> {
     const part = buildFilePart('data', params.data);
-    const body = await this.client.postMultipart('/uploads/' + uploadID + '/parts', [part]);
+    const body = await this.client.postMultipart('/uploads/' + encodePathParam(uploadID) + '/parts', [part]);
     return JSON.parse(body) as UploadPart;
   }
 }

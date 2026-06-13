@@ -1,5 +1,6 @@
 import type { ModelDeleted, ModelListResponse, ModelObject } from '../../models/Models';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
+import { encodePathParam } from '../core/RequestUtils';
 import type { OpenAIRequestSettings } from '../core/Types';
 
 /**
@@ -53,12 +54,12 @@ export class ModelsResource implements OpenAIModelsResource {
   }
 
   async retrieve(model: string): Promise<ModelObject> {
-    const body = await this.client.get('/models/' + model);
+    const body = await this.client.get('/models/' + encodePathParam(model));
     return JSON.parse(body) as ModelObject;
   }
 
   async delete(model: string): Promise<ModelDeleted> {
-    const body = await this.client.delete('/models/' + model);
+    const body = await this.client.delete('/models/' + encodePathParam(model));
     return JSON.parse(body) as ModelDeleted;
   }
 }

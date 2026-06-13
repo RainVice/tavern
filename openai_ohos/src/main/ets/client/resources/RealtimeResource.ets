@@ -14,7 +14,7 @@ import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
  * Realtime 资源入口。
  *
  * API：`/v1/realtime`。
- * 说明：当前覆盖 REST token/session 创建；WebSocket/WebRTC 流式连接后续由专用 transport 实现。
+ * 说明：覆盖 REST token/session 创建，并提供 WebSocket/WebRTC 流式连接入口。
  */
 export interface OpenAIRealtimeResource {
   /** Client secrets 子资源。API：Realtime client secrets。说明：生成客户端短期凭证。 */

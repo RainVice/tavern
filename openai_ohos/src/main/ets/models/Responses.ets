@@ -1,4 +1,5 @@
 import type { JsonObject, Metadata, OpenAIModel } from './Common';
+import type { ModerationOutcome } from './Moderations';
 
 /**
  * Responses API 常见模型 ID。
@@ -789,6 +790,46 @@ export interface ResponseReasoningConfig {
 }
 
 /**
+ * Responses moderated completions 配置。
+ *
+ * API：`POST /v1/responses`。
+ * 说明：开启后服务端会审核输入和输出。
+ */
+export interface ResponseModerationConfig {
+  /**
+   * 审核模型。
+   *
+   * API：`POST /v1/responses`。
+   * 说明：例如 `omni-moderation-latest`。
+   */
+  model: string;
+}
+
+/**
+ * Responses moderated completions 结果。
+ *
+ * API：Responses API 响应。
+ * 说明：包含输入和输出两侧的审核结果或审核错误。
+ */
+export interface ResponseModeration {
+  /**
+   * 输入审核结果。
+   *
+   * API：Responses API 响应。
+   * 说明：可能是成功审核结果，也可能是审核错误。
+   */
+  input: ModerationOutcome;
+
+  /**
+   * 输出审核结果。
+   *
+   * API：Responses API 响应。
+   * 说明：可能是成功审核结果，也可能是审核错误。
+   */
+  output: ModerationOutcome;
+}
+
+/**
  * 创建 Response 请求。
  *
  * API：`POST /v1/responses`。
@@ -842,6 +883,14 @@ export interface ResponseCreateParams {
    * 说明：例如 `gpt-5.4`、`gpt-4.1`、`gpt-4o`。
    */
   model?: ResponsesModel;
+
+  /**
+   * Moderated completions 配置。
+   *
+   * API：`POST /v1/responses`。
+   * 说明：开启后服务端会审核请求输入和模型输出。
+   */
+  moderation?: ResponseModerationConfig | null;
 
   /**
    * 是否允许并行工具调用。
@@ -1373,6 +1422,14 @@ export interface ResponseObject {
   model: string;
 
   /**
+   * Moderated completions 审核结果。
+   *
+   * API：Responses API 响应。
+   * 说明：仅在请求传入 moderation 配置时返回。
+   */
+  moderation?: ResponseModeration | null;
+
+  /**
    * 输出项列表。
    *
    * API：Responses API 响应。
@@ -1411,38 +1468,6 @@ export interface ResponseObject {
    * 说明：用于成本统计和上下文预算分析。
    */
   usage?: ResponseUsage | null;
-}
-
-/**
- * 删除 Response 响应。
- *
- * API：`DELETE /v1/responses/{response_id}`。
- * 说明：服务端删除成功后返回确认对象，调用方可检查 `deleted`。
- */
-export interface ResponseDeleted {
-  /**
-   * Response ID。
-   *
-   * API：Delete Response。
-   * 说明：被删除的 Response。
-   */
-  id: string;
-
-  /**
-   * 对象类型。
-   *
-   * API：Delete Response。
-   * 说明：官方返回为 `response`。
-   */
-  object: 'response';
-
-  /**
-   * 是否已删除。
-   *
-   * API：Delete Response。
-   * 说明：成功删除时为 true。
-   */
-  deleted: boolean;
 }
 
 /**

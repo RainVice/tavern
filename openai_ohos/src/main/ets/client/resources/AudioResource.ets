@@ -14,7 +14,7 @@ import type {
   VoiceCreateParams,
 } from '../../models/Audio';
 import { OpenAIRequestClient } from '../core/OpenAIRequestClient';
-import { buildCursorListPath, buildFilePart, buildTextPart } from '../core/RequestUtils';
+import { buildCursorListPath, buildFilePart, buildTextPart, encodePathParam } from '../core/RequestUtils';
 import type { OpenAIMultipartFormData } from '../core/Types';
 
 /**
@@ -199,17 +199,17 @@ class AudioVoiceConsentsResource implements OpenAIAudioVoiceConsentsResource {
   }
 
   async retrieve(consentID: string): Promise<VoiceConsent> {
-    const body = await this.client.get('/audio/voice_consents/' + consentID);
+    const body = await this.client.get('/audio/voice_consents/' + encodePathParam(consentID));
     return JSON.parse(body) as VoiceConsent;
   }
 
   async update(consentID: string, params: VoiceConsentUpdateParams): Promise<VoiceConsent> {
-    const body = await this.client.post('/audio/voice_consents/' + consentID, params);
+    const body = await this.client.post('/audio/voice_consents/' + encodePathParam(consentID), params);
     return JSON.parse(body) as VoiceConsent;
   }
 
   async delete(consentID: string): Promise<VoiceConsentDeleted> {
-    const body = await this.client.delete('/audio/voice_consents/' + consentID);
+    const body = await this.client.delete('/audio/voice_consents/' + encodePathParam(consentID));
     return JSON.parse(body) as VoiceConsentDeleted;
   }
 }
