@@ -12,13 +12,39 @@ import type {
   MessageEventPayload,
 } from './ChatModels';
 
+/**
+ * 提供聊天和消息相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class MessageRuntime {
+  /**
+   * 文件存储适配器。
+   */
   private files: TavernFileStore;
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * 数据根路径。
+   */
   private rootPath: string;
+  /**
+   * 用户标识。
+   */
   private userId: string;
+  /**
+   * 聊天标识。
+   */
   private chatId: string;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param files 文件存储适配器。
+   * @param events 事件总线。
+   * @param rootPath 数据根路径。
+   * @param userId 用户标识。
+   * @param chatId 聊天标识。
+   */
   constructor(files: TavernFileStore, events: EventBus, rootPath: string, userId: string, chatId: string) {
     this.files = files;
     this.events = events;
@@ -27,6 +53,10 @@ export class MessageRuntime {
     this.chatId = chatId;
   }
 
+  /**
+   * 向当前聊天追加一条消息，更新聊天元数据，写入消息 JSONL，并发布 message.added 事件。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   async addMessage(params: ChatMessageCreateParams): Promise<ChatMessage> {
     const chat = await this.readChat();
     const messages = await this.listMessages();
@@ -54,11 +84,20 @@ export class MessageRuntime {
     return this.copyMessage(message);
   }
 
+  /**
+   * 读取当前聊天的全部消息。
+   * @returns 按 index 排列的消息副本列表，修改返回值不会直接写回存储。
+   */
   async listMessages(): Promise<Array<ChatMessage>> {
     const store = this.messageStore();
     return this.copyMessages(await store.readAll());
   }
 
+  /**
+   * 读取指定消息，不存在时抛出错误。
+   * @param messageId 目标消息标识。
+   * @returns 更新或读取后的记录副本。
+   */
   async getMessage(messageId: string): Promise<ChatMessage> {
     const messages = await this.listMessages();
     for (let index = 0; index < messages.length; index += 1) {
@@ -69,6 +108,12 @@ export class MessageRuntime {
     throw new Error('消息未找到: ' + messageId);
   }
 
+  /**
+   * 按分页参数读取当前聊天的消息片段。
+   * @param startIndex 分页起始索引。
+   * @param limit 返回数量上限。
+   * @returns 位于指定范围内的消息副本列表。
+   */
   async listMessagesPage(startIndex: number, limit: number): Promise<Array<ChatMessage>> {
     const messages = await this.listMessages();
     const normalizedStart = Math.max(0, startIndex);
@@ -81,6 +126,12 @@ export class MessageRuntime {
     return result;
   }
 
+  /**
+   * 更新指定消息，写回存储并按需发布变更事件。
+   * @param messageId 目标消息标识。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   async updateMessage(messageId: string, params: ChatMessageUpdateParams): Promise<ChatMessage> {
     const messages = await this.listMessages();
     let updated: ChatMessage | undefined = undefined;
@@ -100,6 +151,10 @@ export class MessageRuntime {
     return this.copyMessage(updated);
   }
 
+  /**
+   * 删除指定消息，重排剩余消息索引，并发布 message.deleted 事件。
+   * @param messageId 目标消息标识。
+   */
   async deleteMessage(messageId: string): Promise<void> {
     const messages = await this.listMessages();
     const remaining = new Array<ChatMessage>();
@@ -123,6 +178,11 @@ export class MessageRuntime {
     this.publishMessageEvent('message.deleted', deleted);
   }
 
+  /**
+   * 批量删除消息，任何一个标识不存在时会抛出错误。
+   * @param messageIds 要删除的消息标识列表。
+   * @returns 成功删除的消息标识列表。
+   */
   async deleteMessages(messageIds: Array<string>): Promise<Array<string>> {
     const messages = await this.listMessages();
     const targets = new Set<string>();
@@ -154,6 +214,11 @@ export class MessageRuntime {
     return deletedIds;
   }
 
+  /**
+   * 移动消息到指定位置，重排全部 index，并发布 message.updated 事件。
+   * @param messageId 目标消息标识。
+   * @param targetIndex 目标位置索引。
+   */
   async moveMessage(messageId: string, targetIndex: number): Promise<ChatMessage> {
     const messages = await this.listMessages();
     let sourceIndex = -1;
@@ -191,6 +256,14 @@ export class MessageRuntime {
     return this.copyMessage(moved);
   }
 
+  /**
+   * 切换消息的隐藏状态。
+   *
+   * 当前实现通过 isSystem 表示隐藏状态，因此调用方应避免同时把该字段用于其他语义。
+   * @param messageId 目标消息标识。
+   * @param hidden 是否隐藏该消息。
+   * @returns 更新后的消息副本。
+   */
   async hideMessage(messageId: string, hidden: boolean): Promise<ChatMessage> {
     const messages = await this.listMessages();
     for (let i = 0; i < messages.length; i += 1) {
@@ -204,6 +277,12 @@ export class MessageRuntime {
     throw new Error('消息未找到: ' + messageId);
   }
 
+  /**
+   * 设置消息评分，评分会被限制在 0 到 5 之间并写入 extraJson。
+   * @param messageId 目标消息标识。
+   * @param rating 调用方给出的评分值。
+   * @returns 更新后的消息副本。
+   */
   async setMessageRating(messageId: string, rating: number): Promise<ChatMessage> {
     const messages = await this.listMessages();
     for (let i = 0; i < messages.length; i += 1) {
@@ -219,6 +298,12 @@ export class MessageRuntime {
     throw new Error('消息未找到: ' + messageId);
   }
 
+  /**
+   * 设置消息书签状态，结果写入 extraJson。
+   * @param messageId 目标消息标识。
+   * @param bookmarked 是否标记为书签。
+   * @returns 更新后的消息副本。
+   */
   async setMessageBookmark(messageId: string, bookmarked: boolean): Promise<ChatMessage> {
     const messages = await this.listMessages();
     for (let i = 0; i < messages.length; i += 1) {
@@ -234,6 +319,10 @@ export class MessageRuntime {
     throw new Error('消息未找到: ' + messageId);
   }
 
+  /**
+   * 解析消息 extraJson，字段缺失或 JSON 非法时返回默认扩展数据。
+   * @param extraJson 消息记录中的扩展 JSON 字符串。
+   */
   private readExtra(extraJson: string): MessageExtraData {
     const fallback: MessageExtraData = {
       rating: 0,
@@ -257,16 +346,28 @@ export class MessageRuntime {
     }
   }
 
+  /**
+   * 把消息扩展数据序列化成 extraJson 字符串。
+   * @param extra 要保存的消息扩展数据。
+   */
   private writeExtra(extra: MessageExtraData): string {
     return JSON.stringify(extra);
   }
 
+  /**
+   * 更新当前聊天的修改时间，用于列表排序和同步判断。
+   */
   private async touchChat(): Promise<void> {
     const chat = await this.readChat();
     chat.updatedAt = Date.now();
     await this.writeChat(chat);
   }
 
+  /**
+   * 发布聊天和消息事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+   * @param message 消息记录。
+   */
   private publishMessageEvent(eventName: string, message: ChatMessage): void {
     const payload: MessageEventPayload = {
       chatId: this.chatId,
@@ -275,6 +376,11 @@ export class MessageRuntime {
     this.events.publish<MessageEventPayload>(eventName, payload);
   }
 
+  /**
+   * 复制消息列表，避免外部代码持有内部可变对象。
+   * @param messages 消息列表。
+   * @returns 消息副本列表。
+   */
   private copyMessages(messages: Array<ChatMessage>): Array<ChatMessage> {
     const result = new Array<ChatMessage>();
     for (let index = 0; index < messages.length; index += 1) {
@@ -283,6 +389,10 @@ export class MessageRuntime {
     return result;
   }
 
+  /**
+   * 复制单条消息，确保 swipes 数组不会被外部直接修改。
+   * @param message 消息记录。
+   */
   private copyMessage(message: ChatMessage): ChatMessage {
     return {
       schemaVersion: message.schemaVersion,
@@ -300,10 +410,16 @@ export class MessageRuntime {
     };
   }
 
+  /**
+   * 创建当前聊天消息 JSONL 文件的存储包装器。
+   */
   private messageStore(): JsonlStore<ChatMessage> {
     return new JsonlStore<ChatMessage>(this.files, this.messagesPath());
   }
 
+  /**
+   * 读取当前聊天记录，聊天文件不存在时抛出错误。
+   */
   private async readChat(): Promise<ChatRecord> {
     const exists = await this.files.exists(this.chatPath());
     if (!exists) {
@@ -313,11 +429,18 @@ export class MessageRuntime {
     return store.read(this.defaultChat());
   }
 
+  /**
+   * 写回当前聊天记录。
+   * @param chat 聊天记录。
+   */
   private async writeChat(chat: ChatRecord): Promise<void> {
     const store = new JsonStore<ChatRecord>(this.files, this.chatPath());
     await store.write(chat);
   }
 
+  /**
+   * 构造 JsonStore 读取失败时使用的聊天默认值。
+   */
   private defaultChat(): ChatRecord {
     return {
       schemaVersion: 1,
@@ -332,14 +455,23 @@ export class MessageRuntime {
     };
   }
 
+  /**
+   * 返回当前聊天元数据文件路径。
+   */
   private chatPath(): string {
     return `${this.chatDirectory()}/chat.json`;
   }
 
+  /**
+   * 返回当前聊天消息 JSONL 文件路径。
+   */
   private messagesPath(): string {
     return `${this.chatDirectory()}/messages.jsonl`;
   }
 
+  /**
+   * 返回当前用户下当前聊天的数据目录。
+   */
   private chatDirectory(): string {
     return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/chats/${safePathSegment(this.chatId, 'chat')}`;
   }

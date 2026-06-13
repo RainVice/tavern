@@ -17,14 +17,15 @@ import {
 export default function commandUnitTest() {
   describe('command runtime', () => {
     it('registers commands, parses slash text, executes aliases, and emits events', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new CommandRuntime(bus);
       const executed = new Array<string>();
       bus.subscribe<CommandExecutedPayload>('command.executed', (event: RuntimeEvent<CommandExecutedPayload>) => {
         executed.push(event.payload.result.commandName);
       });
       runtime.registerCommand(makeCommand('echo', ['say'], 'public', new EchoCommandAction()));
-
       const result = await runtime.executeText('/say tone=soft hello world', makeOptions(['public'], false));
 
       expect(result.ok).assertTrue();
@@ -37,11 +38,12 @@ export default function commandUnitTest() {
     });
 
     it('pipes command output into the next command', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new CommandRuntime(bus);
       runtime.registerCommand(makeCommand('echo', new Array<string>(), 'public', new EchoCommandAction()));
       runtime.registerCommand(makeCommand('upper', new Array<string>(), 'public', new UpperCommandAction()));
-
       const result: CommandPipelineResult = await runtime.executePipeline('/echo hello | /upper', makeOptions(['public'], false));
 
       expect(result.ok).assertTrue();
@@ -50,10 +52,11 @@ export default function commandUnitTest() {
     });
 
     it('rejects missing permission and honors cancellation', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new CommandRuntime(bus);
       runtime.registerCommand(makeCommand('secret', new Array<string>(), 'admin', new EchoCommandAction()));
-
       const denied = await runtime.executeText('/secret value', makeOptions(['public'], false));
       const cancelled = await runtime.executeText('/secret value', makeOptions(['admin'], true));
 
@@ -64,7 +67,9 @@ export default function commandUnitTest() {
     });
 
     it('does not expose internal command records or execution payloads', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new CommandRuntime(bus);
       bus.subscribe<CommandRegisteredPayload>('command.registered', (event: RuntimeEvent<CommandRegisteredPayload>) => {
         event.payload.command.enabled = false;
@@ -74,7 +79,6 @@ export default function commandUnitTest() {
         event.payload.result.output = 'event-mutated';
         event.payload.invocation.namedArguments.push({ name: 'event', value: 'mutated' });
       });
-
       const registered: CommandRecord = runtime.registerCommand(makeCommand('copy', ['cp'], 'public', new EchoCommandAction()));
       registered.enabled = false;
       registered.aliases.push('return-mutated');
@@ -90,7 +94,13 @@ export default function commandUnitTest() {
   });
 }
 
+/**
+ * 实现一个可执行动作，供运行时在对应场景中调用。
+ */
 class EchoCommandAction implements CommandAction {
+  /**
+   * 封装单元测试中的 execute 步骤，供公开方法复用。
+   */
   execute(invocation: CommandInvocation): Promise<CommandExecutionResult> {
     const tone = invocation.getNamedArgument('tone');
     const prefix = tone.length > 0 ? `${tone}:` : '';
@@ -105,7 +115,13 @@ class EchoCommandAction implements CommandAction {
   }
 }
 
+/**
+ * 实现一个可执行动作，供运行时在对应场景中调用。
+ */
 class UpperCommandAction implements CommandAction {
+  /**
+   * 封装单元测试中的 execute 步骤，供公开方法复用。
+   */
   execute(invocation: CommandInvocation): Promise<CommandExecutionResult> {
     const value = invocation.pipeInput.length > 0 ? invocation.pipeInput : invocation.unnamedArgument;
     const result: CommandExecutionResult = {
@@ -119,6 +135,14 @@ class UpperCommandAction implements CommandAction {
   }
 }
 
+/**
+ * 封装单元测试中的 makeCommand 步骤，供公开方法复用。
+ * @param name 显示名称或注册名称。
+
+
+
+ * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+ */
 function makeCommand(name: string, aliases: Array<string>, permission: string, action: CommandAction): CommandRegistrationParams {
   return {
     name: name,
@@ -131,6 +155,12 @@ function makeCommand(name: string, aliases: Array<string>, permission: string, a
   };
 }
 
+/**
+ * 封装单元测试中的 makeOptions 步骤，供公开方法复用。
+
+
+ * @returns 条件命中时返回 true，否则返回 false。
+ */
 function makeOptions(permissions: Array<string>, cancelled: boolean): CommandExecuteOptions {
   return {
     allowedPermissions: permissions,

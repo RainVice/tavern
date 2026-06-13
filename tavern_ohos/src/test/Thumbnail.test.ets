@@ -15,13 +15,14 @@ export default function thumbnailUnitTest() {
   describe('thumbnail runtime', () => {
     it('generates typed thumbnails and persists a cache index', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ThumbnailRuntime(files, bus);
       const generated = new Array<string>();
       bus.subscribe<ThumbnailGeneratedPayload>('thumbnail.generated', (event: RuntimeEvent<ThumbnailGeneratedPayload>) => {
         generated.push(`${event.payload.thumbnail.type}:${event.payload.thumbnail.fileName}`);
       });
-
       const thumbnail: ThumbnailRecord = await runtime.generateThumbnail({
         type: 'bg',
         fileName: 'forest.jpg',
@@ -42,6 +43,7 @@ export default function thumbnailUnitTest() {
     });
 
     it('lists avatar and persona thumbnails with upstream dimensions', 0, async () => {
+      // 运行时实例。
       const runtime = new ThumbnailRuntime(new InMemoryFileStore(), new EventBus());
 
       await runtime.generateThumbnail(makeThumbnail('avatar', 'alice.png', 96, 144));
@@ -60,7 +62,9 @@ export default function thumbnailUnitTest() {
 
     it('invalidates cached thumbnails and emits events', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ThumbnailRuntime(files, bus);
       const invalidated = new Array<string>();
       bus.subscribe<ThumbnailInvalidatedPayload>('thumbnail.invalidated', (event: RuntimeEvent<ThumbnailInvalidatedPayload>) => {
@@ -77,8 +81,8 @@ export default function thumbnailUnitTest() {
 
     it('sanitizes thumbnail file names and unknown type folders', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new ThumbnailRuntime(files, new EventBus());
-
       const thumbnail = await runtime.generateThumbnail({
         type: '../custom',
         fileName: '../escape.png',
@@ -98,6 +102,11 @@ export default function thumbnailUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeThumbnail 步骤，供公开方法复用。
+
+ * @param fileName file 名称。
+ */
 function makeThumbnail(type: string, fileName: string, width: number, height: number): ThumbnailCreateParams {
   return {
     type: type,

@@ -6,15 +6,34 @@ import type {
   NetworkPolicyOptions,
 } from './NetworkPolicyModels';
 
+/**
+ * 提供网络策略相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class NetworkPolicyRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * 配置选项。
+   */
   private options: NetworkPolicyOptions;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   * @param options 配置选项。
+   */
   constructor(events: EventBus, options?: NetworkPolicyOptions) {
     this.events = events;
     this.options = this.mergeOptions(options);
   }
 
+  /**
+   * 根据网络策略判断目标主机地址是否允许访问，并按配置发布允许或阻断事件。
+   * @param host 目标主机名。
+   * @param address 解析后的 IP 地址。
+   */
   evaluateHost(host: string, address: string): NetworkPolicyDecision {
     if (!this.options.enabled) {
       return this.publishAllowed(host, address, 'disabled', 'disabled');
@@ -34,7 +53,6 @@ export class NetworkPolicyRuntime {
     if (!this.isPrivateAddress(address)) {
       return this.publishAllowed(host, address, 'public-address', 'public-address');
     }
-
     const matchedRule = this.matchWhitelist(address);
     if (matchedRule.length > 0) {
       return this.publishAllowed(host, address, 'whitelisted-private-address', matchedRule);
@@ -43,6 +61,10 @@ export class NetworkPolicyRuntime {
     return this.publishBlocked(host, address, 'private-address', 'private-address');
   }
 
+  /**
+   * 合并调用方配置和默认配置，避免外部数组被运行时直接持有。
+   * @param options 控制本次调用行为的选项。
+   */
   private mergeOptions(options?: NetworkPolicyOptions): NetworkPolicyOptions {
     return {
       enabled: options?.enabled ?? true,
@@ -53,6 +75,13 @@ export class NetworkPolicyRuntime {
     };
   }
 
+  /**
+   * 发布网络策略事件，把状态变化通知给宿主或其他 Runtime。
+   * @param host 目标主机名。
+   * @param address 解析后的 IP 地址。
+   * @param reason 失败、中止或恢复操作的原因说明。
+   * @param matchedRule 命中的白名单或策略规则。
+   */
   private publishAllowed(host: string, address: string, reason: string, matchedRule: string): NetworkPolicyDecision {
     const decision: NetworkPolicyDecision = {
       host: host,
@@ -73,6 +102,13 @@ export class NetworkPolicyRuntime {
     return decision;
   }
 
+  /**
+   * 发布网络策略事件，把状态变化通知给宿主或其他 Runtime。
+   * @param host 目标主机名。
+   * @param address 解析后的 IP 地址。
+   * @param reason 失败、中止或恢复操作的原因说明。
+   * @param matchedRule 命中的白名单或策略规则。
+   */
   private publishBlocked(host: string, address: string, reason: string, matchedRule: string): NetworkPolicyDecision {
     const decision: NetworkPolicyDecision = {
       host: host,
@@ -93,6 +129,10 @@ export class NetworkPolicyRuntime {
     return decision;
   }
 
+  /**
+   * 在白名单中查找能匹配当前地址的规则，找不到时返回空字符串。
+   * @param address 解析后的 IP 地址。
+   */
   private matchWhitelist(address: string): string {
     for (let index = 0; index < this.options.whitelist.length; index += 1) {
       const rule = this.options.whitelist[index].trim();
@@ -109,6 +149,12 @@ export class NetworkPolicyRuntime {
     return '';
   }
 
+  /**
+   * 判断 IPv4 地址是否命中指定 CIDR 规则。
+   * @param address 解析后的 IP 地址。
+   * @param rule 待匹配的策略规则。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private matchesCidr(address: string, rule: string): boolean {
     if (rule.indexOf('/') < 0) {
       return false;
@@ -133,6 +179,10 @@ export class NetworkPolicyRuntime {
     return (value & mask) === (base & mask);
   }
 
+  /**
+   * 解析 CIDR 前缀长度，非法或越界时返回 -1。
+   * @param value 待解析的前缀长度字符串。
+   */
   private parsePrefix(value: string): number {
     if (!this.isDecimalDigits(value)) {
       return -1;
@@ -144,6 +194,10 @@ export class NetworkPolicyRuntime {
     return parsed;
   }
 
+  /**
+   * 根据 CIDR 前缀长度生成 IPv4 掩码。
+   * @param prefix CIDR 前缀长度。
+   */
   private prefixMask(prefix: number): number {
     if (prefix === 0) {
       return 0;
@@ -151,6 +205,11 @@ export class NetworkPolicyRuntime {
     return (0xffffffff << (32 - prefix)) >>> 0;
   }
 
+  /**
+   * 判断地址是否属于私网、环回或链路本地地址。
+   * @param address 解析后的 IP 地址。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private isPrivateAddress(address: string): boolean {
     if (this.isPrivateIpv6(address)) {
       return true;
@@ -166,6 +225,11 @@ export class NetworkPolicyRuntime {
       || this.inIpv4Range(value, '169.254.0.0', 16);
   }
 
+  /**
+   * 判断地址是否属于当前策略能够识别的地址族。
+   * @param address 解析后的 IP 地址。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private isKnownAddressFamily(address: string): boolean {
     if (this.parseIpv4(address) !== -1) {
       return true;
@@ -173,6 +237,11 @@ export class NetworkPolicyRuntime {
     return address.indexOf(':') >= 0;
   }
 
+  /**
+   * 判断 IPv6 地址是否属于本地、私有或链路本地范围。
+   * @param address 解析后的 IP 地址。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private isPrivateIpv6(address: string): boolean {
     const normalized = address.toLowerCase();
     return normalized === '::1'
@@ -184,6 +253,13 @@ export class NetworkPolicyRuntime {
       || normalized.startsWith('feb');
   }
 
+  /**
+   * 判断 IPv4 地址是否落在指定地址段内。
+   * @param value 已转换成数值的 IPv4 地址。
+   * @param baseAddress CIDR 或地址段的基准地址。
+   * @param prefix CIDR 前缀长度。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private inIpv4Range(value: number, baseAddress: string, prefix: number): boolean {
     const base = this.parseIpv4(baseAddress);
     if (base === -1) {
@@ -193,6 +269,10 @@ export class NetworkPolicyRuntime {
     return (value & mask) === (base & mask);
   }
 
+  /**
+   * 解析 IPv4 地址，非法输入返回 -1。
+   * @param address 解析后的 IP 地址。
+   */
   private parseIpv4(address: string): number {
     const parts = address.split('.');
     if (parts.length !== 4) {
@@ -212,6 +292,11 @@ export class NetworkPolicyRuntime {
     return value >>> 0;
   }
 
+  /**
+   * 判断字符串是否只包含十进制数字。
+   * @param value 待检查的字符串。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private isDecimalDigits(value: string): boolean {
     if (value.length === 0) {
       return false;

@@ -16,13 +16,14 @@ export default function worldInfoUnitTest() {
   describe('world info runtime', () => {
     it('creates worldbooks and activates constant, primary, and selective entries in order', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new WorldInfoRuntime(files, bus, 'tavern-data', 'default');
       const activatedCounts = new Array<number>();
       bus.subscribe<WorldInfoActivationPayload>('worldinfo.activated', (event: RuntimeEvent<WorldInfoActivationPayload>) => {
         activatedCounts.push(event.payload.entries.length);
       });
-
       const book = await runtime.createWorldBook('Lore');
       const constantParams: WorldInfoEntryCreateParams = {
         comment: 'Always',
@@ -77,11 +78,11 @@ export default function worldInfoUnitTest() {
     });
 
     it('激活排序后保持 entries 和 matches 对齐', 0, async () => {
+      // 运行时实例。
       const runtime = new WorldInfoRuntime(new InMemoryFileStore(), new EventBus(), 'tavern-data', 'default');
       const book = await runtime.createWorldBook('Sorted');
       const later = await runtime.createEntry(book.id, makeEntryParams('Later', ['later'], 'later content', 20));
       const earlier = await runtime.createEntry(book.id, makeEntryParams('Earlier', ['earlier'], 'earlier content', 10));
-
       const activation = await runtime.activateEntries([book.id], ['later earlier']);
 
       expect(activation.entries.length).assertEqual(2);
@@ -94,7 +95,9 @@ export default function worldInfoUnitTest() {
 
     it('updates, deletes, exports, and imports worldbooks', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new WorldInfoRuntime(files, bus, 'tavern-data', 'default');
       const book = await runtime.createWorldBook('Editable');
       const entryParams: WorldInfoEntryCreateParams = {
@@ -109,6 +112,7 @@ export default function worldInfoUnitTest() {
         position: 'before',
         caseSensitive: false,
       };
+      // 条目记录。
       const entry = await runtime.createEntry(book.id, entryParams);
       const updateParams: WorldInfoEntryUpdateParams = {
         comment: 'New',
@@ -122,7 +126,6 @@ export default function worldInfoUnitTest() {
         position: 'after',
         caseSensitive: true,
       };
-
       const updated = await runtime.updateEntry(book.id, entry.id, updateParams);
       const exported = await runtime.exportWorldBookJson(book.id);
       await runtime.deleteEntry(book.id, entry.id);
@@ -139,7 +142,9 @@ export default function worldInfoUnitTest() {
 
     it('更新或删除不存在的条目时抛错', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new WorldInfoRuntime(files, bus, 'tavern-data', 'default');
       const book = await runtime.createWorldBook('Strict');
       const updateParams: WorldInfoEntryUpdateParams = {
@@ -154,7 +159,6 @@ export default function worldInfoUnitTest() {
         position: 'before',
         caseSensitive: false,
       };
-
       let updateFailed = false;
       try {
         await runtime.updateEntry(book.id, 'missing-entry', updateParams);
@@ -173,6 +177,7 @@ export default function worldInfoUnitTest() {
     });
 
     it('导入世界书后根据已有 entries 推进 nextEntryId', 0, async () => {
+      // 运行时实例。
       const runtime = new WorldInfoRuntime(new InMemoryFileStore(), new EventBus(), 'tavern-data', 'default');
       const importedData: WorldInfoImportData = {
         schemaVersion: 1,
@@ -200,7 +205,6 @@ export default function worldInfoUnitTest() {
         createdAt: 1,
         updatedAt: 1,
       };
-
       const imported = await runtime.importWorldBookJson(JSON.stringify(importedData), 'Imported');
       const created = await runtime.createEntry(imported.id, makeEntryParams('New', ['new'], 'New content', 2));
       const loaded = await runtime.getWorldBook(imported.id);
@@ -212,12 +216,12 @@ export default function worldInfoUnitTest() {
     });
 
     it('递归激活不会误合并不同世界书中的相同 entry id', 0, async () => {
+      // 运行时实例。
       const runtime = new WorldInfoRuntime(new InMemoryFileStore(), new EventBus(), 'tavern-data', 'default');
       const firstBook = await runtime.createWorldBook('First');
       const secondBook = await runtime.createWorldBook('Second');
       await runtime.createEntry(firstBook.id, makeEntryParams('First entry', ['alpha'], 'beta', 1));
       await runtime.createEntry(secondBook.id, makeEntryParams('Second entry', ['beta'], 'second content', 2));
-
       const activation = await runtime.activateEntriesRecursive([firstBook.id, secondBook.id], ['alpha'], 2, 100);
 
       expect(activation.entries.length).assertEqual(2);
@@ -228,7 +232,9 @@ export default function worldInfoUnitTest() {
     });
 
     it('不会暴露可污染世界书和激活结果的内部对象', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new WorldInfoRuntime(new InMemoryFileStore(), bus, 'tavern-data', 'default');
       bus.subscribe<WorldInfoEventPayload>('worldinfo.created', (event: RuntimeEvent<WorldInfoEventPayload>) => {
         event.payload.worldBook.name = 'event-mutated';
@@ -237,9 +243,9 @@ export default function worldInfoUnitTest() {
         event.payload.entries[0].content = 'event-mutated';
         event.payload.matches[0].key = 'event';
       });
-
       const book = await runtime.createWorldBook('Safe');
       expect(book.name).assertEqual('Safe');
+      // 条目记录。
       const entry = await runtime.createEntry(book.id, makeEntryParams('Safe entry', ['safe'], 'safe content', 1));
       entry.keys.push('external');
       const activation = await runtime.activateEntries([book.id], ['safe']);
@@ -256,9 +262,10 @@ export default function worldInfoUnitTest() {
 
     it('读取或删除不存在的世界书时抛错', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new WorldInfoRuntime(files, bus, 'tavern-data', 'default');
-
       let getFailed = false;
       try {
         await runtime.getWorldBook('missing-book');
@@ -278,9 +285,9 @@ export default function worldInfoUnitTest() {
 
     it('拒绝通过路径穿越别名读取已有世界书', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new WorldInfoRuntime(files, new EventBus(), 'tavern-data', 'default');
       await runtime.createWorldBook('Lore');
-
       let aliasFailed = false;
       try {
         await runtime.getWorldBook('../worldbooks/worldbook-1');
@@ -293,6 +300,14 @@ export default function worldInfoUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeEntryParams 步骤，供公开方法复用。
+
+
+ * @param content 要写入或追加的文本内容。
+
+ * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+ */
 function makeEntryParams(comment: string, keys: Array<string>, content: string, insertionOrder: number): WorldInfoEntryCreateParams {
   return {
     comment: comment,

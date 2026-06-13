@@ -16,17 +16,40 @@ import type {
   TokenTrimResult,
 } from './TokenizerModels';
 
+/**
+ * 提供token 统计相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class TokenizerRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * profiles 列表，由当前实例内部维护。
+   */
   private profiles: Map<string, TokenizerProfile> = new Map<string, TokenizerProfile>();
+  /**
+   * model Bindings 列表，由当前实例内部维护。
+   */
   private modelBindings: Map<string, string> = new Map<string, string>();
+  /**
+   * count Cache 值，由当前实例内部维护。
+   */
   private countCache: Map<string, number> = new Map<string, number>();
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
     this.registerDefaultProfiles();
   }
 
+  /**
+   * 注册Profile 值，使其可被后续运行时流程使用。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   registerProfile(params: TokenizerProfileCreateParams): TokenizerProfile {
     const now = Date.now();
     const existing = this.profiles.get(params.id);
@@ -49,15 +72,29 @@ export class TokenizerRuntime {
     return this.copyProfile(profile);
   }
 
+  /**
+   * 把token 统计对象绑定到指定作用域，后续读取会按该绑定解析。
+   * @param modelId 目标模型标识。
+   * @param profileId 目标连接或预设配置标识。
+   */
   bindModel(modelId: string, profileId: string): void {
     this.requireProfile(profileId);
     this.modelBindings.set(modelId, profileId);
   }
 
+  /**
+   * 读取指定连接配置，不存在时抛出错误。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
+   * @returns 更新或读取后的记录副本。
+   */
   getProfile(profileIdOrModelId: string): TokenizerProfile {
     return this.copyProfile(this.requireProfile(this.resolveProfileId(profileIdOrModelId)));
   }
 
+  /**
+   * 读取Profiles列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listProfiles(): Array<TokenizerProfile> {
     const result = new Array<TokenizerProfile>();
     const values = Array.from(this.profiles.values());
@@ -68,6 +105,10 @@ export class TokenizerRuntime {
     return result;
   }
 
+  /**
+   * 读取TokenizerOptions列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listTokenizerOptions(): Array<TokenizerOption> {
     return [
       this.createTokenizerOption(0, 'none', 'Best-effort byte estimate', 'openai-cl100k', false, false),
@@ -94,11 +135,18 @@ export class TokenizerRuntime {
     ];
   }
 
+  /**
+   * 读取或解析分词器，调用方应处理不存在或不匹配的情况。
+   * @param input 待处理的输入对象。
+   */
   selectBestTokenizer(input: TokenizerSelectionInput): TokenizerSelectionResult {
     const api = this.normalize(input.api);
     const provider = this.normalize(input.provider === undefined ? '' : input.provider);
+    // 模型名称。
     const model = this.normalize(input.model === undefined ? '' : input.model);
+    // profile 标识。
     let profileId = this.resolveProfileIdFromText(`${provider} ${model}`);
+    // 原因说明。
     let reason = 'model';
     let remote = false;
 
@@ -125,7 +173,6 @@ export class TokenizerRuntime {
         reason = 'fallback';
       }
     }
-
     const option = this.findTokenizerOption(profileId, remote);
     return {
       option: option,
@@ -136,6 +183,11 @@ export class TokenizerRuntime {
     };
   }
 
+  /**
+   * 统计选中文本，用于预算、分页或状态汇总。
+   * @param input 待处理的输入对象。
+   * @param text 文本内容。
+   */
   countTextForSelection(input: TokenizerSelectionInput, text: string, padding: number = 0): TokenCountResult {
     const selection = this.selectBestTokenizer(input);
     const result = this.countText(selection.profileId, text);
@@ -148,12 +200,21 @@ export class TokenizerRuntime {
     };
   }
 
+  /**
+   * 删除或清理Cache，并同步维护相关索引或状态。
+   */
   clearCache(): void {
     this.countCache.clear();
   }
 
+  /**
+   * 统计文本，用于预算、分页或状态汇总。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
+   * @param text 文本内容。
+   */
   countText(profileIdOrModelId: string, text: string): TokenCountResult {
     const profile = this.getProfile(profileIdOrModelId);
+    // 键名。
     const key = `${profile.id}:${profile.strategy}:${text}`;
     const cached = this.countCache.get(key);
     const fromCache = cached !== undefined;
@@ -175,6 +236,12 @@ export class TokenizerRuntime {
     return this.copyCountResult(result);
   }
 
+  /**
+   * 统计Messages 列表，用于预算、分页或状态汇总。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
+   * @param messages 消息列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   countMessages(profileIdOrModelId: string, messages: Array<TokenMessage>): TokenMessageCountResult {
     const profile = this.getProfile(profileIdOrModelId);
     const parts = new Array<TokenMessagePart>();
@@ -196,6 +263,13 @@ export class TokenizerRuntime {
     };
   }
 
+  /**
+   * 根据入参构建Budget 值，仅生成数据结构，不直接执行外部请求。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
+   * @param messages 消息列表。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   buildBudget(profileIdOrModelId: string, messages: Array<TokenMessage>, completionReserve: number): TokenBudgetResult {
     const profile = this.getProfile(profileIdOrModelId);
     const reserve = Math.max(0, completionReserve);
@@ -217,6 +291,13 @@ export class TokenizerRuntime {
     return this.copyBudgetResult(result);
   }
 
+  /**
+   * 按预算裁剪Messages To Budget 值，避免超出上下文限制。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
+   * @param messages 消息列表。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   trimMessagesToBudget(profileIdOrModelId: string, messages: Array<TokenMessage>, completionReserve: number): TokenTrimResult {
     let remaining = this.copyMessages(messages);
     let result = this.buildBudget(profileIdOrModelId, remaining, completionReserve);
@@ -237,6 +318,11 @@ export class TokenizerRuntime {
     };
   }
 
+  /**
+   * 统计指定配置，用于预算、分页或状态汇总。
+
+   * @param text 文本内容。
+   */
   private countWithProfile(profile: TokenizerProfile, text: string): number {
     if (text.length === 0) {
       return 0;
@@ -247,6 +333,10 @@ export class TokenizerRuntime {
     return Math.ceil(this.estimateUtf8Bytes(text) / profile.bytesPerToken);
   }
 
+  /**
+   * 统计Words 列表，用于预算、分页或状态汇总。
+   * @param text 文本内容。
+   */
   private countWords(text: string): number {
     const normalized = text.trim();
     if (normalized.length === 0) {
@@ -254,7 +344,6 @@ export class TokenizerRuntime {
     }
     return normalized.split(/\s+/).length;
   }
-
   private estimateUtf8Bytes(text: string): number {
     let bytes = 0;
     for (let index = 0; index < text.length; index += 1) {
@@ -273,6 +362,11 @@ export class TokenizerRuntime {
     return bytes;
   }
 
+  /**
+   * 在当前集合中查找Oldest Removable Message 值，未命中时返回空值或默认位置。
+   * @param messages 消息列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private findOldestRemovableMessage(messages: Array<TokenMessage>): number {
     for (let index = 0; index < messages.length - 1; index += 1) {
       if (messages[index].role !== 'system') {
@@ -282,6 +376,11 @@ export class TokenizerRuntime {
     return messages.length > 1 ? 0 : -1;
   }
 
+  /**
+   * 复制Messages 列表，避免外部修改内部状态。
+   * @param messages 消息列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private copyMessages(messages: Array<TokenMessage>): Array<TokenMessage> {
     const result = new Array<TokenMessage>();
     for (let index = 0; index < messages.length; index += 1) {
@@ -293,6 +392,9 @@ export class TokenizerRuntime {
     return result;
   }
 
+  /**
+   * 复制Profile 值，避免外部修改内部状态。
+   */
   private copyProfile(profile: TokenizerProfile): TokenizerProfile {
     return {
       id: profile.id,
@@ -306,6 +408,10 @@ export class TokenizerRuntime {
     };
   }
 
+  /**
+   * 复制Count Result 值，避免外部修改内部状态。
+   * @param result 返回结果。
+   */
   private copyCountResult(result: TokenCountResult): TokenCountResult {
     return {
       profileId: result.profileId,
@@ -316,6 +422,10 @@ export class TokenizerRuntime {
     };
   }
 
+  /**
+   * 复制Budget Result 值，避免外部修改内部状态。
+   * @param result 返回结果。
+   */
   private copyBudgetResult(result: TokenBudgetResult): TokenBudgetResult {
     return {
       profileId: result.profileId,
@@ -328,6 +438,9 @@ export class TokenizerRuntime {
     };
   }
 
+  /**
+   * 注册Default Profiles 列表，使其可被后续运行时流程使用。
+   */
   private registerDefaultProfiles(): void {
     this.registerBuiltinProfile({
       id: 'gpt2',
@@ -481,6 +594,10 @@ export class TokenizerRuntime {
     this.bindBuiltinModel('kayra', 'nerdstash_v2');
   }
 
+  /**
+   * 注册Builtin Profile 值，使其可被后续运行时流程使用。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   private registerBuiltinProfile(params: TokenizerProfileCreateParams): void {
     const profile: TokenizerProfile = {
       id: params.id,
@@ -495,10 +612,25 @@ export class TokenizerRuntime {
     this.profiles.set(profile.id, profile);
   }
 
+  /**
+   * 把token 统计对象绑定到指定作用域，后续读取会按该绑定解析。
+   * @param modelId 目标模型标识。
+   * @param profileId 目标连接或预设配置标识。
+   */
   private bindBuiltinModel(modelId: string, profileId: string): void {
     this.modelBindings.set(modelId, profileId);
   }
 
+  /**
+   * 创建新的分词器选项记录，写入存储并返回副本。
+   * @param id 唯一标识。
+   * @param key 键名。
+   * @param name 显示名称或注册名称。
+   * @param profileId 目标连接或预设配置标识。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private createTokenizerOption(id: number, key: string, name: string, profileId: string, canEncode: boolean, remote: boolean): TokenizerOption {
     return {
       id: id,
@@ -510,6 +642,12 @@ export class TokenizerRuntime {
     };
   }
 
+  /**
+   * 在当前集合中查找Tokenizer Option 值，未命中时返回空值或默认位置。
+   * @param profileId 目标连接或预设配置标识。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private findTokenizerOption(profileId: string, remote: boolean): TokenizerOption {
     const options = this.listTokenizerOptions();
     for (let index = 0; index < options.length; index += 1) {
@@ -525,6 +663,10 @@ export class TokenizerRuntime {
     return options[0];
   }
 
+  /**
+   * 根据当前上下文解析Profile Id From Text 值，返回实际可用值。
+   * @param text 文本内容。
+   */
   private resolveProfileIdFromText(text: string): string {
     const normalized = this.normalize(text);
     if (normalized.indexOf('deepseek') >= 0 || normalized.indexOf('sonar-reasoning') >= 0) {
@@ -572,15 +714,27 @@ export class TokenizerRuntime {
     return '';
   }
 
+  /**
+   * 规范化目标对象，保证后续比较和存储使用一致格式。
+   * @param value 要保存或比较的字段值。
+   */
   private normalize(value: string): string {
     return value.toLowerCase();
   }
 
+  /**
+   * 根据当前上下文解析Profile 标识，返回实际可用值。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
+   */
   private resolveProfileId(profileIdOrModelId: string): string {
     const binding = this.modelBindings.get(profileIdOrModelId);
     return binding === undefined ? profileIdOrModelId : binding;
   }
 
+  /**
+   * 读取必须存在的Profile 值，缺失时抛出错误。
+   * @param profileId 目标连接或预设配置标识。
+   */
   private requireProfile(profileId: string): TokenizerProfile {
     const profile = this.profiles.get(profileId);
     if (profile === undefined) {

@@ -18,13 +18,14 @@ export default function vectorUnitTest() {
   describe('vector runtime', () => {
     it('creates collection metadata and writes vector records', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new VectorRuntime(files, bus);
       const events = new Array<string>();
       bus.subscribe<VectorUpsertPayload>('vector.upserted', (event: RuntimeEvent<VectorUpsertPayload>) => {
         events.push(`${event.payload.collectionId}:${event.payload.vector.id}`);
       });
-
       const collection: VectorCollectionRecord = await runtime.createCollection(makeCollection('kb', 3));
       const vector: VectorRecord = await runtime.upsertVector('kb', makeVector('chunk-1', 'doc-1', 'global', [1, 0, 0], 'world lore'));
       const metadata = await files.readText('tavern-data/users/default/vectors/collections/kb/metadata.json');
@@ -38,12 +39,14 @@ export default function vectorUnitTest() {
     });
 
     it('queries by cosine score topK threshold and scope filter', 0, async () => {
+      // 运行时实例。
       const runtime = new VectorRuntime(new InMemoryFileStore(), new EventBus());
       await runtime.createCollection(makeCollection('kb', 3));
       await runtime.upsertVector('kb', makeVector('chunk-1', 'doc-1', 'global', [1, 0, 0], 'alpha'));
       await runtime.upsertVector('kb', makeVector('chunk-2', 'doc-2', 'global', [0.8, 0.2, 0], 'beta'));
       await runtime.upsertVector('kb', makeVector('chunk-3', 'doc-3', 'chat:1', [0, 1, 0], 'chat'));
 
+      // 查询条件。
       const query: VectorQueryParams = {
         collectionIds: ['kb'],
         embedding: [1, 0, 0],
@@ -60,7 +63,9 @@ export default function vectorUnitTest() {
     });
 
     it('deletes vectors by document and scope', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new VectorRuntime(new InMemoryFileStore(), bus);
       const deleted = new Array<string>();
       bus.subscribe<VectorDeletedPayload>('vector.deleted', (event: RuntimeEvent<VectorDeletedPayload>) => {
@@ -70,7 +75,6 @@ export default function vectorUnitTest() {
       await runtime.upsertVector('kb', makeVector('chunk-1', 'doc-1', 'global', [1, 0, 0], 'alpha'));
       await runtime.upsertVector('kb', makeVector('chunk-2', 'doc-1', 'global', [0.9, 0.1, 0], 'beta'));
       await runtime.upsertVector('kb', makeVector('chunk-3', 'doc-2', 'chat:1', [0, 1, 0], 'chat'));
-
       const byDocument = await runtime.deleteByDocument('kb', 'doc-1');
       const byScope = await runtime.deleteByScope('kb', 'chat:1');
       const remaining = await runtime.listVectors('kb');
@@ -83,9 +87,9 @@ export default function vectorUnitTest() {
     });
 
     it('拒绝用不同维度覆盖已有 collection', 0, async () => {
+      // 运行时实例。
       const runtime = new VectorRuntime(new InMemoryFileStore(), new EventBus());
       await runtime.createCollection(makeCollection('kb', 3));
-
       let failed = false;
       try {
         await runtime.createCollection(makeCollection('kb', 4));
@@ -98,8 +102,8 @@ export default function vectorUnitTest() {
 
     it('净化 collection 路径段避免越过 collections 目录', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new VectorRuntime(files, new EventBus());
-
       const collection = await runtime.createCollection(makeCollection('../escape', 3));
       const safeMetadata = await files.readText('tavern-data/users/default/vectors/collections/..~2fescape/metadata.json');
       const escapedExists = await files.exists('tavern-data/users/default/vectors/escape/metadata.json');
@@ -112,6 +116,10 @@ export default function vectorUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeCollection 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ */
 function makeCollection(id: string, dimension: number): VectorCollectionCreateParams {
   return {
     id: id,
@@ -122,6 +130,15 @@ function makeCollection(id: string, dimension: number): VectorCollectionCreatePa
   };
 }
 
+/**
+ * 封装单元测试中的 makeVector 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param documentId document 标识。
+ * @param scope 绑定或查询使用的作用域。
+ * @param embedding 向量数据。
+ * @param text 文本内容。
+ * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+ */
 function makeVector(id: string, documentId: string, scope: string, embedding: Array<number>, text: string): VectorRecord {
   return {
     id: id,

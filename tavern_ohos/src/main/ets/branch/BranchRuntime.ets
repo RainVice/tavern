@@ -10,15 +10,36 @@ import type {
   CheckpointRecord,
 } from './BranchModels';
 
+/**
+ * 提供聊天分支相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class BranchRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * branches 列表，由当前实例内部维护。
+   */
   private branches: Map<string, BranchRecord> = new Map<string, BranchRecord>();
+  /**
+   * checkpoints 列表，由当前实例内部维护。
+   */
   private checkpoints: Map<string, CheckpointRecord> = new Map<string, CheckpointRecord>();
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 创建新的分支记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   createBranch(params: BranchCreateParams): BranchRecord {
     if (this.branches.has(params.id)) {
       throw new Error(`Branch already exists: ${params.id}`);
@@ -39,6 +60,11 @@ export class BranchRuntime {
     return this.cloneBranch(branch);
   }
 
+  /**
+   * 创建新的检查点记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   createCheckpoint(params: CheckpointCreateParams): CheckpointRecord {
     this.requireBranch(params.branchId);
     if (this.checkpoints.has(params.id)) {
@@ -60,6 +86,10 @@ export class BranchRuntime {
     return this.cloneCheckpoint(checkpoint);
   }
 
+  /**
+   * 更新分支状态，必要时写回存储并发布对应事件。
+   * @param branchId 目标分支标识。
+   */
   activateBranch(branchId: string): BranchRecord {
     const branch = this.requireBranch(branchId);
     this.deactivateSiblings(branch.parentChatId);
@@ -72,6 +102,11 @@ export class BranchRuntime {
     return this.cloneBranch(branch);
   }
 
+  /**
+   * 读取指定分支，不存在时抛出错误。
+   * @param parentChatId 目标父聊天标识。
+   * @returns 更新或读取后的记录副本。
+   */
   getActiveBranch(parentChatId: string): BranchRecord {
     const branches = Array.from(this.branches.values());
     for (let index = 0; index < branches.length; index += 1) {
@@ -83,6 +118,11 @@ export class BranchRuntime {
     throw new Error(`Active branch not found: ${parentChatId}`);
   }
 
+  /**
+   * 读取Branches列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param parentChatId 目标父聊天标识。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listBranches(parentChatId: string): Array<BranchRecord> {
     const result = new Array<BranchRecord>();
     const branches = Array.from(this.branches.values());
@@ -95,8 +135,14 @@ export class BranchRuntime {
     return result;
   }
 
+  /**
+   * 读取指定Lineage，不存在时抛出错误。
+   * @param chatId 目标聊天标识。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   getLineage(chatId: string): Array<BranchRecord> {
     const reversed = new Array<BranchRecord>();
+    // current Chat 标识。
     let currentChatId = chatId;
     let found = true;
     while (found) {
@@ -119,6 +165,11 @@ export class BranchRuntime {
     return lineage;
   }
 
+  /**
+   * 导出分支，用于备份、迁移或与 SillyTavern 数据互通。
+   * @param branchId 目标分支标识。
+   * @returns 可持久化或可传输的导出内容。
+   */
   exportBranch(branchId: string): BranchExportData {
     const branch = this.cloneBranch(this.requireBranch(branchId));
     const checkpoints = new Array<CheckpointRecord>();
@@ -135,6 +186,12 @@ export class BranchRuntime {
     return data;
   }
 
+  /**
+   * 执行 restoreBranch 的内部处理步骤，供当前模块复用。
+   * @param data 导入或恢复使用的序列化数据。
+   * @param newBranchId 目标新分支标识。
+   * @param newChildChatId 目标新子聊天标识。
+   */
   restoreBranch(data: BranchExportData, newBranchId: string, newChildChatId: string): BranchRecord {
     if (this.branches.has(newBranchId)) {
       throw new Error(`Branch already exists: ${newBranchId}`);
@@ -155,6 +212,10 @@ export class BranchRuntime {
     return this.cloneBranch(restored);
   }
 
+  /**
+   * 读取必须存在的Branch 值，缺失时抛出错误。
+   * @param branchId 目标分支标识。
+   */
   private requireBranch(branchId: string): BranchRecord {
     const branch = this.branches.get(branchId);
     if (branch === undefined) {
@@ -163,6 +224,10 @@ export class BranchRuntime {
     return branch;
   }
 
+  /**
+   * 更新Siblings状态，必要时写回存储并发布对应事件。
+   * @param parentChatId 目标父聊天标识。
+   */
   private deactivateSiblings(parentChatId: string): void {
     const branches = Array.from(this.branches.values());
     for (let index = 0; index < branches.length; index += 1) {
@@ -173,6 +238,9 @@ export class BranchRuntime {
     }
   }
 
+  /**
+   * 复制Branch 值，避免外部修改内部状态。
+   */
   private cloneBranch(branch: BranchRecord): BranchRecord {
     const cloned: BranchRecord = {
       id: branch.id,
@@ -187,6 +255,9 @@ export class BranchRuntime {
     return cloned;
   }
 
+  /**
+   * 复制Checkpoint 值，避免外部修改内部状态。
+   */
   private cloneCheckpoint(checkpoint: CheckpointRecord): CheckpointRecord {
     const cloned: CheckpointRecord = {
       id: checkpoint.id,
@@ -198,7 +269,6 @@ export class BranchRuntime {
     };
     return cloned;
   }
-
   private restoredCheckpointId(branchId: string, checkpointId: string, index: number): string {
     const base = `${branchId}:${checkpointId}`;
     if (!this.checkpoints.has(base)) {
@@ -213,6 +283,11 @@ export class BranchRuntime {
     return candidate;
   }
 
+  /**
+   * 发布聊天分支事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+
+   */
   private publishBranchEvent(eventName: string, branch: BranchRecord): void {
     const payload: BranchEventPayload = {
       branch: this.cloneBranch(branch),

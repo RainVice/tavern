@@ -7,16 +7,16 @@ import {
 export default function imageCaptionUnitTest() {
   describe('ImageCaptionRuntime', () => {
     it('发起 caption 并跟踪状态', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ImageCaptionRuntime(bus);
       const statuses = new Array<string>();
       bus.subscribe<CaptionStartedPayload>('caption.started', (e: RuntimeEvent<CaptionStartedPayload>) => { statuses.push(e.payload.task.status); });
       bus.subscribe<CaptionCompletedPayload>('caption.completed', (e: RuntimeEvent<CaptionCompletedPayload>) => { statuses.push(e.payload.task.status); });
-
       const task = runtime.startCaption({ imageAttachmentId: 'img-1', provider: 'openai_vision', prompt: '描述这张图片', model: 'gpt-4o', autoCaption: true });
       runtime.updateProgress(task.taskId, 50);
       runtime.completeCaption(task.taskId, { taskId: task.taskId, text: '一只猫坐在窗台上', attachmentId: 'cap-1' });
-
       const saved = runtime.getTask(task.taskId);
       expect(saved.status).assertEqual('completed');
       expect(saved.resultText).assertEqual('一只猫坐在窗台上');
@@ -27,26 +27,31 @@ export default function imageCaptionUnitTest() {
     });
 
     it('caption 失败和取消', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ImageCaptionRuntime(bus);
       const t1 = runtime.startCaption({ imageAttachmentId: 'img-2', provider: 'openai_vision', prompt: '', model: 'gpt-4o', autoCaption: false });
       runtime.cancelCaption(t1.taskId);
       expect(runtime.getTask(t1.taskId).status).assertEqual('cancelled');
-
       const t2 = runtime.startCaption({ imageAttachmentId: 'img-3', provider: 'local', prompt: '', model: 'local', autoCaption: false });
       runtime.failCaption(t2.taskId, '模型不可用');
       expect(runtime.getTask(t2.taskId).error).assertEqual('模型不可用');
     });
 
     it('构建 Vision 请求', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ImageCaptionRuntime(bus);
       const req = runtime.buildVisionRequest('gpt-4o', 'https://example.com/img.png', '这是什么');
       expect(req.model).assertEqual('gpt-4o');
     });
 
     it('按状态过滤任务', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ImageCaptionRuntime(bus);
       const t1 = runtime.startCaption({ imageAttachmentId: 'a', provider: 'openai_vision', prompt: '', model: '', autoCaption: false });
       const t2 = runtime.startCaption({ imageAttachmentId: 'b', provider: 'openai_vision', prompt: '', model: '', autoCaption: false });
@@ -68,6 +73,7 @@ export default function imageCaptionUnitTest() {
     });
 
     it('读取和导出不会暴露内部 caption 任务', 0, () => {
+      // 运行时实例。
       const runtime = new ImageCaptionRuntime(new EventBus());
       const task = runtime.startCaption({ imageAttachmentId: 'img-1', provider: 'openai_vision', prompt: '描述', model: 'gpt-4o', autoCaption: true });
       task.status = 'completed';
@@ -75,7 +81,6 @@ export default function imageCaptionUnitTest() {
 
       expect(runtime.getTask(task.taskId).status).assertEqual('pending');
       expect(runtime.getTask(task.taskId).params.prompt).assertEqual('描述');
-
       const exported = runtime.exportData();
       exported.tasks[0].resultText = '导出修改';
       exported.tasks[0].params.imageAttachmentId = 'changed';
@@ -84,6 +89,7 @@ export default function imageCaptionUnitTest() {
     });
 
     it('导入后新建 caption 任务不会复用已有 ID', 0, () => {
+      // 运行时实例。
       const runtime = new ImageCaptionRuntime(new EventBus());
       const data: CaptionExportData = {
         tasks: [{

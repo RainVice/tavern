@@ -17,42 +17,96 @@ import type {
 } from './ProviderModels';
 import { ProviderSSEParser } from './ProviderSSEParser';
 
+/**
+ * 封装Provider 请求相关状态和行为。
+ */
 class OpenAIProviderStreamSink implements ProviderStreamSink {
+  /**
+   * 运行时实例，由当前实例内部维护。
+   */
   private runtime: ProviderRuntime;
+  /**
+   * 任务标识。
+   */
   private taskId: string;
+  /**
+   * parser 值，由当前实例内部维护。
+   */
   private parser: ProviderSSEParser;
 
+  /**
+   * 注入Provider 请求运行时依赖并初始化实例状态。
+   * @param runtime 运行时实例。
+   * @param taskId 目标任务标识。
+   */
   constructor(runtime: ProviderRuntime, taskId: string, parser: ProviderSSEParser) {
     this.runtime = runtime;
     this.taskId = taskId;
     this.parser = parser;
   }
 
+  /**
+   * 执行 onChunk 的内部处理步骤，供当前模块复用。
+
+   */
   async onChunk(chunk: string): Promise<void> {
     await this.runtime.acceptOpenAICompatibleChunk(this.taskId, this.parser, chunk);
   }
 
+  /**
+   * 执行 onError 的内部处理步骤，供当前模块复用。
+   * @param message 消息记录。
+   */
   async onError(message: string): Promise<void> {
     await this.runtime.failStream(this.taskId, message);
   }
 
+  /**
+   * 执行 onDone 的内部处理步骤，供当前模块复用。
+   */
   async onDone(): Promise<void> {
     await this.runtime.finishOpenAICompatibleStream(this.taskId, this.parser);
   }
 }
 
+/**
+ * 提供Provider 请求相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class ProviderRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * streaming 值，由当前实例内部维护。
+   */
   private streaming: StreamingRuntime;
+  /**
+   * normalizer 值，由当前实例内部维护。
+   */
   private normalizer: OpenAICompatibleNormalizer = new OpenAICompatibleNormalizer();
+  /**
+   * tasks 列表，由当前实例内部维护。
+   */
   private tasks: Map<string, ProviderStreamTask> = new Map<string, ProviderStreamTask>();
+  /**
+   * handles 列表，由当前实例内部维护。
+   */
   private handles: Map<string, ProviderStreamHandle> = new Map<string, ProviderStreamHandle>();
 
+  /**
+   * 注入Provider 请求运行时依赖并初始化实例状态。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus, streaming: StreamingRuntime) {
     this.events = events;
     this.streaming = streaming;
   }
 
+  /**
+   * 启动Open AICompatible Stream 值流程，并记录初始任务或会话状态。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   async startOpenAICompatibleStream(params: ProviderStreamStartParams): Promise<ProviderStreamTask> {
     const now = Date.now();
     const session = this.streaming.startStream({
@@ -75,7 +129,6 @@ export class ProviderRuntime {
     };
     this.tasks.set(task.taskId, this.copyTask(task));
     this.publish('generation.started', task);
-
     const parser = new ProviderSSEParser();
     const sink = new OpenAIProviderStreamSink(this, task.taskId, parser);
     try {
@@ -87,6 +140,11 @@ export class ProviderRuntime {
     return this.getTask(task.taskId);
   }
 
+  /**
+   * 执行 abortProviderStream 的内部处理步骤，供当前模块复用。
+   * @param taskId 目标任务标识。
+   * @param reason 失败、中止或恢复操作的原因说明。
+   */
   abortProviderStream(taskId: string, reason: string): ProviderStreamTask {
     const handle = this.handles.get(taskId);
     if (handle !== undefined) {
@@ -103,10 +161,22 @@ export class ProviderRuntime {
     return this.copyTask(task);
   }
 
+  /**
+   * 读取指定任务，不存在时抛出错误。
+   * @param taskId 目标任务标识。
+   * @returns 更新或读取后的记录副本。
+   */
   getTask(taskId: string): ProviderStreamTask {
     return this.copyTask(this.requireTask(taskId));
   }
 
+  /**
+   * 执行 openAICompatibleCapability 的内部处理步骤，供当前模块复用。
+   * @param model 模型名称。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   openAICompatibleCapability(model: string, maxContext: number, supportsReasoning: boolean): ProviderCapability {
     return {
       provider: 'openai-compatible',
@@ -129,6 +199,11 @@ export class ProviderRuntime {
     };
   }
 
+  /**
+   * 根据入参构建Text Completion Request 值，仅生成数据结构，不直接执行外部请求。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
+   */
   buildTextCompletionRequest(params: ProviderTextCompletionBuildParams): ProviderTextCompletionRequest {
     const apiType = params.apiType.toLowerCase();
     if (apiType === 'ollama') {
@@ -137,17 +212,35 @@ export class ProviderRuntime {
     return this.buildOpenAITextCompletionRequest(apiType, params);
   }
 
+  /**
+   * 执行 acceptOpenAICompatibleChunk 的内部处理步骤，供当前模块复用。
+   * @param taskId 目标任务标识。
+
+
+   */
   async acceptOpenAICompatibleChunk(taskId: string, parser: ProviderSSEParser, chunk: string): Promise<void> {
+    // 事件总线。
     const events = parser.push(chunk);
     await this.consumeEvents(taskId, events);
   }
 
+  /**
+   * 执行 finishOpenAICompatibleStream 的内部处理步骤，供当前模块复用。
+   * @param taskId 目标任务标识。
+
+   */
   async finishOpenAICompatibleStream(taskId: string, parser: ProviderSSEParser): Promise<void> {
+    // 事件总线。
     const events = parser.flush();
     await this.consumeEvents(taskId, events);
     this.completeStream(taskId);
   }
 
+  /**
+   * 标记Stream 值失败，并保存错误信息。
+   * @param taskId 目标任务标识。
+   * @param message 消息记录。
+   */
   async failStream(taskId: string, message: string): Promise<void> {
     const task = this.requireTask(taskId);
     if (task.status !== 'running') {
@@ -159,13 +252,11 @@ export class ProviderRuntime {
     task.updatedAt = Date.now();
     this.publish('generation.failed', task);
   }
-
   private async consumeEvents(taskId: string, events: Array<ProviderSSEEvent>): Promise<void> {
     for (let index = 0; index < events.length; index += 1) {
       await this.consumeEvent(taskId, events[index]);
     }
   }
-
   private async consumeEvent(taskId: string, event: ProviderSSEEvent): Promise<void> {
     if (event.data === '[DONE]') {
       this.completeStream(taskId);
@@ -194,6 +285,10 @@ export class ProviderRuntime {
     }
   }
 
+  /**
+   * 标记Stream 值完成，并写入最终结果。
+   * @param taskId 目标任务标识。
+   */
   private completeStream(taskId: string): ProviderStreamTask {
     const task = this.requireTask(taskId);
     if (task.status !== 'running') {
@@ -206,6 +301,10 @@ export class ProviderRuntime {
     return task;
   }
 
+  /**
+   * 读取必须存在的Task 值，缺失时抛出错误。
+   * @param taskId 目标任务标识。
+   */
   private requireTask(taskId: string): ProviderStreamTask {
     const task = this.tasks.get(taskId);
     if (task === undefined) {
@@ -214,6 +313,11 @@ export class ProviderRuntime {
     return task;
   }
 
+  /**
+   * 发布Provider 请求事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+
+   */
   private publish(eventName: string, task: ProviderStreamTask): void {
     const payload: ProviderGenerationPayload = {
       task: this.copyTask(task),
@@ -221,6 +325,9 @@ export class ProviderRuntime {
     this.events.publish<ProviderGenerationPayload>(eventName, payload);
   }
 
+  /**
+   * 复制Task 值，避免外部修改内部状态。
+   */
   private copyTask(task: ProviderStreamTask): ProviderStreamTask {
     return {
       taskId: task.taskId,
@@ -237,6 +344,12 @@ export class ProviderRuntime {
     };
   }
 
+  /**
+   * 根据入参构建Open AIText Completion Request 值，仅生成数据结构，不直接执行外部请求。
+
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
+   */
   private buildOpenAITextCompletionRequest(apiType: string, params: ProviderTextCompletionBuildParams): ProviderTextCompletionRequest {
     const body: ProviderTextCompletionBody = {
       model: params.model,
@@ -254,6 +367,12 @@ export class ProviderRuntime {
     };
   }
 
+  /**
+   * 根据入参构建Ollama Text Completion Request 值，仅生成数据结构，不直接执行外部请求。
+
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
+   */
   private buildOllamaTextCompletionRequest(apiType: string, params: ProviderTextCompletionBuildParams): ProviderTextCompletionRequest {
     const stop = params.stop.slice();
     const options: ProviderTextCompletionOptions = {
@@ -288,7 +407,6 @@ export class ProviderRuntime {
       body: body,
     };
   }
-
   private textCompletionPath(apiType: string): string {
     if (apiType === 'dreamgen') {
       return '/api/openai/v1/completions';
@@ -305,6 +423,12 @@ export class ProviderRuntime {
     return '/v1/completions';
   }
 
+  /**
+   * 规范化Text Completion Stops 列表，保证后续比较和存储使用一致格式。
+
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private normalizeTextCompletionStops(apiType: string, stop: Array<string>): Array<string> {
     if (apiType !== 'generic') {
       return stop.slice();
@@ -316,7 +440,6 @@ export class ProviderRuntime {
     }
     return result;
   }
-
   private applyOptionalSamplerFields(body: ProviderTextCompletionBody, params: ProviderTextCompletionBuildParams): void {
     if (params.topP !== undefined) {
       body.top_p = params.topP;

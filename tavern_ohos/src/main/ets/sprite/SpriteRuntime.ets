@@ -11,23 +11,55 @@ import type {
   SpriteUploadParams,
 } from './SpriteModels';
 
+/**
+ * 提供表情图相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class SpriteRuntime {
+  /**
+   * 文件存储适配器。
+   */
   private files: TavernFileStore;
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * 记录副本列表，由当前实例内部维护。
+   */
   private records: Map<string, SpriteRecord> = new Map<string, SpriteRecord>();
+  /**
+   * selections 列表，由当前实例内部维护。
+   */
   private selections: Map<string, SpriteSelectionRecord> = new Map<string, SpriteSelectionRecord>();
+  /**
+   * 数据根路径。
+   */
   private rootPath: string = 'tavern-data/users/default/characters';
 
+  /**
+   * 初始化当前运行时实例。
+   * @param files 文件存储适配器。
+   * @param events 事件总线。
+   */
   constructor(files: TavernFileStore, events: EventBus) {
     this.files = files;
     this.events = events;
   }
 
+  /**
+   * 执行 uploadSprite 的内部处理步骤，供当前模块复用。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   async uploadSprite(params: SpriteUploadParams): Promise<SpriteRecord> {
+    // character 名称。
     const characterName = safePathSegment(params.characterName, 'character');
+    // subfolder 名称。
     const subfolderName = this.safeOptionalSegment(params.subfolderName);
+    // sprite 名称。
     const spriteName = safePathSegment(params.spriteName, 'sprite');
+    // file 名称。
     const fileName = `${spriteName}${this.extension(params.fileName)}`;
+    // 键名。
     const key = this.key(characterName, subfolderName, spriteName);
     const existing = this.records.get(key);
     if (existing !== undefined) {
@@ -56,9 +88,16 @@ export class SpriteRuntime {
     return this.copyRecord(record);
   }
 
+  /**
+   * 从外部数据导入Risu Sprites 列表，转换为当前运行时的数据结构。
+   * @param characterName 角色名称。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   async importRisuSprites(characterName: string, sprites: Array<RisuSpriteImport>): Promise<Array<SpriteRecord>> {
     const imported = new Array<SpriteRecord>();
     for (let index = 0; index < sprites.length; index += 1) {
+      // 调用参数。
       const params: SpriteUploadParams = {
         characterName: characterName,
         subfolderName: '',
@@ -73,6 +112,12 @@ export class SpriteRuntime {
     return imported;
   }
 
+  /**
+   * 读取Sprites列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param characterName 角色名称。
+   * @param subfolderName subfolder名称。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   async listSprites(characterName: string, subfolderName: string): Promise<Array<SpriteRecord>> {
     const normalizedCharacter = safePathSegment(characterName, 'character');
     const normalizedSubfolder = this.safeOptionalSegment(subfolderName);
@@ -86,6 +131,13 @@ export class SpriteRuntime {
     return result;
   }
 
+  /**
+   * 设置表情状态，用于切换运行时状态或保存配置。
+   * @param characterName 角色名称。
+   * @param subfolderName subfolder名称。
+
+   * @param spriteName 立绘名称。
+   */
   async setExpression(characterName: string, subfolderName: string, expression: string, spriteName: string): Promise<SpriteSelectionRecord> {
     const normalizedCharacter = safePathSegment(characterName, 'character');
     const normalizedSubfolder = this.safeOptionalSegment(subfolderName);
@@ -114,6 +166,12 @@ export class SpriteRuntime {
     return this.copySelection(selection);
   }
 
+  /**
+   * 读取指定Expression，不存在时抛出错误。
+   * @param characterName 角色名称。
+   * @param subfolderName subfolder名称。
+   * @returns 更新或读取后的记录副本。
+   */
   getExpression(characterName: string, subfolderName: string): SpriteSelectionRecord {
     const normalizedCharacter = safePathSegment(characterName, 'character');
     const normalizedSubfolder = this.safeOptionalSegment(subfolderName);
@@ -124,6 +182,12 @@ export class SpriteRuntime {
     return this.copySelection(selection);
   }
 
+  /**
+   * 删除指定立绘，并清理相关索引或资源引用。
+   * @param characterName 角色名称。
+   * @param subfolderName subfolder名称。
+   * @param spriteName 立绘名称。
+   */
   async deleteSprite(characterName: string, subfolderName: string, spriteName: string): Promise<void> {
     const normalizedCharacter = safePathSegment(characterName, 'character');
     const normalizedSubfolder = this.safeOptionalSegment(subfolderName);
@@ -145,6 +209,12 @@ export class SpriteRuntime {
     this.events.publish<SpriteDeletedPayload>('sprite.deleted', payload);
   }
 
+  /**
+   * 读取必须存在的Record 值，缺失时抛出错误。
+   * @param characterName 角色名称。
+   * @param subfolderName subfolder名称。
+   * @param spriteName 立绘名称。
+   */
   private requireRecord(characterName: string, subfolderName: string, spriteName: string): SpriteRecord {
     const record = this.records.get(this.key(characterName, subfolderName, spriteName));
     if (record === undefined) {
@@ -152,15 +222,14 @@ export class SpriteRuntime {
     }
     return record;
   }
-
   private spritePath(characterName: string, subfolderName: string, fileName: string): string {
     if (subfolderName.length === 0) {
       return `${this.rootPath}/${characterName}/sprites/${fileName}`;
     }
     return `${this.rootPath}/${characterName}/${subfolderName}/${fileName}`;
   }
-
   private extension(fileName: string): string {
+    // safe 名称。
     const safeName = safeFileName(fileName, 'sprite.png');
     const dotIndex = safeName.lastIndexOf('.');
     if (dotIndex < 0) {
@@ -172,22 +241,24 @@ export class SpriteRuntime {
     }
     return '.png';
   }
-
   private safeOptionalSegment(value: string): string {
     if (value.length === 0) {
       return '';
     }
     return safePathSegment(value, '');
   }
-
   private key(characterName: string, subfolderName: string, spriteName: string): string {
     return `${characterName}:${subfolderName}:${spriteName}`;
   }
 
+  /**
+   * 读取或解析ionKey，调用方应处理不存在或不匹配的情况。
+   * @param characterName 角色名称。
+   * @param subfolderName subfolder名称。
+   */
   private selectionKey(characterName: string, subfolderName: string): string {
     return `${characterName}:${subfolderName}`;
   }
-
   private emptySelection(characterName: string, subfolderName: string): SpriteSelectionRecord {
     return {
       characterName: characterName,
@@ -199,6 +270,10 @@ export class SpriteRuntime {
     };
   }
 
+  /**
+   * 复制Record 值，避免外部修改内部状态。
+   * @param record 记录副本。
+   */
   private copyRecord(record: SpriteRecord): SpriteRecord {
     return {
       schemaVersion: record.schemaVersion,
@@ -215,6 +290,9 @@ export class SpriteRuntime {
     };
   }
 
+  /**
+   * 复制Selection 值，避免外部修改内部状态。
+   */
   private copySelection(selection: SpriteSelectionRecord): SpriteSelectionRecord {
     return {
       characterName: selection.characterName,

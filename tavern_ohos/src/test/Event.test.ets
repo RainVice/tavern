@@ -9,26 +9,45 @@ import {
   type ServerStartedPayload,
 } from '../../Index';
 
+/**
+ * 描述单元测试事件发布时携带的数据结构。
+ */
 interface MutableEventPayload {
+  /**
+   * 标题，由当前实例内部维护。
+   */
   title: string;
+  /**
+   * 项目列表。
+   */
   items: Array<string>;
+  /**
+   * nested 值，由当前实例内部维护。
+   */
   nested: MutableNestedPayload;
 }
 
+/**
+ * 描述单元测试事件发布时携带的数据结构。
+ */
 interface MutableNestedPayload {
+  /**
+   * 字段值。
+   */
   value: string;
 }
 
 export default function eventUnitTest() {
   describe('event runtime', () => {
     it('publishes server-started with the upstream event name', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new EventRuntime(bus);
       const received = new Array<string>();
       bus.subscribe<ServerStartedPayload>('server-started', (event: RuntimeEvent<ServerStartedPayload>) => {
         received.push(event.payload.source);
       });
-
       const published = runtime.emitServerStarted('entry');
 
       expect(published.name).assertEqual('server-started');
@@ -37,13 +56,14 @@ export default function eventUnitTest() {
     });
 
     it('publishes lifecycle signals through runtime.signal', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new EventRuntime(bus);
       const received = new Array<string>();
       bus.subscribe<RuntimeSignalPayload>('runtime.signal', (event: RuntimeEvent<RuntimeSignalPayload>) => {
         received.push(`${event.payload.signal}:${event.payload.detail}`);
       });
-
       const ready = runtime.emitRuntimeSignal('runtime.ready', 'bootstrap finished');
       const background = runtime.emitRuntimeSignal('app.background', 'home pressed');
 
@@ -54,13 +74,14 @@ export default function eventUnitTest() {
     });
 
     it('exposes a headless event catalog and maps upstream event names', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new EventRuntime(bus);
       const catalogEvents = new Array<string>();
       bus.subscribe<EventCatalogPayload>('event.catalog.published', (event: RuntimeEvent<EventCatalogPayload>) => {
         catalogEvents.push(event.payload.entry.name);
       });
-
       const appReady: EventCatalogEntry = runtime.requireCatalogEntry('app.ready');
       const messageAdded: EventCatalogEntry = runtime.requireCatalogEntry('message.added');
       const mappedMessage = runtime.mapUpstreamEventName('message_received');
@@ -78,6 +99,7 @@ export default function eventUnitTest() {
     });
 
     it('isolates payload objects between subscribers and returned event', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const observed = new Array<string>();
       bus.subscribe<MutableEventPayload>('mutable.event', (event: RuntimeEvent<MutableEventPayload>) => {
@@ -88,7 +110,6 @@ export default function eventUnitTest() {
       bus.subscribe<MutableEventPayload>('mutable.event', (event: RuntimeEvent<MutableEventPayload>) => {
         observed.push(`${event.payload.title}:${event.payload.items[0]}:${event.payload.nested.value}`);
       });
-
       const original: MutableEventPayload = {
         title: 'original-title',
         items: ['original-item'],

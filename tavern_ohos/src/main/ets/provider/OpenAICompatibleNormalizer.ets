@@ -5,7 +5,14 @@ import type {
   ProviderNormalizedChunk,
 } from './ProviderModels';
 
+/**
+ * 封装Provider 请求相关状态和行为。
+ */
 export class OpenAICompatibleNormalizer {
+  /**
+   * 规范化Chat Chunk 值，保证后续比较和存储使用一致格式。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   normalizeChatChunk(data: string): ProviderNormalizedChunk {
     const chunk = JSON.parse(data) as OpenAICompatibleChatChunk;
     let textDelta = '';

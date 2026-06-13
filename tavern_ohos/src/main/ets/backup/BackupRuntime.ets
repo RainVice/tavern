@@ -10,24 +10,57 @@ import type {
   BackupValidationResult,
 } from './BackupModels';
 
+/**
+ * 提供备份恢复相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class BackupRuntime {
+  /**
+   * 文件存储适配器。
+   */
   private files: TavernFileStore;
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * backup Counter 值，由当前实例内部维护。
+   */
   private backupCounter: number = 0;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param files 文件存储适配器。
+   * @param events 事件总线。
+   */
   constructor(files: TavernFileStore, events: EventBus) {
     this.files = files;
     this.events = events;
   }
 
+  /**
+   * 创建新的备份记录，写入存储并返回副本。
+   * @param rootPath Tavern 数据根路径。
+   * @param destinationPath destination 路径。
+   * @param kind 记录类型。
+   * @returns 更新或读取后的记录副本。
+   */
   async createBackup(rootPath: string, destinationPath: string, kind: string): Promise<BackupArchive> {
     return this.createBackupInternal(rootPath, destinationPath, kind, 'manual');
   }
 
+  /**
+   * 创建新的迁移备份记录，写入存储并返回副本。
+   * @param rootPath Tavern 数据根路径。
+   * @param reason 失败、中止或恢复操作的原因说明。
+   * @returns 更新或读取后的记录副本。
+   */
   async createMigrationBackup(rootPath: string, reason: string): Promise<BackupArchive> {
     return this.createBackupInternal(rootPath, `backups/migration-${this.backupCounter + 1}.json`, 'migration', reason);
   }
 
+  /**
+   * 校验Archive 值是否满足运行时约束。
+   */
   validateArchive(archive: BackupArchive): BackupValidationResult {
     const errors = new Array<string>();
     for (let index = 0; index < archive.entries.length; index += 1) {
@@ -48,12 +81,16 @@ export class BackupRuntime {
     };
   }
 
+  /**
+   * 执行 restoreBackup 的内部处理步骤，供当前模块复用。
+
+   * @param targetRootPath target Root 路径。
+   */
   async restoreBackup(archive: BackupArchive, targetRootPath: string): Promise<BackupRestoreResult> {
     const validation = this.validateArchive(archive);
     if (!validation.valid) {
       throw new Error(`Invalid backup archive: ${validation.errors.join(', ')}`);
     }
-
     const restoredPaths = new Array<string>();
     for (let index = 0; index < archive.entries.length; index += 1) {
       const entry = archive.entries[index];
@@ -61,7 +98,6 @@ export class BackupRuntime {
       await this.files.writeText(destinationPath, entry.content, true);
       restoredPaths.push(destinationPath);
     }
-
     const result: BackupRestoreResult = {
       backupId: archive.id,
       restoredPaths: restoredPaths,
@@ -74,12 +110,19 @@ export class BackupRuntime {
     return this.copyRestoreResult(result);
   }
 
+  /**
+   * 创建内部备份记录，写入存储并返回副本。
+   * @param rootPath Tavern 数据根路径。
+   * @param destinationPath destination 路径。
+   * @param kind 记录类型。
+   * @param reason 失败、中止或恢复操作的原因说明。
+   * @returns 更新或读取后的记录副本。
+   */
   private async createBackupInternal(rootPath: string, destinationPath: string, kind: string, reason: string): Promise<BackupArchive> {
     this.backupCounter += 1;
     const entries = new Array<BackupManifestEntry>();
     await this.collectEntries(rootPath, rootPath, entries);
     entries.sort((left: BackupManifestEntry, right: BackupManifestEntry) => left.path.localeCompare(right.path));
-
     const archive: BackupArchive = {
       id: `backup-${this.backupCounter}`,
       kind: kind,
@@ -89,7 +132,6 @@ export class BackupRuntime {
       entries: entries,
     };
     await this.files.writeText(destinationPath, JSON.stringify(archive), false);
-
     const payload: BackupCompletedPayload = {
       backupId: archive.id,
       path: destinationPath,
@@ -98,7 +140,6 @@ export class BackupRuntime {
     this.events.publish<BackupCompletedPayload>('backup.completed', payload);
     return this.copyArchive(archive);
   }
-
   private async collectEntries(rootPath: string, currentPath: string, entries: Array<BackupManifestEntry>): Promise<void> {
     const children = await this.files.list(currentPath);
     if (children.length === 0) {
@@ -111,6 +152,12 @@ export class BackupRuntime {
     }
   }
 
+  /**
+   * 创建或写入条目，完成持久化后返回可供调用方使用的结果。
+   * @param rootPath Tavern 数据根路径。
+   * @param path 目标文件或目录路径。
+   * @param entries 条目列表。
+   */
   private async addFileEntry(rootPath: string, path: string, entries: Array<BackupManifestEntry>): Promise<void> {
     try {
       const content = await this.files.readText(path);
@@ -126,6 +173,10 @@ export class BackupRuntime {
     }
   }
 
+  /**
+   * 检查sum是否满足当前规则。
+   * @param content 要写入或追加的文本内容。
+   */
   private checksum(content: string): string {
     let sum = 0;
     for (let index = 0; index < content.length; index += 1) {
@@ -133,7 +184,6 @@ export class BackupRuntime {
     }
     return `${content.length}:${sum}`;
   }
-
   private relativePath(rootPath: string, path: string): string {
     if (path === rootPath) {
       return '';
@@ -144,7 +194,6 @@ export class BackupRuntime {
     }
     return path;
   }
-
   private joinPath(left: string, right: string): string {
     if (left.length === 0) {
       return right;
@@ -155,6 +204,9 @@ export class BackupRuntime {
     return `${left}/${right}`;
   }
 
+  /**
+   * 复制Archive 值，避免外部修改内部状态。
+   */
   private copyArchive(archive: BackupArchive): BackupArchive {
     const entries = new Array<BackupManifestEntry>();
     for (let index = 0; index < archive.entries.length; index += 1) {
@@ -170,6 +222,10 @@ export class BackupRuntime {
     };
   }
 
+  /**
+   * 复制Entry 值，避免外部修改内部状态。
+   * @param entry 条目记录。
+   */
   private copyEntry(entry: BackupManifestEntry): BackupManifestEntry {
     return {
       path: entry.path,
@@ -179,6 +235,10 @@ export class BackupRuntime {
     };
   }
 
+  /**
+   * 复制Restore Result 值，避免外部修改内部状态。
+   * @param result 返回结果。
+   */
   private copyRestoreResult(result: BackupRestoreResult): BackupRestoreResult {
     return {
       backupId: result.backupId,

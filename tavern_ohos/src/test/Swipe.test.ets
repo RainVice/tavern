@@ -12,10 +12,10 @@ import {
 export default function swipeUnitTest() {
   describe('swipe runtime', () => {
     it('creates, switches, edits, and deletes candidate swipes', 0, () => {
+      // 运行时实例。
       const runtime = new SwipeRuntime(new EventBus());
       const first = runtime.createSwipe(makeSwipe('chat-1', 'msg-1', 'Hello'));
       const second = runtime.createSwipe(makeSwipe('chat-1', 'msg-1', 'Alternative'));
-
       const active = runtime.switchSwipe('chat-1', 'msg-1', second.index);
       const edited = runtime.editSwipe('chat-1', 'msg-1', second.index, 'Edited');
       runtime.deleteSwipe('chat-1', 'msg-1', first.index);
@@ -31,13 +31,14 @@ export default function swipeUnitTest() {
     });
 
     it('regenerates streaming, failed, and interrupted swipes with events', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new SwipeRuntime(bus);
       const changed = new Array<string>();
       bus.subscribe<SwipeChangedPayload>('message.swipe.changed', (event: RuntimeEvent<SwipeChangedPayload>) => {
         changed.push(`${event.payload.messageId}:${event.payload.swipeIndex}:${event.payload.swipe.state}`);
       });
-
       const streaming: SwipeRecord = runtime.regenerateSwipe('chat-2', 'msg-2');
       runtime.appendStreamDelta('chat-2', 'msg-2', streaming.index, 'part ');
       const completed: SwipeRecord = runtime.completeStream('chat-2', 'msg-2', streaming.index, 'done');
@@ -56,20 +57,19 @@ export default function swipeUnitTest() {
     });
 
     it('does not expose internal swipe records', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new SwipeRuntime(bus);
       bus.subscribe<SwipeChangedPayload>('message.swipe.changed', (event: RuntimeEvent<SwipeChangedPayload>) => {
         event.payload.swipe.text = 'event-mutated';
       });
-
       const swipe = runtime.createSwipe(makeSwipe('chat-copy', 'msg-copy', 'original'));
       swipe.text = 'external';
       expect(runtime.getActiveSwipe('chat-copy', 'msg-copy').text).assertEqual('original');
-
       const listed = runtime.listSwipes('chat-copy', 'msg-copy');
       listed[0].text = 'listed';
       expect(runtime.getActiveSwipe('chat-copy', 'msg-copy').text).assertEqual('original');
-
       const edited = runtime.editSwipe('chat-copy', 'msg-copy', 0, 'edited');
       edited.text = 'edited-external';
       expect(runtime.getActiveSwipe('chat-copy', 'msg-copy').text).assertEqual('edited');
@@ -77,6 +77,12 @@ export default function swipeUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeSwipe 步骤，供公开方法复用。
+ * @param chatId 目标聊天标识。
+ * @param messageId 目标消息标识。
+ * @param text 文本内容。
+ */
 function makeSwipe(chatId: string, messageId: string, text: string): SwipeCreateParams {
   return {
     chatId: chatId,

@@ -11,17 +11,39 @@ import type {
   SecretValueRecord,
 } from './SecretModels';
 
+/**
+ * 提供密钥引用相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class SecretRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * 记录副本列表，由当前实例内部维护。
+   */
   private records: Map<string, SecretRecord> = new Map<string, SecretRecord>();
+  /**
+   * values 列表，由当前实例内部维护。
+   */
   private values: Map<string, SecretValueRecord> = new Map<string, SecretValueRecord>();
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 创建新的密钥记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   createSecret(params: SecretCreateParams): SecretRecord {
     const now = Date.now();
+    // 密钥引用。
     const secretRef = this.makeSecretRef(params.providerId, params.id);
     if (this.records.has(secretRef)) {
       throw new Error(`Secret already exists: ${secretRef}`);
@@ -50,6 +72,13 @@ export class SecretRuntime {
     return this.cloneRecord(record);
   }
 
+  /**
+   * 更新指定密钥，写回存储并按需发布变更事件。
+   * @param secretRef 密钥引用。
+   * @param label 展示标签。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   updateSecret(secretRef: string, label: string, active: boolean): SecretRecord {
     const record = this.requireRecord(secretRef);
     if (active) {
@@ -62,6 +91,10 @@ export class SecretRuntime {
     return this.cloneRecord(record);
   }
 
+  /**
+   * 删除指定密钥，并清理相关索引或资源引用。
+   * @param secretRef 密钥引用。
+   */
   deleteSecret(secretRef: string): void {
     const record = this.requireRecord(secretRef);
     this.records.delete(secretRef);
@@ -73,6 +106,15 @@ export class SecretRuntime {
     this.events.publish<SecretDeletedPayload>('secret.deleted', payload);
   }
 
+  /**
+   * 执行 rotateSecret 的内部处理步骤，供当前模块复用。
+   * @param providerId 目标模型服务标识。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param id 唯一标识。
+   * @param value 要保存或比较的字段值。
+   * @param label 展示标签。
+   */
   rotateSecret(
     providerId: string,
     scope: string,
@@ -82,6 +124,7 @@ export class SecretRuntime {
     label: string,
   ): SecretRecord {
     const previousSecretRef = this.findActiveSecretRef(providerId, scope, scopeId);
+    // 调用参数。
     const params: SecretCreateParams = {
       id: id,
       providerId: providerId,
@@ -100,6 +143,11 @@ export class SecretRuntime {
     return this.cloneRecord(record);
   }
 
+  /**
+   * 读取Secret 值，并转换为运行时使用的数据结构。
+   * @param secretRef 密钥引用。
+   * @param options 控制本次调用行为的选项。
+   */
   readSecret(secretRef: string, options: SecretAccessOptions): string {
     if (!this.canRead(options)) {
       return '';
@@ -111,7 +159,15 @@ export class SecretRuntime {
     return value.value;
   }
 
+  /**
+   * 读取Active Secret 值，并转换为运行时使用的数据结构。
+   * @param providerId 目标模型服务标识。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param options 控制本次调用行为的选项。
+   */
   readActiveSecret(providerId: string, scope: string, scopeId: string, options: SecretAccessOptions): string {
+    // 密钥引用。
     const secretRef = this.findActiveSecretRef(providerId, scope, scopeId);
     if (secretRef.length === 0) {
       return '';
@@ -119,6 +175,11 @@ export class SecretRuntime {
     return this.readSecret(secretRef, options);
   }
 
+  /**
+   * 读取SecretStates列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param providerId 目标模型服务标识。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listSecretStates(providerId: string): Array<SecretStateRecord> {
     const result = new Array<SecretStateRecord>();
     const records = Array.from(this.records.values());
@@ -131,6 +192,10 @@ export class SecretRuntime {
     return result;
   }
 
+  /**
+   * 导出密钥索引，用于备份、迁移或与 SillyTavern 数据互通。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   exportIndex(): Array<SecretExportRecord> {
     const result = new Array<SecretExportRecord>();
     const records = Array.from(this.records.values());
@@ -152,6 +217,10 @@ export class SecretRuntime {
     return result;
   }
 
+  /**
+   * 执行 maskValue 的内部处理步骤，供当前模块复用。
+   * @param value 要保存或比较的字段值。
+   */
   maskValue(value: string): string {
     const threshold = 10;
     const exposedChars = 3;
@@ -165,6 +234,10 @@ export class SecretRuntime {
     return `*******${visibleEnd}`;
   }
 
+  /**
+   * 读取必须存在的Record 值，缺失时抛出错误。
+   * @param secretRef 密钥引用。
+   */
   private requireRecord(secretRef: string): SecretRecord {
     const record = this.records.get(secretRef);
     if (record === undefined) {
@@ -173,6 +246,11 @@ export class SecretRuntime {
     return record;
   }
 
+  /**
+   * 检查Read是否满足当前规则。
+   * @param options 控制本次调用行为的选项。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private canRead(options: SecretAccessOptions): boolean {
     for (let index = 0; index < options.permissions.length; index += 1) {
       if (options.permissions[index] === 'secret:read') {
@@ -182,6 +260,10 @@ export class SecretRuntime {
     return false;
   }
 
+  /**
+   * 把密钥记录转换为可展示的脱敏状态。
+   * @param record 记录副本。
+   */
   private toState(record: SecretRecord): SecretStateRecord {
     const value = this.values.get(record.secretRef);
     const rawValue = value === undefined ? '' : value.value;
@@ -199,6 +281,12 @@ export class SecretRuntime {
     return state;
   }
 
+  /**
+   * 更新模型服务Scope状态，必要时写回存储并发布对应事件。
+   * @param providerId 目标模型服务标识。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   */
   private deactivateProviderScope(providerId: string, scope: string, scopeId: string): void {
     const records = Array.from(this.records.values());
     for (let index = 0; index < records.length; index += 1) {
@@ -210,6 +298,12 @@ export class SecretRuntime {
     }
   }
 
+  /**
+   * 在当前集合中查找Active Secret Ref 值，未命中时返回空值或默认位置。
+   * @param providerId 目标模型服务标识。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   */
   private findActiveSecretRef(providerId: string, scope: string, scopeId: string): string {
     const records = Array.from(this.records.values());
     for (let index = 0; index < records.length; index += 1) {
@@ -220,11 +314,15 @@ export class SecretRuntime {
     }
     return '';
   }
-
   private makeSecretRef(providerId: string, id: string): string {
     return `secret:${providerId}:${id}`;
   }
 
+  /**
+   * 发布密钥引用事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+
+   */
   private publishSecretEvent(eventName: string, secret: SecretRecord): void {
     const payload: SecretEventPayload = {
       secret: this.cloneRecord(secret),
@@ -232,6 +330,10 @@ export class SecretRuntime {
     this.events.publish<SecretEventPayload>(eventName, payload);
   }
 
+  /**
+   * 复制Record 值，避免外部修改内部状态。
+   * @param record 记录副本。
+   */
   private cloneRecord(record: SecretRecord): SecretRecord {
     return {
       id: record.id,

@@ -16,7 +16,9 @@ import {
 export default function statsUnitTest() {
   describe('stats runtime', () => {
     it('records token usage, chat length, and message counts', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new StatsRuntime(bus);
       const snapshots = new Array<StatsSnapshot>();
       bus.subscribe<StatsUpdatedPayload>('stats.updated', (event: RuntimeEvent<StatsUpdatedPayload>) => {
@@ -41,13 +43,14 @@ export default function statsUnitTest() {
     });
 
     it('tracks generation duration and provider error rate', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new StatsRuntime(bus);
       const providerErrors = new Array<string>();
       bus.subscribe<StatsProviderErrorPayload>('stats.provider.error', (event: RuntimeEvent<StatsProviderErrorPayload>) => {
         providerErrors.push(event.payload.providerId);
       });
-
       const sample: StatsGenerationSample = runtime.recordGeneration('openai', 1000, 1600, 20, 8);
       runtime.recordProviderRequest('openai', false);
       runtime.recordProviderRequest('openai', true);
@@ -66,6 +69,7 @@ export default function statsUnitTest() {
     });
 
     it('tracks RAG hits and plugin errors', 0, () => {
+      // 运行时实例。
       const runtime = new StatsRuntime(new EventBus());
 
       runtime.recordRagQuery('worldbook', true);
@@ -85,6 +89,7 @@ export default function statsUnitTest() {
     });
 
     it('processes character message stats for frontend stats reports', 0, () => {
+      // 运行时实例。
       const runtime = new StatsRuntime(new EventBus());
 
       runtime.processCharacterMessage({
@@ -122,7 +127,6 @@ export default function statsUnitTest() {
         processType: 'message',
         now: 5000,
       });
-
       const character: StatsCharacterRecord = runtime.getCharacterStats('char-a.png');
       const totals: StatsTotals = runtime.getUserStatsTotals();
 

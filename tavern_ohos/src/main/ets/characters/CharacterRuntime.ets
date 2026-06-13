@@ -13,12 +13,34 @@ import type {
   CharacterUpdateParams,
 } from './CharacterModels';
 
+/**
+ * 提供角色卡相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class CharacterRuntime {
+  /**
+   * 文件存储适配器。
+   */
   private files: TavernFileStore;
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * 数据根路径。
+   */
   private rootPath: string;
+  /**
+   * 用户标识。
+   */
   private userId: string;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param files 文件存储适配器。
+   * @param events 事件总线。
+   * @param rootPath 数据根路径。
+   * @param userId 用户标识。
+   */
   constructor(files: TavernFileStore, events: EventBus, rootPath: string, userId: string) {
     this.files = files;
     this.events = events;
@@ -26,11 +48,15 @@ export class CharacterRuntime {
     this.userId = userId;
   }
 
+  /**
+   * 创建新的角色记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   async createCharacter(params: CharacterCreateParams): Promise<CharacterRecord> {
     const index = await this.readIndex();
     const id = `char-${index.nextId}`;
     index.nextId += 1;
-
     const now = Date.now();
     const character: CharacterRecord = {
       schemaVersion: 1,
@@ -65,6 +91,11 @@ export class CharacterRuntime {
     return this.copyCharacter(character);
   }
 
+  /**
+   * 导入 SillyTavern V2 角色卡 JSON，分配新的角色标识并保存为当前 SDK 的角色记录。
+   * @param cardJson 角色卡 JSON 字符串。
+   * @returns 导入后的角色记录副本。
+   */
   async importCharacterJson(cardJson: string): Promise<CharacterRecord> {
     const card = JSON.parse(cardJson) as CharacterCardV2;
     const index = await this.readIndex();
@@ -72,7 +103,6 @@ export class CharacterRuntime {
     index.nextId += 1;
     const now = Date.now();
     const extensions = card.data.extensions;
-
     const character: CharacterRecord = {
       schemaVersion: 1,
       id: id,
@@ -106,16 +136,25 @@ export class CharacterRuntime {
     return this.copyCharacter(character);
   }
 
+  /**
+   * 导出角色卡 JSON；如果角色来自导入文件，会优先返回原始 sourceJson。
+   * @param characterId 目标角色标识。
+   * @returns 可持久化或可传输的导出内容。
+   */
   async exportCharacterJson(characterId: string): Promise<string> {
     const character = await this.getCharacter(characterId);
     if (character.sourceJson.length > 0) {
       return character.sourceJson;
     }
-
     const card = this.toCardV2(character);
     return JSON.stringify(card);
   }
 
+  /**
+   * 读取指定角色，不存在时抛出错误。
+   * @param characterId 目标角色标识。
+   * @returns 更新或读取后的记录副本。
+   */
   async getCharacter(characterId: string): Promise<CharacterRecord> {
     const exists = await this.files.exists(this.characterPath(characterId));
     if (!exists) {
@@ -125,11 +164,21 @@ export class CharacterRuntime {
     return this.copyCharacter(await store.read(this.defaultCharacter(characterId)));
   }
 
+  /**
+   * 读取角色索引列表，用于角色列表页快速展示。
+   * @returns 角色索引项副本列表。
+   */
   async listCharacters(): Promise<Array<CharacterIndexEntry>> {
     const index = await this.readIndex();
     return index.items.slice();
   }
 
+  /**
+   * 更新指定角色，写回存储并按需发布变更事件。
+   * @param characterId 目标角色标识。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   async updateCharacter(characterId: string, params: CharacterUpdateParams): Promise<CharacterRecord> {
     const character = await this.getCharacter(characterId);
     character.name = params.name;
@@ -149,13 +198,18 @@ export class CharacterRuntime {
     return this.copyCharacter(character);
   }
 
+  /**
+   * 复制现有角色，生成新的角色标识、头像路径和创建时间。
+   * @param characterId 目标角色标识。
+   * @param newName 新名称。
+   * @returns 复制后的角色记录副本。
+   */
   async duplicateCharacter(characterId: string, newName: string): Promise<CharacterRecord> {
     const original = await this.getCharacter(characterId);
     const index = await this.readIndex();
     const id = `char-${index.nextId}`;
     index.nextId += 1;
     const now = Date.now();
-
     const duplicate: CharacterRecord = {
       schemaVersion: original.schemaVersion,
       id: id,
@@ -189,6 +243,10 @@ export class CharacterRuntime {
     return this.copyCharacter(duplicate);
   }
 
+  /**
+   * 删除指定角色，并清理相关索引或资源引用。
+   * @param characterId 目标角色标识。
+   */
   async deleteCharacter(characterId: string): Promise<void> {
     const character = await this.getCharacter(characterId);
     await this.deleteDirectoryTree(this.characterDirectory(characterId));
@@ -208,7 +266,6 @@ export class CharacterRuntime {
     };
     this.events.publish<CharacterDeletedPayload>('character.deleted.id', payload);
   }
-
   private async replaceIndexEntry(character: CharacterRecord): Promise<void> {
     const index = await this.readIndex();
     const entry = this.toIndexEntry(character);
@@ -225,22 +282,37 @@ export class CharacterRuntime {
     await this.writeIndex(index);
   }
 
+  /**
+   * 读取Index 值，并转换为运行时使用的数据结构。
+   */
   private async readIndex(): Promise<CharacterIndex> {
     const store = new JsonStore<CharacterIndex>(this.files, this.indexPath());
     return store.read(this.defaultIndex());
   }
 
+  /**
+   * 写入Index 值，持久化当前运行时状态。
+   * @param index 索引数据或循环位置。
+   */
   private async writeIndex(index: CharacterIndex): Promise<void> {
     const store = new JsonStore<CharacterIndex>(this.files, this.indexPath());
     await store.write(index);
   }
 
+  /**
+   * 写入Character 值，持久化当前运行时状态。
+   * @param character 角色记录。
+   */
   private async writeCharacter(character: CharacterRecord): Promise<void> {
     await this.files.ensureDirectory(this.characterDirectory(character.id));
     const store = new JsonStore<CharacterRecord>(this.files, this.characterPath(character.id));
     await store.write(character);
   }
 
+  /**
+   * 把角色完整记录转换为列表索引项。
+   * @param character 角色记录。
+   */
   private toIndexEntry(character: CharacterRecord): CharacterIndexEntry {
     return {
       id: character.id,
@@ -253,6 +325,10 @@ export class CharacterRuntime {
     };
   }
 
+  /**
+   * 把 SDK 角色记录转换为 SillyTavern 角色卡 V2 结构。
+   * @param character 角色记录。
+   */
   private toCardV2(character: CharacterRecord): CharacterCardV2 {
     return {
       spec: 'chara_card_v2',
@@ -280,6 +356,11 @@ export class CharacterRuntime {
     };
   }
 
+  /**
+   * 发布角色卡事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+   * @param character 角色记录。
+   */
   private publishCharacterEvent(eventName: string, character: CharacterRecord): void {
     const payload: CharacterEventPayload = {
       character: this.copyCharacter(character),
@@ -287,6 +368,10 @@ export class CharacterRuntime {
     this.events.publish<CharacterEventPayload>(eventName, payload);
   }
 
+  /**
+   * 删除指定DirectoryTree，并清理相关索引或资源引用。
+   * @param path 目标文件或目录路径。
+   */
   private async deleteDirectoryTree(path: string): Promise<void> {
     const children = await this.files.list(path);
     for (let index = 0; index < children.length; index += 1) {
@@ -295,6 +380,10 @@ export class CharacterRuntime {
     await this.files.delete(path);
   }
 
+  /**
+   * 复制Character 值，避免外部修改内部状态。
+   * @param character 角色记录。
+   */
   private copyCharacter(character: CharacterRecord): CharacterRecord {
     return {
       schemaVersion: character.schemaVersion,
@@ -322,7 +411,6 @@ export class CharacterRuntime {
       updatedAt: character.updatedAt,
     };
   }
-
   private defaultIndex(): CharacterIndex {
     return {
       schemaVersion: 1,
@@ -330,7 +418,6 @@ export class CharacterRuntime {
       items: new Array<CharacterIndexEntry>(),
     };
   }
-
   private defaultCharacter(characterId: string): CharacterRecord {
     return {
       schemaVersion: 1,
@@ -358,19 +445,15 @@ export class CharacterRuntime {
       updatedAt: 0,
     };
   }
-
   private indexPath(): string {
     return `${this.charactersRoot()}/index.json`;
   }
-
   private characterDirectory(characterId: string): string {
     return `${this.charactersRoot()}/${safePathSegment(characterId, 'character')}`;
   }
-
   private characterPath(characterId: string): string {
     return `${this.characterDirectory(characterId)}/character.json`;
   }
-
   private charactersRoot(): string {
     return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/characters`;
   }

@@ -1,15 +1,39 @@
 import type { ImageFormat, ImageMetadata, ImageMetadataChunk, MetadataExtractResult, MetadataWriteParams } from './ImageMetadataModels';
 
+/**
+ * 描述图片元数据模块在运行时交换的数据结构。
+ */
 interface PngChunkInfo {
+  /**
+   * offset 值，由当前实例内部维护。
+   */
   offset: number;
+  /**
+   * length 值，由当前实例内部维护。
+   */
   length: number;
+  /**
+   * type 值，由当前实例内部维护。
+   */
   type: string;
+  /**
+   * data Offset 值，由当前实例内部维护。
+   */
   dataOffset: number;
+  /**
+   * total Length 值，由当前实例内部维护。
+   */
   totalLength: number;
 }
 
+/**
+ * 提供图片元数据相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class ImageMetadataRuntime {
-  // 识别格式
+  /**
+   * 识别输入数据的Format 值，供导入流程选择后续解析方式。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   detectFormat(data: ArrayBuffer): ImageFormat {
     const bytes = new Uint8Array(data);
     if (bytes.length>=8 && bytes[0]===0x89 && bytes[1]===0x50 && bytes[2]===0x4E && bytes[3]===0x47) return 'png';
@@ -19,7 +43,10 @@ export class ImageMetadataRuntime {
     return 'unknown';
   }
 
-  // 提取元数据
+  /**
+   * 解析或导入元数据数据，转换为当前 SDK 可使用的结构。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   extractMetadata(data: ArrayBuffer): ImageMetadata {
     const format = this.detectFormat(data);
     const chunks = new Array<ImageMetadataChunk>();
@@ -42,6 +69,10 @@ export class ImageMetadataRuntime {
     return { format, width: 0, height: 0, hasCharacterCard: hasCard, rawChunks: chunks };
   }
 
+  /**
+   * 解析或导入角色卡数据，转换为当前 SDK 可使用的结构。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   extractCharacterCard(data: ArrayBuffer): MetadataExtractResult {
     const metadata = this.extractMetadata(data);
     const result: MetadataExtractResult = {
@@ -54,6 +85,10 @@ export class ImageMetadataRuntime {
     return result;
   }
 
+  /**
+   * 写入Metadata 值，持久化当前运行时状态。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   writeMetadata(params: MetadataWriteParams): ArrayBuffer {
     if (params.sourceData === undefined) {
       throw new Error('缺少源图片数据');
@@ -64,6 +99,11 @@ export class ImageMetadataRuntime {
     return this.writePngCharacterCard(params.sourceData, params.characterCardJson);
   }
 
+  /**
+   * 写入Png Character Card 值，持久化当前运行时状态。
+   * @param data 导入或恢复使用的序列化数据。
+   * @param characterCardJson character Card JSON 字符串。
+   */
   writePngCharacterCard(data: ArrayBuffer, characterCardJson: string): ArrayBuffer {
     const bytes = new Uint8Array(data);
     if (this.detectFormat(data) !== 'png') {
@@ -98,11 +138,14 @@ export class ImageMetadataRuntime {
     return this.concatBytes(parts).buffer;
   }
 
-  // 验证是否为有效图片
+  /**
+   * 判断Valid Image 值是否满足条件。
+   * @param data 导入或恢复使用的序列化数据。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   isValidImage(data: ArrayBuffer): boolean {
     return this.detectFormat(data) !== 'unknown';
   }
-
   private scanPngChunks(bytes: Uint8Array): Array<PngChunkInfo> {
     const chunks = new Array<PngChunkInfo>();
     let offset = 8;
@@ -129,6 +172,12 @@ export class ImageMetadataRuntime {
     return chunks;
   }
 
+  /**
+   * 判断Character Card Text Chunk 值是否满足条件。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private isCharacterCardTextChunk(bytes: Uint8Array, chunk: PngChunkInfo): boolean {
     if (chunk.type !== 'tEXt') {
       return false;
@@ -141,6 +190,9 @@ export class ImageMetadataRuntime {
     return keyword === 'chara' || keyword === 'ccv3';
   }
 
+  /**
+   * 解析或导入JSON数据，转换为当前 SDK 可使用的结构。
+   */
   private extractPngCharacterCardJson(bytes: Uint8Array): string {
     const chunks = this.scanPngChunks(bytes);
     for (let index = 0; index < chunks.length; index += 1) {
@@ -168,6 +220,12 @@ export class ImageMetadataRuntime {
     return '';
   }
 
+  /**
+   * 创建新的文本Chunk记录，写入存储并返回副本。
+
+   * @param text 文本内容。
+   * @returns 更新或读取后的记录副本。
+   */
   private createTextChunk(keyword: string, text: string): Uint8Array {
     const keywordBytes = this.asciiStringToBytes(keyword);
     const textBytes = this.asciiStringToBytes(text);
@@ -191,10 +249,21 @@ export class ImageMetadataRuntime {
     return chunk;
   }
 
+  /**
+   * 读取Uint32 值，并转换为运行时使用的数据结构。
+
+   * @param offset 分页起始偏移量。
+   */
   private readUint32(bytes: Uint8Array, offset: number): number {
     return bytes[offset] * 16777216 + bytes[offset + 1] * 65536 + bytes[offset + 2] * 256 + bytes[offset + 3];
   }
 
+  /**
+   * 写入Uint32 值，持久化当前运行时状态。
+
+   * @param offset 分页起始偏移量。
+   * @param value 要保存或比较的字段值。
+   */
   private writeUint32(bytes: Uint8Array, offset: number, value: number): void {
     bytes[offset] = Math.floor(value / 16777216) & 0xff;
     bytes[offset + 1] = Math.floor(value / 65536) & 0xff;
@@ -202,6 +271,11 @@ export class ImageMetadataRuntime {
     bytes[offset + 3] = value & 0xff;
   }
 
+  /**
+   * 在当前集合中查找Null Byte 值，未命中时返回空值或默认位置。
+
+   * @param offset 分页起始偏移量。
+   */
   private findNullByte(bytes: Uint8Array, offset: number, length: number): number {
     const end = offset + length;
     for (let index = offset; index < end; index += 1) {
@@ -211,7 +285,6 @@ export class ImageMetadataRuntime {
     }
     return -1;
   }
-
   private bytesToAscii(bytes: Uint8Array, offset: number, length: number): string {
     let result = '';
     const end = offset + length;
@@ -220,7 +293,6 @@ export class ImageMetadataRuntime {
     }
     return result;
   }
-
   private asciiStringToBytes(value: string): Uint8Array {
     const bytes = new Uint8Array(value.length);
     for (let index = 0; index < value.length; index += 1) {
@@ -228,7 +300,6 @@ export class ImageMetadataRuntime {
     }
     return bytes;
   }
-
   private stringToUtf8Bytes(value: string): Uint8Array {
     const output = new Array<number>();
     for (let index = 0; index < value.length; index += 1) {
@@ -262,7 +333,6 @@ export class ImageMetadataRuntime {
     }
     return bytes;
   }
-
   private utf8BytesToString(bytes: Uint8Array): string {
     let result = '';
     let index = 0;
@@ -295,7 +365,6 @@ export class ImageMetadataRuntime {
     }
     return result;
   }
-
   private base64Encode(bytes: Uint8Array): string {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
     let output = '';
@@ -311,7 +380,6 @@ export class ImageMetadataRuntime {
     }
     return output;
   }
-
   private base64Decode(value: string): Uint8Array {
     const output = new Array<number>();
     let buffer = 0;
@@ -339,12 +407,10 @@ export class ImageMetadataRuntime {
     }
     return bytes;
   }
-
   private base64Digit(value: string): number {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
     return alphabet.indexOf(value);
   }
-
   private crc32(bytes: Uint8Array): number {
     let crc = 0xffffffff;
     for (let index = 0; index < bytes.length; index += 1) {
@@ -352,7 +418,6 @@ export class ImageMetadataRuntime {
     }
     return (crc ^ 0xffffffff) >>> 0;
   }
-
   private crcTableValue(index: number): number {
     let value = index;
     for (let bit = 0; bit < 8; bit += 1) {
@@ -365,6 +430,11 @@ export class ImageMetadataRuntime {
     return value >>> 0;
   }
 
+  /**
+   * 复制Bytes 列表，避免外部修改内部状态。
+
+   * @param offset 分页起始偏移量。
+   */
   private copyBytes(bytes: Uint8Array, offset: number, length: number): Uint8Array {
     const result = new Uint8Array(length);
     for (let index = 0; index < length; index += 1) {
@@ -372,7 +442,6 @@ export class ImageMetadataRuntime {
     }
     return result;
   }
-
   private concatBytes(parts: Array<Uint8Array>): Uint8Array {
     let length = 0;
     for (let index = 0; index < parts.length; index += 1) {

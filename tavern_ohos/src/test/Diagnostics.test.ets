@@ -12,7 +12,9 @@ import {
 export default function diagnosticsUnitTest() {
   describe('diagnostics runtime', () => {
     it('records prompt, event, plugin, command, script, tool, and stream traces', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new DiagnosticsRuntime(bus);
       const recorded = new Array<string>();
       bus.subscribe<DiagnosticsRecordCreatedPayload>('diagnostics.record.created', (event: RuntimeEvent<DiagnosticsRecordCreatedPayload>) => {
@@ -37,7 +39,9 @@ export default function diagnosticsUnitTest() {
     });
 
     it('creates diagnostic bundles and emits bundle events', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new DiagnosticsRuntime(bus);
       const bundleIds = new Array<string>();
       bus.subscribe<DiagnosticsBundleCreatedPayload>('diagnostics.bundle.created', (event: RuntimeEvent<DiagnosticsBundleCreatedPayload>) => {
@@ -58,6 +62,7 @@ export default function diagnosticsUnitTest() {
     });
 
     it('reports health summary from recorded diagnostics', 0, () => {
+      // 运行时实例。
       const runtime = new DiagnosticsRuntime(new EventBus());
       runtime.recordPromptTrace('prompt-a', 'ok', 'ok');
       runtime.recordPluginTrace('plugin-a', 'failed hook', 'error');
@@ -74,13 +79,16 @@ export default function diagnosticsUnitTest() {
     });
 
     it('redacts sensitive values from diagnostic records and bundles', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new DiagnosticsRuntime(bus);
       const messages = new Array<string>();
       bus.subscribe<DiagnosticsRecordCreatedPayload>('diagnostics.record.created', (event: RuntimeEvent<DiagnosticsRecordCreatedPayload>) => {
         messages.push(event.payload.record.message);
       });
 
+      // 记录副本。
       const record = runtime.recordStreamTrace('provider', 'Authorization: Bearer abcdef123456 token=secret-token api_key=sk-1234567890', 'error');
       const bundle = runtime.createBundle('redacted', new Array<string>(), 'diagnostics/redacted.json');
 

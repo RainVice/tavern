@@ -19,12 +19,34 @@ import type {
   MessageExtraData,
 } from './ChatModels';
 
+/**
+ * 提供聊天和消息相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class ChatRuntime {
+  /**
+   * 文件存储适配器。
+   */
   private files: TavernFileStore;
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * 数据根路径。
+   */
   private rootPath: string;
+  /**
+   * 用户标识。
+   */
   private userId: string;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param files 文件存储适配器。
+   * @param events 事件总线。
+   * @param rootPath 数据根路径。
+   * @param userId 用户标识。
+   */
   constructor(files: TavernFileStore, events: EventBus, rootPath: string, userId: string) {
     this.files = files;
     this.events = events;
@@ -32,6 +54,11 @@ export class ChatRuntime {
     this.userId = userId;
   }
 
+  /**
+   * 创建新的聊天记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   async createChat(params: ChatCreateParams): Promise<ChatRecord> {
     const index = await this.readIndex();
     const id = `chat-${index.nextId}`;
@@ -56,6 +83,10 @@ export class ChatRuntime {
     return this.copyChat(chat);
   }
 
+  /**
+   * 读取聊天列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   async listChats(): Promise<Array<ChatIndexEntry>> {
     const index = await this.readIndex();
     const refreshed = new Array<ChatIndexEntry>();
@@ -70,6 +101,11 @@ export class ChatRuntime {
     return refreshed;
   }
 
+  /**
+   * 按查询条件检索聊天和消息数据，并返回匹配结果。
+   * @param query 检索条件。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   async searchChats(query: string): Promise<Array<ChatIndexEntry>> {
     const items = await this.listChats();
     const lower = query.toLowerCase();
@@ -83,6 +119,14 @@ export class ChatRuntime {
     return result;
   }
 
+  /**
+   * 从外部数据导入Chat Jsonl 值，转换为当前运行时的数据结构。
+
+   * @param title 标题。
+   * @param characterId 目标角色标识。
+   * @param personaId 目标用户人格标识。
+   * @returns 更新或读取后的记录副本。
+   */
   async importChatJsonl(jsonl: string, title: string, characterId: string, personaId: string): Promise<ChatRecord> {
     const importedMessages = this.parseImportedMessages(jsonl);
     const chat = await this.createChat({ title, characterId, personaId });
@@ -98,9 +142,15 @@ export class ChatRuntime {
     return this.copyChat(updated);
   }
 
+  /**
+   * 解析输入内容并转换为Imported Messages 列表结构。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private parseImportedMessages(jsonl: string): Array<ChatMessage> {
     const lines = jsonl.split('\n');
     const importedMessages = new Array<ChatMessage>();
+    // next Message 标识。
     let nextMessageId = 1;
     for (let li = 0; li < lines.length; li += 1) {
       const line = lines[li].trim();
@@ -132,6 +182,11 @@ export class ChatRuntime {
     return importedMessages;
   }
 
+  /**
+   * 读取指定聊天，不存在时抛出错误。
+   * @param chatId 目标聊天标识。
+   * @returns 更新或读取后的记录副本。
+   */
   async getChat(chatId: string): Promise<ChatRecord> {
     const exists = await this.files.exists(this.chatPath(chatId));
     if (!exists) {
@@ -141,6 +196,11 @@ export class ChatRuntime {
     return this.copyChat(await store.read(this.defaultChat(chatId)));
   }
 
+  /**
+   * 更新聊天状态，必要时写回存储并发布对应事件。
+   * @param chatId 目标聊天标识。
+   * @param title 标题。
+   */
   async renameChat(chatId: string, title: string): Promise<ChatRecord> {
     const chat = await this.getChat(chatId);
     chat.title = title;
@@ -151,6 +211,12 @@ export class ChatRuntime {
     return this.copyChat(chat);
   }
 
+  /**
+   * 执行 archiveChat 的内部处理步骤，供当前模块复用。
+   * @param chatId 目标聊天标识。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   async archiveChat(chatId: string, archived: boolean): Promise<ChatRecord> {
     const chat = await this.getChat(chatId);
     chat.archived = archived;
@@ -161,6 +227,11 @@ export class ChatRuntime {
     return this.copyChat(chat);
   }
 
+  /**
+   * 执行 duplicateChat 的内部处理步骤，供当前模块复用。
+   * @param chatId 目标聊天标识。
+   * @param title 标题。
+   */
   async duplicateChat(chatId: string, title: string): Promise<ChatRecord> {
     const original = await this.getChat(chatId);
     const originalMessages = await this.messages(chatId).listMessages();
@@ -190,6 +261,10 @@ export class ChatRuntime {
     return this.copyChat(duplicate);
   }
 
+  /**
+   * 删除指定聊天，并清理相关索引或资源引用。
+   * @param chatId 目标聊天标识。
+   */
   async deleteChat(chatId: string): Promise<void> {
     const chat = await this.getChat(chatId);
     await this.deleteDirectoryTree(this.chatDirectory(chat.id));
@@ -205,6 +280,11 @@ export class ChatRuntime {
     this.publishChatEvent('chat.deleted', chat);
   }
 
+  /**
+   * 导出聊天 JSONL，用于备份、迁移或与 SillyTavern 数据互通。
+   * @param chatId 目标聊天标识。
+   * @returns 可持久化或可传输的导出内容。
+   */
   async exportChatJsonl(chatId: string): Promise<string> {
     const chat = await this.getChat(chatId);
     const messages = await this.messages(chatId).listMessages();
@@ -226,10 +306,18 @@ export class ChatRuntime {
     return `${lines.join('\n')}\n`;
   }
 
+  /**
+   * 执行 messages 的内部处理步骤，供当前模块复用。
+   * @param chatId 目标聊天标识。
+   */
   messages(chatId: string): MessageRuntime {
     return new MessageRuntime(this.files, this.events, this.rootPath, this.userId, chatId);
   }
 
+  /**
+   * 把内部消息记录转换为聊天 JSONL 导出行。
+   * @param message 消息记录。
+   */
   private toExportMessage(message: ChatMessage): ChatExportMessage {
     return {
       name: message.name,
@@ -242,6 +330,10 @@ export class ChatRuntime {
     };
   }
 
+  /**
+   * 解析Extra，非法输入会返回失败标记或空结果。
+   * @param extraJson 扩展 JSON 字符串。
+   */
   private parseExtra(extraJson: string): ChatExportExtra {
     if (extraJson.length === 0) {
       return {};
@@ -261,6 +353,11 @@ export class ChatRuntime {
     }
   }
 
+  /**
+   * 导出消息扩展 JSON 字符串，用于备份、迁移或与 SillyTavern 数据互通。
+
+   * @returns 可持久化或可传输的导出内容。
+   */
   private exportExtraToJson(extra: ChatExportExtra): string {
     if (extra.source !== undefined && extra.source.length > 0) {
       return extra.source;
@@ -273,7 +370,6 @@ export class ChatRuntime {
     };
     return JSON.stringify(parsed);
   }
-
   private preview(messages: Array<ChatMessage>): string {
     if (messages.length === 0) {
       return '';
@@ -281,6 +377,11 @@ export class ChatRuntime {
     return messages[messages.length - 1].text;
   }
 
+  /**
+   * 复制Messages 列表，避免外部修改内部状态。
+   * @param messages 消息列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private copyMessages(messages: Array<ChatMessage>): Array<ChatMessage> {
     const result = new Array<ChatMessage>();
     for (let index = 0; index < messages.length; index += 1) {
@@ -289,6 +390,10 @@ export class ChatRuntime {
     return result;
   }
 
+  /**
+   * 复制Message 值，避免外部修改内部状态。
+   * @param message 消息记录。
+   */
   private copyMessage(message: ChatMessage): ChatMessage {
     return {
       schemaVersion: message.schemaVersion,
@@ -306,6 +411,10 @@ export class ChatRuntime {
     };
   }
 
+  /**
+   * 删除指定DirectoryTree，并清理相关索引或资源引用。
+   * @param path 目标文件或目录路径。
+   */
   private async deleteDirectoryTree(path: string): Promise<void> {
     const children = await this.files.list(path);
     for (let index = 0; index < children.length; index += 1) {
@@ -313,7 +422,6 @@ export class ChatRuntime {
     }
     await this.files.delete(path);
   }
-
   private async replaceIndexEntry(chat: ChatRecord): Promise<void> {
     const index = await this.readIndex();
     const messages = await this.messages(chat.id).listMessages();
@@ -331,6 +439,11 @@ export class ChatRuntime {
     await this.writeIndex(index);
   }
 
+  /**
+   * 发布聊天和消息事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+   * @param chat 聊天记录。
+   */
   private publishChatEvent(eventName: string, chat: ChatRecord): void {
     const payload: ChatEventPayload = {
       chat: this.copyChat(chat),
@@ -338,6 +451,10 @@ export class ChatRuntime {
     this.events.publish<ChatEventPayload>(eventName, payload);
   }
 
+  /**
+   * 复制Chat 值，避免外部修改内部状态。
+   * @param chat 聊天记录。
+   */
   private copyChat(chat: ChatRecord): ChatRecord {
     return {
       schemaVersion: chat.schemaVersion,
@@ -352,22 +469,38 @@ export class ChatRuntime {
     };
   }
 
+  /**
+   * 读取Index 值，并转换为运行时使用的数据结构。
+   */
   private async readIndex(): Promise<ChatIndex> {
     const store = new JsonStore<ChatIndex>(this.files, this.indexPath());
     return store.read(this.defaultIndex());
   }
 
+  /**
+   * 写入Index 值，持久化当前运行时状态。
+   * @param index 索引数据或循环位置。
+   */
   private async writeIndex(index: ChatIndex): Promise<void> {
     const store = new JsonStore<ChatIndex>(this.files, this.indexPath());
     await store.write(index);
   }
 
+  /**
+   * 写入Chat 值，持久化当前运行时状态。
+   * @param chat 聊天记录。
+   */
   private async writeChat(chat: ChatRecord): Promise<void> {
     await this.files.ensureDirectory(this.chatDirectory(chat.id));
     const store = new JsonStore<ChatRecord>(this.files, this.chatPath(chat.id));
     await store.write(chat);
   }
 
+  /**
+   * 把聊天完整记录转换为列表索引项。
+   * @param chat 聊天记录。
+   * @param messageCount 计数值。
+   */
   private toIndexEntry(chat: ChatRecord, messageCount: number, previewMessage: string): ChatIndexEntry {
     return {
       id: chat.id,
@@ -381,7 +514,6 @@ export class ChatRuntime {
       updatedAt: chat.updatedAt,
     };
   }
-
   private defaultIndex(): ChatIndex {
     return {
       schemaVersion: 1,
@@ -389,7 +521,6 @@ export class ChatRuntime {
       items: new Array<ChatIndexEntry>(),
     };
   }
-
   private defaultChat(chatId: string): ChatRecord {
     return {
       schemaVersion: 1,
@@ -403,23 +534,18 @@ export class ChatRuntime {
       updatedAt: 0,
     };
   }
-
   private indexPath(): string {
     return `${this.chatsRoot()}/index.json`;
   }
-
   private chatPath(chatId: string): string {
     return `${this.chatDirectory(chatId)}/chat.json`;
   }
-
   private messagesPath(chatId: string): string {
     return `${this.chatDirectory(chatId)}/messages.jsonl`;
   }
-
   private chatDirectory(chatId: string): string {
     return `${this.chatsRoot()}/${safePathSegment(chatId, 'chat')}`;
   }
-
   private chatsRoot(): string {
     return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/chats`;
   }

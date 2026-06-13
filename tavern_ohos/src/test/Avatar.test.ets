@@ -15,7 +15,9 @@ export default function avatarUnitTest() {
   describe('avatar runtime', () => {
     it('uploads character avatars with crop metadata and persists an index', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new AvatarRuntime(files, bus);
       const uploaded = new Array<string>();
       bus.subscribe<AvatarUploadedPayload>('avatar.uploaded', (event: RuntimeEvent<AvatarUploadedPayload>) => {
@@ -28,6 +30,7 @@ export default function avatarUnitTest() {
         height: 128,
       };
 
+      // 记录副本。
       const record: AvatarRecord = await runtime.uploadAvatar('character', 'alice', 'avatar.png', 'image/png', 'png-data', crop);
       const content = await files.readText('tavern-data/users/default/characters/alice/avatar.png');
       const index = await files.readText('tavern-data/users/default/avatars/index.json');
@@ -41,10 +44,10 @@ export default function avatarUnitTest() {
     });
 
     it('lists persona avatars and resolves active avatar content', 0, async () => {
+      // 运行时实例。
       const runtime = new AvatarRuntime(new InMemoryFileStore(), new EventBus());
       await runtime.uploadAvatar('persona', 'hero.png', 'hero.png', 'image/png', 'persona-png', emptyCrop());
       await runtime.uploadAvatar('persona', 'mage.png', 'mage.png', 'image/png', 'mage-png', emptyCrop());
-
       const personas = await runtime.listByTargetType('persona');
       const hero = await runtime.getAvatar('persona', 'hero.png');
       const content = await runtime.readAvatarContent('persona', 'hero.png');
@@ -56,7 +59,9 @@ export default function avatarUnitTest() {
     });
 
     it('deletes avatars and emits deletion events', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new AvatarRuntime(new InMemoryFileStore(), bus);
       const deleted = new Array<string>();
       bus.subscribe<AvatarDeletedPayload>('avatar.deleted', (event: RuntimeEvent<AvatarDeletedPayload>) => {
@@ -72,8 +77,8 @@ export default function avatarUnitTest() {
     });
 
     it('sanitizes avatar target and file path segments', 0, async () => {
+      // 运行时实例。
       const runtime = new AvatarRuntime(new InMemoryFileStore(), new EventBus());
-
       const character = await runtime.uploadAvatar('character', '../alice', '../avatar.png', 'image/png', 'png', emptyCrop());
       const persona = await runtime.uploadAvatar('persona', '../hero.png', 'hero.png', 'image/png', 'png', emptyCrop());
       const custom = await runtime.uploadAvatar('../custom', 'target', '../face.png', 'image/png', 'png', emptyCrop());
@@ -86,6 +91,9 @@ export default function avatarUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 emptyCrop 步骤，供公开方法复用。
+ */
 function emptyCrop(): AvatarCrop {
   return {
     x: 0,

@@ -8,16 +8,39 @@ import type {
   SettingSnapshot,
 } from './SettingsModels';
 
+/**
+ * 提供设置相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class SettingsRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * schemas 列表，由当前实例内部维护。
+   */
   private schemas: Map<string, SettingSchemaRecord> = new Map<string, SettingSchemaRecord>();
+  /**
+   * 条目列表，由当前实例内部维护。
+   */
   private entries: Map<string, SettingEntry> = new Map<string, SettingEntry>();
+  /**
+   * migrations 列表，由当前实例内部维护。
+   */
   private migrations: Array<SettingMigrationRecord> = new Array<SettingMigrationRecord>();
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 注册Schema 值，使其可被后续运行时流程使用。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   registerSchema(params: SettingSchemaCreateParams): SettingSchemaRecord {
     const schema: SettingSchemaRecord = {
       key: params.key,
@@ -30,6 +53,13 @@ export class SettingsRuntime {
     return this.cloneSchema(schema);
   }
 
+  /**
+   * 设置配置项，用于切换运行时状态或保存配置。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param key 键名。
+   * @param value 要保存或比较的字段值。
+   */
   setSetting(scope: string, scopeId: string, key: string, value: string): SettingEntry {
     const schema = this.requireSchema(key);
     const oldValue = this.getSetting(scope, scopeId, key);
@@ -54,6 +84,13 @@ export class SettingsRuntime {
     return this.cloneEntry(entry);
   }
 
+  /**
+   * 读取指定设置项，不存在时抛出错误。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param key 键名。
+   * @returns 更新或读取后的记录副本。
+   */
   getSetting(scope: string, scopeId: string, key: string): string {
     const entry = this.entries.get(this.entryKey(scope, scopeId, key));
     if (entry !== undefined) {
@@ -66,6 +103,13 @@ export class SettingsRuntime {
     return '';
   }
 
+  /**
+   * 读取指定设置项，不存在时抛出错误。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param key 键名。
+   * @returns 更新或读取后的记录副本。
+   */
   getEffectiveSetting(scope: string, scopeId: string, key: string): string {
     const scoped = this.entries.get(this.entryKey(scope, scopeId, key));
     if (scoped !== undefined) {
@@ -80,10 +124,16 @@ export class SettingsRuntime {
     return this.getSetting(scope, scopeId, key);
   }
 
+  /**
+   * 执行 migrateSetting 的内部处理步骤，供当前模块复用。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   */
   migrateSetting(scope: string, scopeId: string, fromKey: string, toKey: string, targetVersion: number): SettingSnapshot {
     const fromSchema = this.requireSchema(fromKey);
     const toSchema = this.requireSchema(toKey);
     const sourceKey = this.entryKey(scope, scopeId, fromKey);
+    // 来源类型。
     const source = this.entries.get(sourceKey);
     const value = source === undefined ? fromSchema.defaultValue : source.value;
     if (source !== undefined) {
@@ -111,6 +161,9 @@ export class SettingsRuntime {
     return this.snapshot();
   }
 
+  /**
+   * 执行 snapshot 的内部处理步骤，供当前模块复用。
+   */
   snapshot(): SettingSnapshot {
     const entries = this.cloneEntries(Array.from(this.entries.values()));
     const maxVersion = this.maxSchemaVersion(entries);
@@ -122,6 +175,10 @@ export class SettingsRuntime {
     return snapshot;
   }
 
+  /**
+   * 读取Schemas列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listSchemas(): Array<SettingSchemaRecord> {
     const result = new Array<SettingSchemaRecord>();
     const schemas = Array.from(this.schemas.values());
@@ -131,6 +188,12 @@ export class SettingsRuntime {
     return result;
   }
 
+  /**
+   * 读取条目列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listEntries(scope: string, scopeId: string): Array<SettingEntry> {
     const result = new Array<SettingEntry>();
     const entries = Array.from(this.entries.values());
@@ -143,6 +206,10 @@ export class SettingsRuntime {
     return result;
   }
 
+  /**
+   * 读取必须存在的Schema 值，缺失时抛出错误。
+   * @param key 键名。
+   */
   private requireSchema(key: string): SettingSchemaRecord {
     const schema = this.schemas.get(key);
     if (schema === undefined) {
@@ -150,7 +217,6 @@ export class SettingsRuntime {
     }
     return schema;
   }
-
   private maxSchemaVersion(entries: Array<SettingEntry>): number {
     let version = 0;
     const schemas = Array.from(this.schemas.values());
@@ -166,11 +232,13 @@ export class SettingsRuntime {
     }
     return version;
   }
-
   private entryKey(scope: string, scopeId: string, key: string): string {
     return `${scope}:${scopeId}:${key}`;
   }
 
+  /**
+   * 复制Schema 值，避免外部修改内部状态。
+   */
   private cloneSchema(schema: SettingSchemaRecord): SettingSchemaRecord {
     return {
       key: schema.key,
@@ -181,6 +249,10 @@ export class SettingsRuntime {
     };
   }
 
+  /**
+   * 复制Entry 值，避免外部修改内部状态。
+   * @param entry 条目记录。
+   */
   private cloneEntry(entry: SettingEntry): SettingEntry {
     return {
       scope: entry.scope,
@@ -192,6 +264,11 @@ export class SettingsRuntime {
     };
   }
 
+  /**
+   * 复制Entries 列表，避免外部修改内部状态。
+   * @param entries 条目列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private cloneEntries(entries: Array<SettingEntry>): Array<SettingEntry> {
     const result = new Array<SettingEntry>();
     for (let index = 0; index < entries.length; index += 1) {
@@ -200,6 +277,9 @@ export class SettingsRuntime {
     return result;
   }
 
+  /**
+   * 复制Migration 值，避免外部修改内部状态。
+   */
   private cloneMigration(migration: SettingMigrationRecord): SettingMigrationRecord {
     return {
       scope: migration.scope,
@@ -212,6 +292,11 @@ export class SettingsRuntime {
     };
   }
 
+  /**
+   * 复制Migrations 列表，避免外部修改内部状态。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private cloneMigrations(migrations: Array<SettingMigrationRecord>): Array<SettingMigrationRecord> {
     const result = new Array<SettingMigrationRecord>();
     for (let index = 0; index < migrations.length; index += 1) {

@@ -16,10 +16,10 @@ import {
 export default function branchUnitTest() {
   describe('branch runtime', () => {
     it('creates branches from arbitrary messages and tracks lineage', 0, () => {
+      // 运行时实例。
       const runtime = new BranchRuntime(new EventBus());
       const branch = runtime.createBranch(makeBranch('branch-1', 'chat-1', 'msg-3', 'chat-2'));
       const child = runtime.createBranch(makeBranch('branch-2', 'chat-2', 'msg-6', 'chat-3'));
-
       const lineage: Array<BranchRecord> = runtime.getLineage('chat-3');
       const branchesFromChat = runtime.listBranches('chat-1');
 
@@ -32,7 +32,9 @@ export default function branchUnitTest() {
     });
 
     it('creates checkpoints, switches active branches, and emits branch.activated', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new BranchRuntime(bus);
       const activated = new Array<string>();
       bus.subscribe<BranchActivatedPayload>('branch.activated', (event: RuntimeEvent<BranchActivatedPayload>) => {
@@ -40,7 +42,6 @@ export default function branchUnitTest() {
       });
       const branch = runtime.createBranch(makeBranch('branch-3', 'chat-4', 'msg-2', 'chat-5'));
       const checkpoint: CheckpointRecord = runtime.createCheckpoint(makeCheckpoint('checkpoint-1', branch.id, 'msg-2'));
-
       const active = runtime.activateBranch(branch.id);
 
       expect(checkpoint.branchId).assertEqual('branch-3');
@@ -52,10 +53,10 @@ export default function branchUnitTest() {
     });
 
     it('exports and restores branches with checkpoints', 0, () => {
+      // 运行时实例。
       const runtime = new BranchRuntime(new EventBus());
       const branch = runtime.createBranch(makeBranch('branch-4', 'chat-7', 'msg-4', 'chat-8'));
       runtime.createCheckpoint(makeCheckpoint('checkpoint-2', branch.id, 'msg-4'));
-
       const exported: BranchExportData = runtime.exportBranch(branch.id);
       const restored = runtime.restoreBranch(exported, 'branch-5', 'chat-9');
       const originalExported = runtime.exportBranch('branch-4');
@@ -70,11 +71,11 @@ export default function branchUnitTest() {
     });
 
     it('rejects duplicate branch and checkpoint ids', 0, () => {
+      // 运行时实例。
       const runtime = new BranchRuntime(new EventBus());
       const branch = runtime.createBranch(makeBranch('branch-existing', 'chat-1', 'msg-1', 'chat-2'));
       runtime.createCheckpoint(makeCheckpoint('checkpoint-existing', branch.id, 'msg-1'));
       const exported: BranchExportData = runtime.exportBranch(branch.id);
-
       let branchThrown = false;
       try {
         runtime.createBranch(makeBranch('branch-existing', 'chat-3', 'msg-3', 'chat-4'));
@@ -102,7 +103,9 @@ export default function branchUnitTest() {
     });
 
     it('does not expose internal branches or checkpoints through returns, events, or lists', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new BranchRuntime(bus);
       bus.subscribe<BranchEventPayload>('branch.created', (event: RuntimeEvent<BranchEventPayload>) => {
         event.payload.branch.title = 'event-mutated';
@@ -113,7 +116,6 @@ export default function branchUnitTest() {
       bus.subscribe<BranchActivatedPayload>('branch.activated', (event: RuntimeEvent<BranchActivatedPayload>) => {
         event.payload.branch.title = 'activated-mutated';
       });
-
       const branch = runtime.createBranch(makeBranch('branch-copy', 'chat-copy', 'msg-copy', 'child-copy'));
       branch.title = 'return-mutated';
       const checkpoint = runtime.createCheckpoint(makeCheckpoint('checkpoint-copy', 'branch-copy', 'msg-copy'));
@@ -131,6 +133,13 @@ export default function branchUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeBranch 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param parentChatId parent Chat 标识。
+ * @param anchorMessageId anchor Message 标识。
+ * @param childChatId child Chat 标识。
+ */
 function makeBranch(id: string, parentChatId: string, anchorMessageId: string, childChatId: string): BranchCreateParams {
   return {
     id: id,
@@ -141,6 +150,12 @@ function makeBranch(id: string, parentChatId: string, anchorMessageId: string, c
   };
 }
 
+/**
+ * 封装单元测试中的 makeCheckpoint 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param branchId branch 标识。
+ * @param anchorMessageId anchor Message 标识。
+ */
 function makeCheckpoint(id: string, branchId: string, anchorMessageId: string): CheckpointCreateParams {
   return {
     id: id,

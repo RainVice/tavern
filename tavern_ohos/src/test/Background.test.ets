@@ -20,13 +20,16 @@ export default function backgroundUnitTest() {
   describe('background runtime', () => {
     it('imports backgrounds through assets and lists thumbnail metadata', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = makeRuntime(files, bus);
       const imported = new Array<string>();
       bus.subscribe<BackgroundImportedPayload>('background.imported', (event: RuntimeEvent<BackgroundImportedPayload>) => {
         imported.push(`${event.payload.background.fileName}:${event.payload.background.isAnimated}`);
       });
 
+      // 记录副本。
       const record: BackgroundRecord = await runtime.importBackground(makeBackground('bg-1', 'forest.jpg', false));
       const saved = await files.readText('tavern-data/users/default/assets/backgrounds/forest.jpg');
       const list: BackgroundListResult = await runtime.listBackgrounds();
@@ -45,8 +48,10 @@ export default function backgroundUnitTest() {
 
     it('tracks folders and activates selected background in theme state', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const theme = new ThemeRuntime(files, bus);
+      // 运行时实例。
       const runtime = new BackgroundRuntime(files, bus, new AssetRuntime(files, bus), new ThumbnailRuntime(files, bus), theme);
 
       await runtime.importBackground(makeBackground('bg-2', 'city.png', true));
@@ -61,8 +66,10 @@ export default function backgroundUnitTest() {
 
     it('renames and deletes backgrounds while invalidating thumbnail cache', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const thumbnails = new ThumbnailRuntime(files, bus);
+      // 运行时实例。
       const runtime = new BackgroundRuntime(files, bus, new AssetRuntime(files, bus), thumbnails, new ThemeRuntime(files, bus));
       const renamed = new Array<string>();
       const deleted = new Array<string>();
@@ -88,10 +95,22 @@ export default function backgroundUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeRuntime 步骤，供公开方法复用。
+ * @param files 文件存储适配器。
+ * @param bus 事件总线实例。
+ */
 function makeRuntime(files: TavernFileStore, bus: EventBus): BackgroundRuntime {
   return new BackgroundRuntime(files, bus, new AssetRuntime(files, bus), new ThumbnailRuntime(files, bus), new ThemeRuntime(files, bus));
 }
 
+/**
+ * 封装单元测试中的 makeBackground 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param fileName file 名称。
+
+ * @returns 条件命中时返回 true，否则返回 false。
+ */
 function makeBackground(id: string, fileName: string, animated: boolean): BackgroundImportParams {
   return {
     id: id,

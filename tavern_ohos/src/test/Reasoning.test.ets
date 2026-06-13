@@ -12,6 +12,7 @@ import {
 export default function reasoningUnitTest() {
   describe('reasoning runtime', () => {
     it('accumulates reasoning stream deltas and emits display events', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const streaming = new StreamingRuntime(bus);
       const reasoning = new ReasoningRuntime(bus);
@@ -25,11 +26,11 @@ export default function reasoningUnitTest() {
         chatId: 'chat-1',
         messageId: 'msg-1',
       };
-
       const session = streaming.startStream(startParams);
       await streaming.applyDelta(session.id, 'Think ', true);
       await streaming.applyDelta(session.id, 'step', true);
       await streaming.applyDelta(session.id, 'visible text', false);
+      // 记录副本。
       const record: ReasoningRecord = reasoning.getReasoning('msg-1');
 
       expect(record.snapshot).assertEqual('Think step');
@@ -40,6 +41,7 @@ export default function reasoningUnitTest() {
     });
 
     it('tracks metadata, signature, visibility, and prompt policy', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const reasoning = new ReasoningRuntime(bus);
 
@@ -47,6 +49,7 @@ export default function reasoningUnitTest() {
       reasoning.setMetadata('msg-2', '{"provider":"openai"}', 'sig-1');
       reasoning.setVisibility('msg-2', false);
       reasoning.setPromptPolicy('msg-2', true);
+      // 记录副本。
       const record: ReasoningRecord = reasoning.getReasoning('msg-2');
 
       expect(record.snapshot).assertEqual('private chain');
@@ -62,22 +65,24 @@ export default function reasoningUnitTest() {
     });
 
     it('does not expose internal reasoning records', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const reasoning = new ReasoningRuntime(bus);
       bus.subscribe<ReasoningDeltaPayload>('reasoning.delta', (event: RuntimeEvent<ReasoningDeltaPayload>) => {
         event.payload.reasoning.snapshot = '事件修改';
       });
 
+      // 记录副本。
       const record = reasoning.applyDelta('msg-copy', 'private');
       record.snapshot = '外部修改';
       expect(reasoning.getReasoning('msg-copy').snapshot).assertEqual('private');
-
       const listed = reasoning.listReasoning();
       listed[0].snapshot = '列表修改';
       expect(reasoning.getReasoning('msg-copy').snapshot).assertEqual('private');
     });
 
     it('does not reuse reasoning delta payload across event names', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const reasoning = new ReasoningRuntime(bus);
       const snapshots = new Array<string>();

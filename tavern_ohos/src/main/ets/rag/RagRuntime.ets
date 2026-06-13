@@ -9,15 +9,33 @@ import type {
   RagRetrievalResult,
 } from './RagModels';
 
+/**
+ * 提供RAG 检索相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class RagRuntime {
+  /**
+   * vectors 列表，由当前实例内部维护。
+   */
   private vectors: VectorRuntime;
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
 
+  /**
+   * 注入RAG 检索运行时依赖并初始化实例状态。
+
+   * @param events 事件总线。
+   */
   constructor(vectors: VectorRuntime, events: EventBus) {
     this.vectors = vectors;
     this.events = events;
   }
 
+  /**
+   * 执行 retrieve 的内部处理步骤，供当前模块复用。
+   * @param input 待处理的输入对象。
+   */
   retrieve(input: RagRetrievalInput): RagRetrievalResult {
     const queryParams: VectorQueryParams = {
       collectionIds: input.collectionIds.slice(),
@@ -34,7 +52,6 @@ export class RagRuntime {
       chunks.push(chunk);
       scores.push(chunk.score);
     }
-
     const promptText = this.applyTemplate(input.promptTemplate, this.joinChunkText(chunks));
     const result: RagRetrievalResult = {
       query: input.query,
@@ -53,6 +70,11 @@ export class RagRuntime {
     return this.copyResult(result);
   }
 
+  /**
+   * 根据入参构建Query From Last User Message 值，仅生成数据结构，不直接执行外部请求。
+   * @param messages 消息列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   buildQueryFromLastUserMessage(messages: Array<RagChatMessage>): string {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
       if (messages[index].role === 'user') {
@@ -62,6 +84,12 @@ export class RagRuntime {
     return '';
   }
 
+  /**
+   * 根据入参构建Query From Recent Chat Window 值，仅生成数据结构，不直接执行外部请求。
+   * @param messages 消息列表。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   buildQueryFromRecentChatWindow(messages: Array<RagChatMessage>, windowSize: number): string {
     const selected = new Array<string>();
     const start = messages.length > windowSize ? messages.length - windowSize : 0;
@@ -73,7 +101,6 @@ export class RagRuntime {
     }
     return selected.join('\n');
   }
-
   private chunkFromHit(hit: VectorHit): RagChunk {
     return {
       collectionId: hit.collectionId,
@@ -85,7 +112,6 @@ export class RagRuntime {
       metadataJson: hit.vector.metadataJson,
     };
   }
-
   private joinChunkText(chunks: Array<RagChunk>): string {
     const lines = new Array<string>();
     for (let index = 0; index < chunks.length; index += 1) {
@@ -93,11 +119,15 @@ export class RagRuntime {
     }
     return lines.join('\n');
   }
-
   private applyTemplate(template: string, text: string): string {
     return template.split('${text}').join(text);
   }
 
+  /**
+   * 根据入参构建Debug Trace 值，仅生成数据结构，不直接执行外部请求。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private buildDebugTrace(chunks: Array<RagChunk>): string {
     const parts = new Array<string>();
     for (let index = 0; index < chunks.length; index += 1) {
@@ -106,6 +136,10 @@ export class RagRuntime {
     return parts.join('\n');
   }
 
+  /**
+   * 复制Result 值，避免外部修改内部状态。
+   * @param result 返回结果。
+   */
   private copyResult(result: RagRetrievalResult): RagRetrievalResult {
     return {
       query: result.query,
@@ -116,6 +150,11 @@ export class RagRuntime {
     };
   }
 
+  /**
+   * 复制Chunks 列表，避免外部修改内部状态。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private copyChunks(chunks: Array<RagChunk>): Array<RagChunk> {
     const result = new Array<RagChunk>();
     for (let index = 0; index < chunks.length; index += 1) {
@@ -124,6 +163,9 @@ export class RagRuntime {
     return result;
   }
 
+  /**
+   * 复制Chunk 值，避免外部修改内部状态。
+   */
   private copyChunk(chunk: RagChunk): RagChunk {
     return {
       collectionId: chunk.collectionId,

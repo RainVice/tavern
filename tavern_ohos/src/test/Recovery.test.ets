@@ -30,7 +30,6 @@ export default function recoveryUnitTest() {
       const created = rt.createSnapshot('session_restore', metadata);
       metadata.source = 'external';
       created.metadata.source = 'mutated';
-
       const latest = rt.getLatestSnapshot('session_restore');
       expect(latest === undefined).assertFalse();
       if (latest !== undefined) {
@@ -38,7 +37,6 @@ export default function recoveryUnitTest() {
       }
       const listed = rt.listSnapshots();
       listed[0].metadata.source = 'listed-mutated';
-
       const stable = rt.getLatestSnapshot('session_restore');
       expect(stable === undefined).assertFalse();
       if (stable !== undefined) {
@@ -46,6 +44,7 @@ export default function recoveryUnitTest() {
       }
     });
     it('恢复事件不会篡改返回结果', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const rt = new RecoveryRuntime(bus);
       bus.subscribe<RecoveryAttemptedPayload>('recovery.attempted', (event: RuntimeEvent<RecoveryAttemptedPayload>) => {
@@ -53,7 +52,6 @@ export default function recoveryUnitTest() {
         event.payload.result.message = '事件修改';
       });
       rt.createSnapshot('session_restore', { source: 'crash' });
-
       const result = rt.attemptRecovery('session_restore');
 
       expect(result.success).assertTrue();

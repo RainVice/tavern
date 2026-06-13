@@ -12,13 +12,15 @@ import {
 export default function regexUnitTest() {
   describe('regex runtime', () => {
     it('applies placement-matched scripts and emits debug traces', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new RegexRuntime(bus);
       const applied = new Array<string>();
       bus.subscribe<RegexAppliedPayload>('regex.applied', (event: RuntimeEvent<RegexAppliedPayload>) => {
         applied.push(event.payload.trace.scriptId);
       });
-      runtime.registerScript(makeScript('rx-1', 'global', 'ai_output', 'secret:(\\w+)', '[redacted:$1]', false));
+      runtime.registerScript(makeScript('rx-1', '', 'ai_output', 'secret:(\\w+)', '[redacted:$1]', false));
       const input: RegexApplyInput = {
         text: 'hello secret:token',
         placement: 'ai_output',
@@ -28,7 +30,6 @@ export default function regexUnitTest() {
         depth: 0,
         scopeId: '',
       };
-
       const result: RegexApplyResult = runtime.applyScripts(input);
 
       expect(result.text).assertEqual('hello [redacted:token]');
@@ -40,15 +41,16 @@ export default function regexUnitTest() {
     });
 
     it('respects prompt mode, edit mode, and depth filters', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new RegexRuntime(bus);
-      const script = makeScript('rx-2', 'global', 'prompt', 'dragon', 'wyrm', false);
+      const script = makeScript('rx-2', '', 'prompt', 'dragon', 'wyrm', false);
       script.promptOnly = true;
       script.runOnEdit = false;
       script.minDepth = 1;
       script.maxDepth = 2;
       runtime.registerScript(script);
-
       const skippedPrompt = runtime.applyScripts(makeInput('dragon', 'prompt', false, false, false, 1, ''));
       const skippedEdit = runtime.applyScripts(makeInput('dragon', 'prompt', false, true, true, 1, ''));
       const skippedDepth = runtime.applyScripts(makeInput('dragon', 'prompt', false, true, false, 3, ''));
@@ -61,10 +63,11 @@ export default function regexUnitTest() {
     });
 
     it('applies scoped ephemeral scripts and removes them on cleanup', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new RegexRuntime(bus);
       runtime.registerScript(makeScript('rx-3', 'char-1', 'reasoning', 'think', 'consider', true));
-
       const skipped = runtime.applyScripts(makeInput('think', 'reasoning', false, false, false, 0, 'char-2'));
       const applied = runtime.applyScripts(makeInput('think', 'reasoning', false, false, false, 0, 'char-1'));
       runtime.removeEphemeralScripts();
@@ -76,22 +79,22 @@ export default function regexUnitTest() {
     });
 
     it('expands match placeholder to the original regex match', 0, () => {
+      // 运行时实例。
       const runtime = new RegexRuntime(new EventBus());
       runtime.registerScript(makeScript('rx-match', '', 'ai_output', 'secret:\\w+', '<{{match}}>', false));
-
       const result = runtime.applyScripts(makeInput('hide secret:token now', 'ai_output', false, false, false, 0, ''));
 
       expect(result.text).assertEqual('hide <secret:token> now');
     });
 
     it('does not expose internal script records through registration or listing', 0, () => {
+      // 运行时实例。
       const runtime = new RegexRuntime(new EventBus());
       const script = makeScript('rx-copy', '', 'ai_output', 'cat', 'dog', false);
       const registered = runtime.registerScript(script);
       script.replaceString = 'fox';
       script.placements.push('prompt');
       registered.replaceString = 'bird';
-
       const listed = runtime.listScripts();
       listed[0].replaceString = 'horse';
       listed[0].placements.push('reasoning');
@@ -103,6 +106,11 @@ export default function regexUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeScript 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param scopeId 作用域下的具体对象标识。
+ */
 function makeScript(
   id: string,
   scopeId: string,
@@ -131,6 +139,16 @@ function makeScript(
   };
 }
 
+/**
+ * 封装单元测试中的 makeInput 步骤，供公开方法复用。
+ * @param text 文本内容。
+
+
+
+
+
+ * @param scopeId 作用域下的具体对象标识。
+ */
 function makeInput(
   text: string,
   placement: string,

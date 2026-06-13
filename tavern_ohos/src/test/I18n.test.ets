@@ -13,13 +13,14 @@ import {
 export default function i18nUnitTest() {
   describe('i18n runtime', () => {
     it('registers locale bundles and translates errors, commands, plugins, settings, import/export, and UI request keys', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new I18nRuntime(bus, 'en');
       const changes = new Array<string>();
       bus.subscribe<I18nLocaleChangedPayload>('i18n.locale.changed', (event: RuntimeEvent<I18nLocaleChangedPayload>) => {
         changes.push(event.payload.locale);
       });
-
       const bundle: I18nBundle = {
         locale: 'zh-cn',
         source: 'core',
@@ -46,7 +47,9 @@ export default function i18nUnitTest() {
     });
 
     it('falls back to default locale and tracks missing keys', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new I18nRuntime(bus, 'en');
       const missing = new Array<string>();
       bus.subscribe<I18nMissingPayload>('i18n.missing', (event: RuntimeEvent<I18nMissingPayload>) => {
@@ -68,6 +71,7 @@ export default function i18nUnitTest() {
     });
 
     it('adds plugin locale data without overriding core keys', 0, () => {
+      // 运行时实例。
       const runtime = new I18nRuntime(new EventBus(), 'en');
       runtime.registerBundle({
         locale: 'en',
@@ -85,6 +89,11 @@ export default function i18nUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeEntry 步骤，供公开方法复用。
+ * @param key 键名。
+ * @param value 要保存或比较的字段值。
+ */
 function makeEntry(key: string, value: string, category: string): I18nEntry {
   return {
     key: key,
@@ -93,6 +102,11 @@ function makeEntry(key: string, value: string, category: string): I18nEntry {
   };
 }
 
+/**
+ * 封装单元测试中的 makeParam 步骤，供公开方法复用。
+ * @param name 显示名称或注册名称。
+ * @param value 要保存或比较的字段值。
+ */
 function makeParam(name: string, value: string): I18nParam {
   return {
     name: name,

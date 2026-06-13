@@ -10,7 +10,13 @@ import {
   type TavernFileStore,
 } from '../../Index';
 
+/**
+ * 描述单元测试事件发布时携带的数据结构。
+ */
 interface CharacterEventPayload {
+  /**
+   * 角色数据。
+   */
   character: CharacterRecord;
 }
 
@@ -18,7 +24,9 @@ export default function characterUnitTest() {
   describe('character runtime', () => {
     it('creates, indexes, updates, duplicates, and deletes characters', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new CharacterRuntime(files, bus, 'tavern-data', 'default');
       const events = new Array<string>();
       bus.subscribe<CharacterEventPayload>('character.updated', (event: RuntimeEvent<CharacterEventPayload>) => {
@@ -33,7 +41,6 @@ export default function characterUnitTest() {
         exampleDialogue: '<START>',
         tags: ['test', 'agent'],
       };
-
       const created = await runtime.createCharacter(createParams);
       const updateParams: CharacterUpdateParams = {
         name: 'Alice Prime',
@@ -68,7 +75,9 @@ export default function characterUnitTest() {
 
     it('不会暴露可污染持久化角色的事件或返回对象', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new CharacterRuntime(files, bus, 'tavern-data', 'default');
       bus.subscribe<CharacterEventPayload>('character.created', (event: RuntimeEvent<CharacterEventPayload>) => {
         event.payload.character.name = 'event-mutated';
@@ -83,7 +92,6 @@ export default function characterUnitTest() {
         exampleDialogue: '',
         tags: ['safe'],
       };
-
       const created = await runtime.createCharacter(createParams);
       expect(created.name).assertEqual('Copy Safe');
       expect(created.tags.length).assertEqual(1);
@@ -98,10 +106,12 @@ export default function characterUnitTest() {
 
     it('imports and exports SillyTavern V2 JSON cards with source JSON preserved', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new CharacterRuntime(files, bus, 'tavern-data', 'default');
+      // card JSON 字符串。
       const cardJson = '{"spec":"chara_card_v2","spec_version":"2.0","data":{"name":"Bob","description":"Imported","personality":"Kind","scenario":"Workshop","first_mes":"Hi","mes_example":"<START>","tags":["imported"],"extensions":{"fav":true,"world":"test-world"}},"vendorExtra":"keep-me"}';
-
       const imported = await runtime.importCharacterJson(cardJson);
       const exported = await runtime.exportCharacterJson(imported.id);
       const loaded = await runtime.getCharacter(imported.id);
@@ -115,7 +125,9 @@ export default function characterUnitTest() {
 
     it('读取、更新、复制或删除不存在的角色时抛错', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new CharacterRuntime(files, bus, 'tavern-data', 'default');
       const updateParams: CharacterUpdateParams = {
         name: 'Missing',
@@ -127,7 +139,6 @@ export default function characterUnitTest() {
         tags: new Array<string>(),
         favorite: false,
       };
-
       let getFailed = false;
       try {
         await runtime.getCharacter('missing-character');
@@ -161,6 +172,7 @@ export default function characterUnitTest() {
 
     it('拒绝通过路径穿越别名读取已有角色', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new CharacterRuntime(files, new EventBus(), 'tavern-data', 'default');
       const createParams: CharacterCreateParams = {
         name: 'Alice',
@@ -172,7 +184,6 @@ export default function characterUnitTest() {
         tags: new Array<string>(),
       };
       await runtime.createCharacter(createParams);
-
       let aliasFailed = false;
       try {
         await runtime.getCharacter('../characters/char-1');

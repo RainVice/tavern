@@ -15,13 +15,14 @@ export default function dataBankUnitTest() {
   describe('data bank runtime', () => {
     it('stores documents with scope tags metadata and readable content', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new DataBankRuntime(files, bus);
       const events = new Array<string>();
       bus.subscribe<DataBankUpdatedPayload>('databank.document.created', (event: RuntimeEvent<DataBankUpdatedPayload>) => {
         events.push(event.payload.documentId);
       });
-
       const document = await runtime.createDocument(makeDocument('doc-1', 'global', 'lore', 'world,lore'));
       const saved = await files.readText('tavern-data/users/default/databank/documents/doc-1.txt');
       const index = await files.readText('tavern-data/users/default/databank/index.json');
@@ -36,6 +37,7 @@ export default function dataBankUnitTest() {
 
     it('filters by enabled state scope and tags', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new DataBankRuntime(files, new EventBus());
       await runtime.createDocument(makeDocument('doc-global', 'global', 'lore', 'world,lore'));
       await runtime.createDocument(makeDocument('doc-chat', 'chat:chat-1', 'chat', 'chat,summary'));
@@ -56,12 +58,12 @@ export default function dataBankUnitTest() {
 
     it('exports and imports documents preserving content and metadata', 0, async () => {
       const sourceFiles: TavernFileStore = new InMemoryFileStore();
+      // 来源类型。
       const source = new DataBankRuntime(sourceFiles, new EventBus());
       await source.createDocument(makeDocument('doc-1', 'character:alice', 'memo', 'character,memo'));
       await source.setDocumentEnabled('doc-1', false);
       const exported: DataBankExportData = await source.exportData(true);
       exported.documents[0].path = '../outside.txt';
-
       const targetFiles: TavernFileStore = new InMemoryFileStore();
       const target = new DataBankRuntime(targetFiles, new EventBus());
       await target.importData(exported, true);
@@ -77,6 +79,7 @@ export default function dataBankUnitTest() {
 
     it('replace import removes stale document files', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new DataBankRuntime(files, new EventBus());
       await runtime.createDocument(makeDocument('old-doc', 'global', 'old', 'old'));
       const exported: DataBankExportData = {
@@ -95,6 +98,7 @@ export default function dataBankUnitTest() {
 
     it('keeps escaped document ids on distinct paths', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new DataBankRuntime(files, new EventBus());
 
       await runtime.createDocument(makeDocumentWithContent('a/b', 'global', 'slash content'));
@@ -113,8 +117,8 @@ export default function dataBankUnitTest() {
 
     it('derives safe document paths from document ids', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new DataBankRuntime(files, new EventBus());
-
       const document = await runtime.createDocument(makeDocument('../escape', 'global', 'memo', 'safe'));
       const content = await runtime.readDocumentContent('../escape');
 
@@ -125,6 +129,12 @@ export default function dataBankUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeDocument 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param scope 绑定或查询使用的作用域。
+ * @param fileName file 名称。
+ */
 function makeDocument(id: string, scope: string, fileName: string, tagCsv: string): DataBankDocumentCreateParams {
   return {
     id: id,
@@ -139,12 +149,23 @@ function makeDocument(id: string, scope: string, fileName: string, tagCsv: strin
   };
 }
 
+/**
+ * 封装单元测试中的 makeDocumentWithContent 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param scope 绑定或查询使用的作用域。
+ * @param content 要写入或追加的文本内容。
+ */
 function makeDocumentWithContent(id: string, scope: string, content: string): DataBankDocumentCreateParams {
   const params = makeDocument(id, scope, 'memo', 'safe');
   params.content = content;
   return params;
 }
 
+/**
+ * 封装单元测试中的 makeDocumentRecord 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param content 要写入或追加的文本内容。
+ */
 function makeDocumentRecord(id: string, content: string): DataBankDocumentRecord {
   return {
     schemaVersion: 1,

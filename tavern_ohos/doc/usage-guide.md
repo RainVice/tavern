@@ -2,7 +2,7 @@
 
 本文面向宿主应用开发者，说明如何把 `tavern_ohos` 接入到 OpenHarmony / HarmonyOS 项目里，并按功能场景完成初始化、保存、读取、请求构造、事件监听和 UI 刷新。
 
-`tavern_ohos` 是无 UI 后台运行时 SDK。它负责 SillyTavern 风格的数据结构、Prompt 组装、世界书激活、流式响应解析、导入导出和事件分发；宿主应用负责页面、权限、真实网络请求、文件系统、密钥安全存储和设备能力。
+`tavern_ohos` 是无 UI 后台运行时 SDK。它负责 SillyTavern 风格的数据结构、Prompt 组装、世界书激活、流式响应解析、导入导出、事件分发和应用沙箱内的默认文件读写；宿主应用负责页面、权限、真实网络请求、密钥安全存储和设备能力。
 
 ## 一、接入前提
 
@@ -10,7 +10,7 @@
 
 1. 引入 HAR 包。
 2. 创建一个全局 `EventBus`。
-3. 准备一个 `TavernFileStore` 实现。
+3. 使用 `SandboxTavernFileStore` 创建文件存储，测试时可改用 `InMemoryFileStore`。
 4. 约定 `rootPath` 和 `userId`。
 5. 按功能创建 Runtime。
 6. 订阅必要事件，并在页面销毁时取消订阅。
@@ -32,7 +32,7 @@ ArkTS 中从包入口导入：
 ```ts
 import {
   EventBus,
-  InMemoryFileStore,
+  SandboxTavernFileStore,
   CharacterRuntime,
   ChatRuntime,
   MessageRuntime,
@@ -52,7 +52,7 @@ import {
 ```ts
 import {
   EventBus,
-  InMemoryFileStore,
+  SandboxTavernFileStore,
   CharacterRuntime,
   ChatRuntime,
   WorldInfoRuntime,
@@ -74,9 +74,9 @@ export class TavernRuntimeContainer {
   readonly streaming: StreamingRuntime;
   readonly provider: ProviderRuntime;
 
-  constructor(files?: TavernFileStore) {
+  constructor(appFilesDir: string, files?: TavernFileStore) {
     this.events = new EventBus();
-    this.files = files ?? new InMemoryFileStore();
+    this.files = files ?? new SandboxTavernFileStore(appFilesDir);
     this.rootPath = 'tavern-data';
     this.userId = 'default';
     this.characters = new CharacterRuntime(this.files, this.events, this.rootPath, this.userId);
@@ -89,18 +89,17 @@ export class TavernRuntimeContainer {
 }
 ```
 
-正式应用不要长期使用 `InMemoryFileStore`。它只适合测试和临时演示。正式存储应实现 `TavernFileStore`，把路径读写映射到应用沙箱。
+正式应用使用 `SandboxTavernFileStore`。它只需要应用沙箱根目录，写入时按需创建父目录。`InMemoryFileStore` 只适合测试和临时演示。
 
-### 3. 实现文件存储前的检查
+### 3. 文件存储使用前的检查
 
 使用需要落盘的功能前，先确认这些点：
 
-1. `readText(path)` 能读字符串内容。
-2. `writeText(path, value, overwrite)` 会自动创建父目录，或在调用 `ensureDirectory()` 后能写入。
-3. `exists(path)` 对文件和目录有稳定结果。
-4. `list(path)` 返回直接子节点名称。
-5. `delete(path)` 对不存在路径的行为可预测。
-6. 路径不能允许 `..` 或绝对路径逃逸应用数据目录。
+1. 从 UIAbility 或页面上下文取得应用可写沙箱目录，再传给 `SandboxTavernFileStore`。
+2. 不需要调用初始化目录的方法；SDK 会在具体功能写入时创建父目录。
+3. `rootPath` 只表示 SDK 数据根的相对目录，例如 `tavern-data`。
+4. 多个 Runtime 必须复用同一个 `TavernFileStore`、`rootPath` 和 `userId`。
+5. 只有加密存储、云同步、测试替身等高级场景才需要自定义 `TavernFileStore`。
 
 角色、聊天、世界书、Data Bank、向量、资源、文件、头像、表情图等功能都依赖 `TavernFileStore`。
 
@@ -950,4 +949,3 @@ ui.respond(request.id, {
 8. 导入用户文件前是否做 JSON schema、路径和大小校验。
 9. 删除操作是否会递归删除关联目录或关联记录。
 10. 流式生成是否已创建空 assistant 消息并挂接 `StreamingRuntime.attachMessageRuntime()`。
-

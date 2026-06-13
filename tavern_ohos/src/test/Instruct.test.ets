@@ -12,6 +12,7 @@ import {
 export default function instructUnitTest() {
   describe('instruct runtime', () => {
     it('migrates legacy fields, selects presets, and emits state changes', 0, () => {
+      // 运行时实例。
       const runtime = new InstructRuntime(new EventBus());
       runtime.loadPresets([
         {
@@ -27,7 +28,6 @@ export default function instructUnitTest() {
           macro: true,
         },
       ]);
-
       const selected: InstructPreset = runtime.selectPreset('legacy', false);
       const state: InstructState = runtime.getState();
 
@@ -39,34 +39,34 @@ export default function instructUnitTest() {
     });
 
     it('auto-selects model mappings, regex presets, and context-bound presets', 0, () => {
+      // 运行时实例。
       const runtime = new InstructRuntime(new EventBus());
       runtime.loadPresets([
         { name: 'ChatML', enabled: false, preset: '', activation_regex: '/chatml/i', input_sequence: '<|im_start|>user', output_sequence: '<|im_start|>assistant' },
         { name: 'Context Twin', enabled: false, preset: '', input_sequence: '[INST]', output_sequence: '[/INST]' },
       ]);
       runtime.setModelTemplateMapping('provider-model', 'Mapped Instruct', 'Mapped Context');
-
       const mapped = runtime.autoSelectPreset('provider-model', 'Other Context');
-      const regex = runtime.autoSelectPreset('my-chatml-model', 'Other Context');
-      runtime.updateState({ enabled: true, bind_to_context: true, preset: '' });
-      const bound = runtime.autoSelectPreset('unknown-model', 'Context Twin');
-
       expect(mapped).assertTrue();
       expect(runtime.getState().preset).assertEqual('Mapped Instruct');
       expect(runtime.getContextPreset()).assertEqual('Mapped Context');
+      const regex = runtime.autoSelectPreset('my-chatml-model', 'Other Context');
       expect(regex).assertTrue();
       expect(runtime.getState().preset).assertEqual('ChatML');
+      runtime.updateState({ enabled: true, bind_to_context: true, preset: '' });
+      const bound = runtime.autoSelectPreset('unknown-model', 'Context Twin');
+
       expect(bound).assertTrue();
       expect(runtime.getState().preset).assertEqual('Context Twin');
     });
 
     it('ignores invalid activation regex while auto-selecting presets', 0, () => {
+      // 运行时实例。
       const runtime = new InstructRuntime(new EventBus());
       runtime.loadPresets([
         { name: 'Broken', enabled: false, preset: '', activation_regex: '/[broken/', input_sequence: 'bad', output_sequence: 'bad' },
         { name: 'Working', enabled: false, preset: '', activation_regex: '/working/i', input_sequence: 'ok', output_sequence: 'ok' },
       ]);
-
       const selected = runtime.autoSelectPreset('my-working-model', '');
 
       expect(selected).assertTrue();
@@ -74,6 +74,7 @@ export default function instructUnitTest() {
     });
 
     it('builds stop strings from instruct sequences and context stop strings', 0, () => {
+      // 运行时实例。
       const runtime = new InstructRuntime(new EventBus());
       runtime.updateState({
         enabled: true,
@@ -85,7 +86,6 @@ export default function instructUnitTest() {
         sequences_as_stop_strings: true,
       });
       runtime.updateContext({ chat_start: '<START>', example_separator: '<EXAMPLE>', use_stop_strings: true });
-
       const stops = runtime.getStoppingSequences('Alice', 'Bob', true);
 
       expect(stops.length).assertEqual(5);
@@ -97,6 +97,7 @@ export default function instructUnitTest() {
     });
 
     it('formats chat messages, story strings, and final prompt lines', 0, () => {
+      // 运行时实例。
       const runtime = new InstructRuntime(new EventBus());
       runtime.updateState({
         enabled: true,
@@ -109,7 +110,6 @@ export default function instructUnitTest() {
         story_string_prefix: '<SYS {{name}}>',
         story_string_suffix: '</SYS>',
       });
-
       const userText = runtime.formatChatMessage('Alice', 'Hello', true, false, '', 'Alice', 'Bob', 0);
       const groupText = runtime.formatChatMessage('Carol', 'Hi', false, false, 'carol.png', 'Alice', 'Bob', 0);
       const story = runtime.formatStoryString('The scene opens.', false);

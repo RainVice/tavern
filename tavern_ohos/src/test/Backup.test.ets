@@ -16,14 +16,15 @@ export default function backupUnitTest() {
   describe('backup runtime', () => {
     it('creates full user data backups with manifest and validation', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new BackupRuntime(files, bus);
       const completed = new Array<string>();
       bus.subscribe<BackupCompletedPayload>('backup.completed', (event: RuntimeEvent<BackupCompletedPayload>) => {
         completed.push(`${event.payload.backupId}:${event.payload.path}:${event.payload.archive.id}`);
       });
       await seedUserData(files);
-
       const archive: BackupArchive = await runtime.createBackup('tavern-data/users/default', 'backups/full-1.json', 'full');
       const validation: BackupValidationResult = runtime.validateArchive(archive);
       const firstEntry: BackupManifestEntry = archive.entries[0];
@@ -41,12 +42,12 @@ export default function backupUnitTest() {
 
     it('restores backup archives and reports restored paths', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new BackupRuntime(files, new EventBus());
       await seedUserData(files);
       const archive = await runtime.createBackup('tavern-data/users/default', 'backups/full-1.json', 'full');
       await files.writeText('tavern-data/users/default/characters/alice.json', '{"name":"changed"}', false);
       await files.delete('tavern-data/users/default/chats/alice/messages.jsonl');
-
       const result: BackupRestoreResult = await runtime.restoreBackup(archive, 'tavern-data/users/default');
       const restoredCharacter = await files.readText('tavern-data/users/default/characters/alice.json');
       const restoredChat = await files.readText('tavern-data/users/default/chats/alice/messages.jsonl');
@@ -58,9 +59,9 @@ export default function backupUnitTest() {
 
     it('creates migration backups and rejects corrupted archives', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new BackupRuntime(files, new EventBus());
       await seedUserData(files);
-
       const migrationBackup = await runtime.createMigrationBackup('tavern-data/users/default', 'schema-v2');
       const badEntry: BackupManifestEntry = {
         path: 'characters/bad.json',
@@ -86,6 +87,7 @@ export default function backupUnitTest() {
 
     it('rejects backup archives with unsafe relative paths', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new BackupRuntime(files, new EventBus());
       const unsafeEntry: BackupManifestEntry = {
         path: '../outside.json',
@@ -101,7 +103,6 @@ export default function backupUnitTest() {
         createdAt: 1,
         entries: [unsafeEntry],
       };
-
       const validation = runtime.validateArchive(archive);
       let restoreFailed = false;
       try {

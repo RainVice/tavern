@@ -12,15 +12,36 @@ import type {
   PresetUpdateParams,
 } from './PresetModels';
 
+/**
+ * 提供预设相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class PresetRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * presets 列表，由当前实例内部维护。
+   */
   private presets: Map<string, PresetRecord> = new Map<string, PresetRecord>();
+  /**
+   * bindings 列表，由当前实例内部维护。
+   */
   private bindings: Map<string, PresetBindingRecord> = new Map<string, PresetBindingRecord>();
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 创建新的预设记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   createPreset(params: PresetCreateParams): PresetRecord {
     if (this.presets.has(params.id)) {
       throw new Error(`Preset already exists: ${params.id}`);
@@ -39,6 +60,12 @@ export class PresetRuntime {
     return this.clonePreset(record);
   }
 
+  /**
+   * 更新指定预设，写回存储并按需发布变更事件。
+   * @param presetId 目标预设标识。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   updatePreset(presetId: string, params: PresetUpdateParams): PresetRecord {
     const record = this.requirePreset(presetId);
     record.name = params.name;
@@ -50,10 +77,20 @@ export class PresetRuntime {
     return this.clonePreset(record);
   }
 
+  /**
+   * 读取指定预设，不存在时抛出错误。
+   * @param presetId 目标预设标识。
+   * @returns 更新或读取后的记录副本。
+   */
   getPreset(presetId: string): PresetRecord {
     return this.clonePreset(this.requirePreset(presetId));
   }
 
+  /**
+   * 读取Presets列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param kind 记录类型。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listPresets(kind: string): Array<PresetRecord> {
     const records = Array.from(this.presets.values());
     if (kind.length === 0) {
@@ -68,6 +105,10 @@ export class PresetRuntime {
     return filtered;
   }
 
+  /**
+   * 删除指定预设，并清理相关索引或资源引用。
+   * @param presetId 目标预设标识。
+   */
   deletePreset(presetId: string): void {
     const record = this.requirePreset(presetId);
     this.presets.delete(presetId);
@@ -79,6 +120,13 @@ export class PresetRuntime {
     this.events.publish<PresetDeletedPayload>('preset.deleted', payload);
   }
 
+  /**
+   * 把预设对象绑定到指定作用域，后续读取会按该绑定解析。
+
+   * @param ownerId 目标所有者标识。
+
+   * @param presetId 目标预设标识。
+   */
   bindPreset(ownerType: string, ownerId: string, presetKind: string, presetId: string): PresetBindingRecord {
     const preset = this.requirePreset(presetId);
     if (preset.kind !== presetKind) {
@@ -98,6 +146,13 @@ export class PresetRuntime {
     return this.cloneBinding(binding);
   }
 
+  /**
+   * 读取指定Binding，不存在时抛出错误。
+
+   * @param ownerId 目标所有者标识。
+
+   * @returns 更新或读取后的记录副本。
+   */
   getBinding(ownerType: string, ownerId: string, presetKind: string): PresetBindingRecord {
     const binding = this.bindings.get(this.bindingKey(ownerType, ownerId, presetKind));
     if (binding === undefined) {
@@ -106,6 +161,12 @@ export class PresetRuntime {
     return this.cloneBinding(binding);
   }
 
+  /**
+   * 读取Bindings列表，返回副本，调用方修改返回值不会直接改变内部状态。
+
+   * @param ownerId 目标所有者标识。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listBindings(ownerType: string, ownerId: string): Array<PresetBindingRecord> {
     const result = new Array<PresetBindingRecord>();
     const records = Array.from(this.bindings.values());
@@ -118,6 +179,11 @@ export class PresetRuntime {
     return result;
   }
 
+  /**
+   * 导出预设，用于备份、迁移或与 SillyTavern 数据互通。
+   * @param presetId 目标预设标识。
+   * @returns 可持久化或可传输的导出内容。
+   */
   exportPreset(presetId: string): PresetExportData {
     const data: PresetExportData = {
       preset: this.clonePreset(this.requirePreset(presetId)),
@@ -125,6 +191,12 @@ export class PresetRuntime {
     return data;
   }
 
+  /**
+   * 从外部数据导入Preset 值，转换为当前运行时的数据结构。
+   * @param data 导入或恢复使用的序列化数据。
+   * @param newId 目标新记录标识。
+   * @returns 更新或读取后的记录副本。
+   */
   importPreset(data: PresetExportData, newId: string): PresetRecord {
     if (this.presets.has(newId)) {
       throw new Error(`Preset already exists: ${newId}`);
@@ -136,6 +208,13 @@ export class PresetRuntime {
     return this.clonePreset(imported);
   }
 
+  /**
+   * 执行 migratePreset 的内部处理步骤，供当前模块复用。
+   * @param presetId 目标预设标识。
+
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   migratePreset(presetId: string, targetVersion: number, fields: Array<PresetField>): PresetRecord {
     const record = this.requirePreset(presetId);
     const fromVersion = record.version;
@@ -152,6 +231,10 @@ export class PresetRuntime {
     return this.clonePreset(record);
   }
 
+  /**
+   * 读取必须存在的Preset 值，缺失时抛出错误。
+   * @param presetId 目标预设标识。
+   */
   private requirePreset(presetId: string): PresetRecord {
     const record = this.presets.get(presetId);
     if (record === undefined) {
@@ -160,6 +243,10 @@ export class PresetRuntime {
     return record;
   }
 
+  /**
+   * 复制Preset 值，避免外部修改内部状态。
+   * @param record 记录副本。
+   */
   private clonePreset(record: PresetRecord): PresetRecord {
     const cloned: PresetRecord = {
       id: record.id,
@@ -173,6 +260,11 @@ export class PresetRuntime {
     return cloned;
   }
 
+  /**
+   * 复制Presets 列表，避免外部修改内部状态。
+   * @param records 记录副本列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private clonePresets(records: Array<PresetRecord>): Array<PresetRecord> {
     const result = new Array<PresetRecord>();
     for (let index = 0; index < records.length; index += 1) {
@@ -181,6 +273,9 @@ export class PresetRuntime {
     return result;
   }
 
+  /**
+   * 复制Binding 值，避免外部修改内部状态。
+   */
   private cloneBinding(binding: PresetBindingRecord): PresetBindingRecord {
     return {
       ownerType: binding.ownerType,
@@ -190,6 +285,11 @@ export class PresetRuntime {
     };
   }
 
+  /**
+   * 复制Fields 列表，避免外部修改内部状态。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private cloneFields(fields: Array<PresetField>): Array<PresetField> {
     const cloned = new Array<PresetField>();
     for (let index = 0; index < fields.length; index += 1) {
@@ -203,6 +303,10 @@ export class PresetRuntime {
     return cloned;
   }
 
+  /**
+   * 移除预设绑定，用于解除注册、绑定或索引关系。
+   * @param presetId 目标预设标识。
+   */
   private removeBindingsForPreset(presetId: string): void {
     const keys = Array.from(this.bindings.keys());
     for (let index = 0; index < keys.length; index += 1) {
@@ -213,10 +317,20 @@ export class PresetRuntime {
     }
   }
 
+  /**
+   * 把预设对象绑定到指定作用域，后续读取会按该绑定解析。
+
+   * @param ownerId 目标所有者标识。
+   */
   private bindingKey(ownerType: string, ownerId: string, presetKind: string): string {
     return `${ownerType}:${ownerId}:${presetKind}`;
   }
 
+  /**
+   * 发布预设事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+
+   */
   private publishPresetEvent(eventName: string, preset: PresetRecord): void {
     const payload: PresetEventPayload = {
       preset: this.clonePreset(preset),

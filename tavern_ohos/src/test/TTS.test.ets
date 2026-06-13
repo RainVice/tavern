@@ -13,7 +13,9 @@ import {
 export default function ttsUnitTest() {
   describe('TTSRuntime', () => {
     it('发起语音合成并跟踪状态', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new TTSRuntime(bus);
       const statuses = new Array<string>();
       bus.subscribe<TTSSynthesisStartedPayload>(
@@ -34,7 +36,6 @@ export default function ttsUnitTest() {
           statuses.push(event.payload.task.status);
         },
       );
-
       const task = runtime.synthesize({
         text: '你好世界',
         voiceProfileId: 'profile-1',
@@ -45,7 +46,6 @@ export default function ttsUnitTest() {
       });
       runtime.updateProgress(task.taskId, 50);
       runtime.completeSynthesis(task.taskId, { taskId: task.taskId, attachmentId: 'audio-1', duration: 3.5, format: 'mp3' });
-
       const saved = runtime.getTask(task.taskId);
       expect(saved.status).assertEqual('completed');
       expect(saved.progress).assertEqual(100);
@@ -57,8 +57,11 @@ export default function ttsUnitTest() {
     });
 
     it('合成失败和取消', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new TTSRuntime(bus);
+      // cancelled 标识。
       let cancelledId = '';
       bus.subscribe<TTSSynthesisCancelledPayload>(
         'tts.synthesis.cancelled',
@@ -66,7 +69,6 @@ export default function ttsUnitTest() {
           cancelledId = event.payload.task.taskId;
         },
       );
-
       const t1 = runtime.synthesize({
         text: 'test', voiceProfileId: 'p1', skipCodeBlocks: false, speed: 1.0, pitch: 1.0, format: 'wav',
       });
@@ -74,7 +76,6 @@ export default function ttsUnitTest() {
       expect(runtime.getTask(t1.taskId).status).assertEqual('cancelled');
       expect(runtime.getTask(t1.taskId).error).assertEqual('已取消');
       expect(cancelledId).assertEqual(t1.taskId);
-
       const t2 = runtime.synthesize({
         text: 'test', voiceProfileId: 'p1', skipCodeBlocks: false, speed: 1.0, pitch: 1.0, format: 'wav',
       });
@@ -84,9 +85,10 @@ export default function ttsUnitTest() {
     });
 
     it('按状态过滤列出任务', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new TTSRuntime(bus);
-
       const t1 = runtime.synthesize({
         text: 'a', voiceProfileId: 'p1', skipCodeBlocks: false, speed: 1.0, pitch: 1.0, format: 'mp3',
       });
@@ -95,7 +97,6 @@ export default function ttsUnitTest() {
       });
       runtime.updateProgress(t2.taskId, 1);
       runtime.completeSynthesis(t1.taskId, { taskId: t1.taskId, attachmentId: 'a', duration: 1, format: 'mp3' });
-
       const running = runtime.listTasks('running');
       const completed = runtime.listTasks('completed');
 
@@ -106,19 +107,18 @@ export default function ttsUnitTest() {
     });
 
     it('保存、列出、删除语音配置', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new TTSRuntime(bus);
 
       runtime.saveVoiceProfile('温柔女声', 'openai', 'nova', 'zh', 1.0, 1.0, 'mp3');
       runtime.saveVoiceProfile('磁性男声', 'openai', 'onyx', 'zh', 1.2, 0.9, 'mp3');
       runtime.saveVoiceProfile('Edge 女声', 'edge', 'zh-CN-XiaoxiaoNeural', 'zh', 1.0, 1.0, 'wav');
-
       const all = runtime.listVoiceProfiles();
       expect(all.length).assertEqual(3);
-
       const openaiVoices = runtime.listVoiceProfiles('openai');
       expect(openaiVoices.length).assertEqual(2);
-
       const edgeVoices = runtime.listVoiceProfiles('edge');
       expect(edgeVoices.length).assertEqual(1);
       expect(edgeVoices[0].voiceId).assertEqual('zh-CN-XiaoxiaoNeural');
@@ -128,9 +128,10 @@ export default function ttsUnitTest() {
     });
 
     it('构建 OpenAI TTS 请求体', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new TTSRuntime(bus);
-
       const req = runtime.buildOpenAITTSRequest('你好', 'nova', 'tts-1', 1.0, 'mp3');
 
       expect(req.model).assertEqual('tts-1');
@@ -141,9 +142,10 @@ export default function ttsUnitTest() {
     });
 
     it('构建 Edge TTS 请求体', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new TTSRuntime(bus);
-
       const req = runtime.buildEdgeTTSRequest('测试', 'zh-CN-XiaoxiaoNeural', 10, 0);
 
       expect(req.text).assertEqual('测试');
@@ -160,7 +162,6 @@ export default function ttsUnitTest() {
         text: 'hello', voiceProfileId: 'p1', skipCodeBlocks: false, speed: 1.0, pitch: 1.0, format: 'mp3',
       });
       const data = runtime1.exportData();
-
       const bus2 = new EventBus();
       const runtime2 = new TTSRuntime(bus2);
       runtime2.importData(data);
@@ -170,11 +171,11 @@ export default function ttsUnitTest() {
     });
 
     it('读取和导出不会暴露内部 TTS 任务与语音配置', 0, () => {
+      // 运行时实例。
       const runtime = new TTSRuntime(new EventBus());
       const profile = runtime.saveVoiceProfile('测试', 'openai', 'nova', 'zh', 1.0, 1.0, 'mp3');
       profile.name = '外部配置';
       expect(runtime.getVoiceProfile(profile.profileId).name).assertEqual('测试');
-
       const task = runtime.synthesize({
         text: 'hello', voiceProfileId: profile.profileId, skipCodeBlocks: false, speed: 1.0, pitch: 1.0, format: 'mp3',
       });
@@ -182,7 +183,6 @@ export default function ttsUnitTest() {
       task.params.text = '外部任务';
       expect(runtime.getTask(task.taskId).status).assertEqual('pending');
       expect(runtime.getTask(task.taskId).params.text).assertEqual('hello');
-
       const exported = runtime.exportData();
       exported.profiles[0].name = '导出配置';
       exported.tasks[0].params.text = '导出任务';
@@ -191,6 +191,7 @@ export default function ttsUnitTest() {
     });
 
     it('导入后新建 TTS 任务和语音配置不会复用已有 ID', 0, () => {
+      // 运行时实例。
       const runtime = new TTSRuntime(new EventBus());
       const data: TTSExportData = {
         profiles: [{
@@ -220,7 +221,6 @@ export default function ttsUnitTest() {
       runtime.importData(data);
       data.profiles[0].name = '外部修改';
       data.tasks[0].params.text = '外部修改';
-
       const profile = runtime.saveVoiceProfile('新配置', 'openai', 'nova', 'zh', 1, 1, 'mp3');
       const task = runtime.synthesize({
         text: 'new', voiceProfileId: profile.profileId, skipCodeBlocks: false, speed: 1, pitch: 1, format: 'mp3',

@@ -15,8 +15,8 @@ export default function assetUnitTest() {
   describe('asset runtime', () => {
     it('imports assets into typed folders and persists an index', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new AssetRuntime(files, new EventBus());
-
       const image = await runtime.importAsset(makeAsset('asset-1', 'image', 'alice.png', 'image/png', 'png-data'));
       await runtime.importAsset(makeAsset('asset-2', 'background', 'forest.jpg', 'image/jpeg', 'jpg-data'));
       const saved = await files.readText('tavern-data/users/default/assets/images/alice.png');
@@ -33,7 +33,9 @@ export default function assetUnitTest() {
 
     it('renames assets and emits deletion events', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new AssetRuntime(files, bus);
       const renamed = new Array<string>();
       const deleted = new Array<string>();
@@ -58,10 +60,10 @@ export default function assetUnitTest() {
     });
 
     it('indexes thumbnail and audio assets by type', 0, async () => {
+      // 运行时实例。
       const runtime = new AssetRuntime(new InMemoryFileStore(), new EventBus());
       await runtime.importAsset(makeAsset('thumb-1', 'thumbnail', 'alice-thumb.png', 'image/png', 'thumb'));
       await runtime.importAsset(makeAsset('audio-1', 'audio', 'voice.wav', 'audio/wav', 'audio'));
-
       const thumbnails = await runtime.listByType('thumbnail');
       const audio = await runtime.listByType('audio');
       const all = await runtime.listAssets();
@@ -73,8 +75,8 @@ export default function assetUnitTest() {
 
     it('sanitizes asset file names and unknown type folders', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new AssetRuntime(files, new EventBus());
-
       const asset = await runtime.importAsset(makeAsset('asset-safe', '../custom', '../escape.png', 'image/png', 'data'));
       const renamed = await runtime.renameAsset('asset-safe', '..\\renamed.png');
 
@@ -86,6 +88,14 @@ export default function assetUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeAsset 步骤，供公开方法复用。
+ * @param id 唯一标识。
+
+ * @param fileName file 名称。
+
+ * @param content 要写入或追加的文本内容。
+ */
 function makeAsset(id: string, type: string, fileName: string, mimeType: string, content: string): AssetCreateParams {
   return {
     id: id,

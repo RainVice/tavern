@@ -11,14 +11,30 @@ import type {
   SearchResult,
 } from './SearchModels';
 
+/**
+ * 提供搜索索引相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class SearchRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * documents 列表，由当前实例内部维护。
+   */
   private documents: Map<string, SearchDocument> = new Map<string, SearchDocument>();
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 创建或写入文档，完成持久化后返回可供调用方使用的结果。
+   */
   upsertDocument(document: SearchDocument): SearchDocument {
     const copy = this.copyDocument(document);
     this.documents.set(copy.id, copy);
@@ -29,6 +45,11 @@ export class SearchRuntime {
     return this.copyDocument(copy);
   }
 
+  /**
+   * 移除文档，用于解除注册、绑定或索引关系。
+   * @param documentId 目标文档标识。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   removeDocument(documentId: string): boolean {
     const removed = this.documents.delete(documentId);
     if (removed) {
@@ -40,6 +61,11 @@ export class SearchRuntime {
     return removed;
   }
 
+  /**
+   * 按查询条件检索搜索索引数据，并返回匹配结果。
+   * @param text 文本内容。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   searchText(text: string): Array<SearchHit> {
     return this.search({
       text: text,
@@ -51,10 +77,21 @@ export class SearchRuntime {
     });
   }
 
+  /**
+   * 判断Filter State 值是否满足条件。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   isFilterState(left: string, right: string): boolean {
     return this.normalizeFilterState(left) === this.normalizeFilterState(right);
   }
 
+  /**
+   * 判断当前对象是否包含Any Filter 值。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   hasAnyFilter(filter: SearchFilterInput): boolean {
     return filter.search.length > 0 ||
       filter.selectedTags.length > 0 ||
@@ -64,6 +101,12 @@ export class SearchRuntime {
       filter.folderOnly;
   }
 
+  /**
+   * 读取Entities列表，通常返回副本以避免调用方直接修改内部状态。
+
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   filterEntities(entities: Array<SearchFilterEntity>, filter: SearchFilterInput): Array<SearchFilterEntity> {
     const result = new Array<SearchFilterEntity>();
     for (let index = 0; index < entities.length; index += 1) {
@@ -82,6 +125,11 @@ export class SearchRuntime {
     return result;
   }
 
+  /**
+   * 按查询条件检索搜索索引数据，并返回匹配结果。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   searchByTag(tag: string): Array<SearchHit> {
     return this.search({
       text: '',
@@ -93,6 +141,12 @@ export class SearchRuntime {
     });
   }
 
+  /**
+   * 按查询条件检索搜索索引数据，并返回匹配结果。
+   * @param key 键名。
+   * @param value 要保存或比较的字段值。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   searchMetadata(key: string, value: string): Array<SearchHit> {
     return this.search({
       text: '',
@@ -104,6 +158,11 @@ export class SearchRuntime {
     });
   }
 
+  /**
+   * 按查询条件检索搜索索引数据，并返回匹配结果。
+   * @param query 检索条件。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   search(query: SearchQuery): Array<SearchHit> {
     const hits = new Array<SearchHit>();
     const values = Array.from(this.documents.values());
@@ -140,6 +199,10 @@ export class SearchRuntime {
     return limited;
   }
 
+  /**
+   * 读取Documents列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listDocuments(): Array<SearchDocument> {
     const result = new Array<SearchDocument>();
     const values = Array.from(this.documents.values());
@@ -150,6 +213,12 @@ export class SearchRuntime {
     return result;
   }
 
+  /**
+   * 检查Domains是否满足当前规则。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private matchesDomains(document: SearchDocument, domains: Array<string>): boolean {
     if (domains.length === 0) {
       return true;
@@ -162,6 +231,12 @@ export class SearchRuntime {
     return false;
   }
 
+  /**
+   * 检查EntityFilter是否满足当前规则。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private matchesEntityFilter(entity: SearchFilterEntity, filter: SearchFilterInput): boolean {
     if (filter.favoriteOnly && !entity.favorite) {
       return false;
@@ -187,7 +262,6 @@ export class SearchRuntime {
     }
     return this.scoreFilterEntity(entity, filter.search) > 0;
   }
-
   private entityHasTag(entity: SearchFilterEntity, tag: string): boolean {
     for (let index = 0; index < entity.tags.length; index += 1) {
       if (entity.tags[index] === tag) {
@@ -196,7 +270,6 @@ export class SearchRuntime {
     }
     return false;
   }
-
   private scoreFilterEntity(entity: SearchFilterEntity, search: string): number {
     const needle = search.toLowerCase();
     if (needle.length === 0) {
@@ -217,6 +290,9 @@ export class SearchRuntime {
     return score;
   }
 
+  /**
+   * 复制Filter Entity 值，避免外部修改内部状态。
+   */
   private copyFilterEntity(entity: SearchFilterEntity): SearchFilterEntity {
     return {
       id: entity.id,
@@ -230,6 +306,10 @@ export class SearchRuntime {
     };
   }
 
+  /**
+   * 规范化Filter State 值，保证后续比较和存储使用一致格式。
+   * @param value 要保存或比较的字段值。
+   */
   private normalizeFilterState(value: string): string {
     if (value === 'selected') {
       return 'SELECTED';
@@ -243,6 +323,12 @@ export class SearchRuntime {
     return value;
   }
 
+  /**
+   * 检查Tags是否满足当前规则。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private matchesTags(document: SearchDocument, tags: Array<string>): boolean {
     if (tags.length === 0) {
       return true;
@@ -255,6 +341,13 @@ export class SearchRuntime {
     return true;
   }
 
+  /**
+   * 检查元数据是否满足当前规则。
+
+   * @param key 键名。
+   * @param value 要保存或比较的字段值。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private matchesMetadata(document: SearchDocument, key: string, value: string): boolean {
     if (key.length === 0) {
       return true;
@@ -267,7 +360,6 @@ export class SearchRuntime {
     }
     return false;
   }
-
   private scoreDocument(
     document: SearchDocument,
     text: string,
@@ -278,6 +370,7 @@ export class SearchRuntime {
     let score = 0;
     const needle = text.toLowerCase();
     if (needle.length > 0) {
+      // 标题。
       const title = document.title.toLowerCase();
       const body = document.body.toLowerCase();
       const path = document.path.toLowerCase();
@@ -313,6 +406,12 @@ export class SearchRuntime {
     return score;
   }
 
+  /**
+   * 判断当前对象是否包含Tag 值。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private hasTag(document: SearchDocument, tag: string): boolean {
     for (let index = 0; index < document.tags.length; index += 1) {
       if (document.tags[index] === tag) {
@@ -322,6 +421,12 @@ export class SearchRuntime {
     return false;
   }
 
+  /**
+   * 把内部搜索命中转换为对外返回的命中结构。
+
+
+   * @param queryText 搜索或匹配用的查询文本。
+   */
   private toHit(document: SearchDocument, score: number, queryText: string): SearchHit {
     return {
       documentId: document.id,
@@ -334,7 +439,6 @@ export class SearchRuntime {
       metadata: this.copyMetadata(document.metadata),
     };
   }
-
   private makeSnippet(document: SearchDocument, queryText: string): string {
     if (queryText.length === 0) {
       return document.body.length > 80 ? document.body.substring(0, 80) : document.body;
@@ -348,7 +452,6 @@ export class SearchRuntime {
     const end = Math.min(document.body.length, index + queryText.length + 40);
     return document.body.substring(start, end);
   }
-
   private applyLimit(hits: Array<SearchHit>, limit: number): Array<SearchHit> {
     const max = limit <= 0 ? hits.length : Math.min(limit, hits.length);
     const result = new Array<SearchHit>();
@@ -358,6 +461,11 @@ export class SearchRuntime {
     return result;
   }
 
+  /**
+   * 复制Hits 列表，避免外部修改内部状态。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private copyHits(hits: Array<SearchHit>): Array<SearchHit> {
     const result = new Array<SearchHit>();
     for (let index = 0; index < hits.length; index += 1) {
@@ -366,6 +474,9 @@ export class SearchRuntime {
     return result;
   }
 
+  /**
+   * 复制Hit 值，避免外部修改内部状态。
+   */
   private copyHit(hit: SearchHit): SearchHit {
     return {
       documentId: hit.documentId,
@@ -379,6 +490,10 @@ export class SearchRuntime {
     };
   }
 
+  /**
+   * 复制Query 值，避免外部修改内部状态。
+   * @param query 检索条件。
+   */
   private copyQuery(query: SearchQuery): SearchQuery {
     return {
       text: query.text,
@@ -390,6 +505,9 @@ export class SearchRuntime {
     };
   }
 
+  /**
+   * 复制Document 值，避免外部修改内部状态。
+   */
   private copyDocument(document: SearchDocument): SearchDocument {
     return {
       id: document.id,
@@ -403,6 +521,11 @@ export class SearchRuntime {
     };
   }
 
+  /**
+   * 复制Metadata 值，避免外部修改内部状态。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private copyMetadata(metadata: Array<SearchDocumentMetadata>): Array<SearchDocumentMetadata> {
     const result = new Array<SearchDocumentMetadata>();
     for (let index = 0; index < metadata.length; index += 1) {
@@ -414,6 +537,11 @@ export class SearchRuntime {
     return result;
   }
 
+  /**
+   * 复制Strings 列表，避免外部修改内部状态。
+   * @param values 待处理的值列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private copyStrings(values: Array<string>): Array<string> {
     const result = new Array<string>();
     for (let index = 0; index < values.length; index += 1) {

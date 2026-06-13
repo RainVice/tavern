@@ -14,7 +14,9 @@ import {
 export default function promptUnitTest() {
   describe('prompt runtime', () => {
     it('builds ordered prompt sections from character, world info, persona, and chat history', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PromptRuntime(bus);
       const promptIds = new Array<string>();
       bus.subscribe<PromptBuiltPayload>('prompt.built', (event: RuntimeEvent<PromptBuiltPayload>) => {
@@ -34,7 +36,6 @@ export default function promptUnitTest() {
         worldInfo: makeWorldInfoActivation(),
         maxEstimatedTokens: 500,
       };
-
       const prompt = runtime.buildPrompt(input);
 
       expect(prompt.sections.length).assertEqual(10);
@@ -52,6 +53,7 @@ export default function promptUnitTest() {
     });
 
     it('includes character system and post history instructions', 0, () => {
+      // 运行时实例。
       const runtime = new PromptRuntime(new EventBus());
       const character = makeCharacter();
       character.systemPrompt = 'Character system.';
@@ -67,7 +69,6 @@ export default function promptUnitTest() {
         worldInfo: emptyWorldInfoActivation(),
         maxEstimatedTokens: 500,
       };
-
       const prompt = runtime.buildPrompt(input);
 
       expect(prompt.sections[1].type).assertEqual('character_system_prompt');
@@ -78,7 +79,9 @@ export default function promptUnitTest() {
     });
 
     it('trims oldest chat sections when token budget is exceeded', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PromptRuntime(bus);
       const input: PromptBuildInput = {
         id: 'prompt-budget',
@@ -94,7 +97,6 @@ export default function promptUnitTest() {
         worldInfo: emptyWorldInfoActivation(),
         maxEstimatedTokens: 16,
       };
-
       const prompt = runtime.buildPrompt(input);
 
       expect(prompt.finalText).assertContain('new answer stays');
@@ -104,7 +106,9 @@ export default function promptUnitTest() {
     });
 
     it('does not expose built prompt through events or returned sections', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PromptRuntime(bus);
       bus.subscribe<PromptBuiltPayload>('prompt.built', (event: RuntimeEvent<PromptBuiltPayload>) => {
         event.payload.prompt.sections[0].content = 'event-mutated';
@@ -121,7 +125,6 @@ export default function promptUnitTest() {
         worldInfo: emptyWorldInfoActivation(),
         maxEstimatedTokens: 500,
       };
-
       const prompt = runtime.buildPrompt(input);
       prompt.sections[0].content = 'return-mutated';
       prompt.debug.trimmedSections.push('return-mutated');
@@ -133,6 +136,9 @@ export default function promptUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeCharacter 步骤，供公开方法复用。
+ */
 function makeCharacter(): CharacterRecord {
   return {
     schemaVersion: 1,
@@ -161,6 +167,14 @@ function makeCharacter(): CharacterRecord {
   };
 }
 
+/**
+ * 封装单元测试中的 makeMessage 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param index 索引数据或循环位置。
+ * @param name 显示名称或注册名称。
+ * @param role 消息角色。
+ * @param text 文本内容。
+ */
 function makeMessage(id: string, index: number, name: string, role: string, text: string): ChatMessage {
   return {
     schemaVersion: 1,
@@ -178,6 +192,9 @@ function makeMessage(id: string, index: number, name: string, role: string, text
   };
 }
 
+/**
+ * 封装单元测试中的 makeWorldInfoActivation 步骤，供公开方法复用。
+ */
 function makeWorldInfoActivation(): WorldInfoActivation {
   return {
     entries: [makeWorldInfoEntry()],
@@ -186,6 +203,9 @@ function makeWorldInfoActivation(): WorldInfoActivation {
   };
 }
 
+/**
+ * 封装单元测试中的 emptyWorldInfoActivation 步骤，供公开方法复用。
+ */
 function emptyWorldInfoActivation(): WorldInfoActivation {
   return {
     entries: new Array<WorldInfoEntry>(),
@@ -194,6 +214,9 @@ function emptyWorldInfoActivation(): WorldInfoActivation {
   };
 }
 
+/**
+ * 封装单元测试中的 makeWorldInfoEntry 步骤，供公开方法复用。
+ */
 function makeWorldInfoEntry(): WorldInfoEntry {
   return {
     id: 'entry-1',

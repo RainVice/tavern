@@ -13,6 +13,12 @@ import {
   type RuntimeEvent,
 } from '../../Index';
 
+/**
+ * 封装单元测试中的 makeManifest 步骤，供公开方法复用。
+ * @param name 显示名称或注册名称。
+
+ * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+ */
 function makeManifest(name: string, permissions: Array<string>): PluginManifest {
   return {
     name: name,
@@ -26,13 +32,14 @@ function makeManifest(name: string, permissions: Array<string>): PluginManifest 
 export default function pluginUnitTest() {
   describe('plugin runtime', () => {
     it('installs and lists plugins', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       const registered = new Array<string>();
       bus.subscribe<PluginRegisteredPayload>('plugin.registered', (event: RuntimeEvent<PluginRegisteredPayload>) => {
         registered.push(event.payload.plugin.pluginId);
       });
-
       const plugin = runtime.installPlugin(makeManifest('TestPlugin', ['network']));
       const list = runtime.listPlugins();
 
@@ -46,7 +53,9 @@ export default function pluginUnitTest() {
     });
 
     it('prevents duplicate plugin installation by name', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       runtime.installPlugin(makeManifest('OnlyOne', []));
       let thrown = false;
@@ -59,7 +68,9 @@ export default function pluginUnitTest() {
     });
 
     it('enables and disables plugins, emitting events', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       const enabled = new Array<string>();
       const disabled = new Array<string>();
@@ -69,7 +80,6 @@ export default function pluginUnitTest() {
       bus.subscribe<PluginDisabledPayload>('plugin.disabled', (event: RuntimeEvent<PluginDisabledPayload>) => {
         disabled.push(event.payload.plugin.pluginId);
       });
-
       const plugin = runtime.installPlugin(makeManifest('TogglePlugin', []));
       runtime.enablePlugin(plugin.pluginId);
       expect(runtime.getPlugin(plugin.pluginId).enabled).assertTrue();
@@ -83,13 +93,14 @@ export default function pluginUnitTest() {
     });
 
     it('uninstalls plugins and cleans up hooks, settings, and prompt injections', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       const uninstalled = new Array<string>();
       bus.subscribe<PluginUninstalledPayload>('plugin.uninstalled', (event: RuntimeEvent<PluginUninstalledPayload>) => {
         uninstalled.push(event.payload.plugin.pluginId);
       });
-
       const plugin = runtime.installPlugin(makeManifest('RemoveMe', []));
       runtime.registerHook(plugin.pluginId, 'before_generation', 0);
       runtime.setPluginSetting(plugin.pluginId, 'key1', 'value1');
@@ -98,7 +109,6 @@ export default function pluginUnitTest() {
 
       expect(uninstalled.length).assertEqual(1);
       expect(uninstalled[0]).assertEqual(plugin.pluginId);
-
       let thrown = false;
       try {
         runtime.getPlugin(plugin.pluginId);
@@ -106,26 +116,25 @@ export default function pluginUnitTest() {
         thrown = true;
       }
       expect(thrown).assertTrue();
-
       const hooks = runtime.listHooks(plugin.pluginId);
       expect(hooks.length).assertEqual(0);
     });
 
     it('registers hooks and dispatches them in priority order', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       const applied = new Array<PluginHookAppliedPayload>();
       bus.subscribe<PluginHookAppliedPayload>('plugin.hook.applied', (event: RuntimeEvent<PluginHookAppliedPayload>) => {
         applied.push(event.payload);
       });
-
       const plugin1 = runtime.installPlugin(makeManifest('P1', []));
       const plugin2 = runtime.installPlugin(makeManifest('P2', []));
       runtime.registerHook(plugin1.pluginId, 'before_generation', 10);
       runtime.registerHook(plugin2.pluginId, 'before_generation', 5);
       runtime.enablePlugin(plugin1.pluginId);
       runtime.enablePlugin(plugin2.pluginId);
-
       const result = runtime.dispatchHook('before_generation');
 
       expect(result.allowed).assertTrue();
@@ -135,13 +144,14 @@ export default function pluginUnitTest() {
     });
 
     it('skips disabled plugins during hook dispatch', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       const applied = new Array<string>();
       bus.subscribe<PluginHookAppliedPayload>('plugin.hook.applied', (event: RuntimeEvent<PluginHookAppliedPayload>) => {
         applied.push(event.payload.pluginId);
       });
-
       const plugin = runtime.installPlugin(makeManifest('DisabledHook', []));
       runtime.registerHook(plugin.pluginId, 'after_message', 0);
       const result = runtime.dispatchHook('after_message');
@@ -151,7 +161,9 @@ export default function pluginUnitTest() {
     });
 
     it('manages plugin settings', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       const plugin = runtime.installPlugin(makeManifest('SettingsPlugin', []));
 
@@ -161,13 +173,14 @@ export default function pluginUnitTest() {
       expect(runtime.getPluginSetting(plugin.pluginId, 'theme')).assertEqual('dark');
       expect(runtime.getPluginSetting(plugin.pluginId, 'timeout')).assertEqual('30000');
       expect(runtime.getPluginSetting(plugin.pluginId, 'missing')).assertEqual('');
-
       const list = runtime.listPluginSettings(plugin.pluginId);
       expect(list.length).assertEqual(2);
     });
 
     it('adds prompt injections and retrieves them by hook point', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       const injected = new Array<PluginPromptInjectedPayload>();
       bus.subscribe<PluginPromptInjectedPayload>(
@@ -176,11 +189,9 @@ export default function pluginUnitTest() {
           injected.push(event.payload);
         },
       );
-
       const plugin = runtime.installPlugin(makeManifest('PromptPlugin', []));
       runtime.enablePlugin(plugin.pluginId);
       runtime.addPromptInjection(plugin.pluginId, 'before_prompt_build', 'system_extra', 'after_system', 0);
-
       const injections = runtime.getPromptInjections('before_prompt_build');
       expect(injections.length).assertEqual(1);
       expect(injections[0].pluginId).assertEqual(plugin.pluginId);
@@ -191,17 +202,20 @@ export default function pluginUnitTest() {
     });
 
     it('does not return prompt injections from disabled plugins', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       const plugin = runtime.installPlugin(makeManifest('DisabledPromptPlugin', []));
       runtime.addPromptInjection(plugin.pluginId, 'before_prompt_build', 'hidden', 'before', 0);
-
       const injections = runtime.getPromptInjections('before_prompt_build');
       expect(injections.length).assertEqual(0);
     });
 
     it('exports and imports plugins preserving settings and injections', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       const plugin = runtime.installPlugin(makeManifest('ExportMe', ['network']));
       runtime.enablePlugin(plugin.pluginId);
@@ -210,7 +224,6 @@ export default function pluginUnitTest() {
       runtime.addPromptInjection(plugin.pluginId, 'after_prompt_build', 'after-injected', 'after', 7);
       const otherPlugin = runtime.installPlugin(makeManifest('OtherPlugin', []));
       runtime.addPromptInjection(otherPlugin.pluginId, 'after_prompt_build', 'other-injected', 'after', 1);
-
       const exported = runtime.exportPlugin(plugin.pluginId);
       const importRuntime = new PluginRuntime(new EventBus());
       const imported = importRuntime.importPlugin(exported);
@@ -218,11 +231,9 @@ export default function pluginUnitTest() {
 
       expect(imported.manifest.name).assertEqual('ExportMe');
       expect(imported.manifest.permissions[0]).assertEqual('network');
-
       const savedSetting = importRuntime.getPluginSetting(imported.pluginId, 'key1');
       expect(savedSetting).assertEqual('value1');
       expect(exported.promptInjections.length).assertEqual(2);
-
       const beforeInjections = importRuntime.getPromptInjections('before_prompt_build');
       const afterInjections = importRuntime.getPromptInjections('after_prompt_build');
       expect(beforeInjections.length).assertEqual(1);
@@ -232,18 +243,18 @@ export default function pluginUnitTest() {
     });
 
     it('does not expose internal plugin records, manifests, or export data', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PluginRuntime(bus);
       bus.subscribe<PluginRegisteredPayload>('plugin.registered', (event: RuntimeEvent<PluginRegisteredPayload>) => {
         event.payload.plugin.manifest.permissions.push('event-permission');
       });
-
       const manifest = makeManifest('CopyPlugin', ['network']);
       const plugin = runtime.installPlugin(manifest);
       manifest.permissions.push('external-source');
       plugin.manifest.permissions.push('external-record');
       expect(runtime.getPlugin(plugin.pluginId).manifest.permissions.length).assertEqual(1);
-
       const listed = runtime.listPlugins();
       listed[0].manifest.permissions.push('listed-permission');
       expect(runtime.getPlugin(plugin.pluginId).manifest.permissions.length).assertEqual(1);

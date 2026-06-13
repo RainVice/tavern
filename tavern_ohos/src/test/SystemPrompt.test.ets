@@ -11,6 +11,7 @@ import {
 export default function systemPromptUnitTest() {
   describe('system prompt runtime', () => {
     it('loads prompts, selects by exact or fuzzy name, and toggles state', 0, () => {
+      // 运行时实例。
       const runtime = new SystemPromptRuntime(new EventBus());
       runtime.loadSystemPrompts([
         { name: 'Helpful Assistant', content: 'Be helpful.', postHistory: '' },
@@ -31,11 +32,11 @@ export default function systemPromptUnitTest() {
     });
 
     it('migrates instruct system prompts into named presets', 0, () => {
+      // 运行时实例。
       const runtime = new SystemPromptRuntime(new EventBus());
       runtime.loadSystemPrompts([
         { name: 'Existing', content: 'Existing content', postHistory: '' },
       ]);
-
       const existing: SystemPromptRecord = runtime.migrateFromInstruct('Preset A', true, 'Existing content');
       const created: SystemPromptRecord = runtime.migrateFromInstruct('Preset B', false, 'New content');
 

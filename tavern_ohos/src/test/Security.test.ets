@@ -22,15 +22,12 @@ export default function securityUnitTest() {
       const rule = rt.addRule('secret', 'block', 'message');
       rule.enabled = false;
       expect(rt.checkInput('message', 'secret').passed).assertFalse();
-
       const rules = rt.listRules();
       rules[0].enabled = false;
       expect(rt.checkInput('message', 'secret').passed).assertFalse();
-
       const audits = rt.listAudits();
       audits[0].result.passed = true;
       expect(rt.listAudits()[0].result.passed).assertFalse();
-
       const exported = rt.exportData();
       exported.rules[0].enabled = false;
       expect(rt.checkInput('message', 'secret').passed).assertFalse();
@@ -38,7 +35,6 @@ export default function securityUnitTest() {
     it('删除缺失规则会报错且导入后新建规则不会复用 ID', 0, () => {
       const rt = new SecurityRuntime(new EventBus());
       { let thrown=false; try { rt.removeRule('missing'); } catch(e) { thrown=true; } expect(thrown).assertTrue(); };
-
       const data: SecurityExportData = {
         rules: [{
           ruleId: 'sec-rule-3',

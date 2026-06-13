@@ -18,6 +18,7 @@ export default function streamingUnitTest() {
   describe('streaming runtime', () => {
     it('streams deltas, persists snapshots into a message, and completes', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const chatParams: ChatCreateParams = {
@@ -44,7 +45,6 @@ export default function streamingUnitTest() {
         chatId: chat.id,
         messageId: message.id,
       };
-
       const session = streaming.startStream(startParams);
       await streaming.applyDelta(session.id, 'Hel', false);
       await streaming.applyDelta(session.id, 'lo', false);
@@ -60,6 +60,7 @@ export default function streamingUnitTest() {
     });
 
     it('aborts streams and ignores later deltas', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const streaming = new StreamingRuntime(bus);
       const startParams: StreamStartParams = {
@@ -67,7 +68,6 @@ export default function streamingUnitTest() {
         chatId: 'chat-1',
         messageId: 'msg-1',
       };
-
       const session = streaming.startStream(startParams);
       await streaming.applyDelta(session.id, 'partial', false);
       const aborted = streaming.abortStream(session.id, 'user stopped');
@@ -80,6 +80,7 @@ export default function streamingUnitTest() {
     });
 
     it('does not expose internal stream sessions', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const streaming = new StreamingRuntime(bus);
       bus.subscribe<StreamStartPayload>('stream.started', (event: RuntimeEvent<StreamStartPayload>) => {
@@ -90,11 +91,9 @@ export default function streamingUnitTest() {
         chatId: 'chat-1',
         messageId: 'msg-1',
       };
-
       const session = streaming.startStream(startParams);
       session.status = 'external-mutated';
       expect(streaming.getSession(session.id).status).assertEqual('running');
-
       const updated = await streaming.applyDelta(session.id, 'hello', false);
       updated.snapshot = 'external snapshot';
       expect(streaming.getSession(session.id).snapshot).assertEqual('hello');

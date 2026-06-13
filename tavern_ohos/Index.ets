@@ -443,7 +443,7 @@ export type {
   MacroRegisteredPayload,
   MacroRegistrationParams,
 } from './src/main/ets/macro/MacroModels';
-export { InMemoryFileStore } from './src/main/ets/storage/TavernFileStore';
+export { InMemoryFileStore, SandboxTavernFileStore } from './src/main/ets/storage/TavernFileStore';
 export type { TavernFileStore } from './src/main/ets/storage/TavernFileStore';
 export { JsonStore } from './src/main/ets/storage/JsonStore';
 export { JsonlStore } from './src/main/ets/storage/JsonlStore';

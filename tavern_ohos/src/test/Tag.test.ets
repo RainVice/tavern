@@ -11,6 +11,7 @@ import {
 export default function tagUnitTest() {
   describe('tag runtime', () => {
     it('creates tags, assigns entity tag maps, and renames entity keys', 0, () => {
+      // 运行时实例。
       const runtime = new TagRuntime(new EventBus());
       const lore: TagRecord = runtime.createTag({
         name: 'Lore',
@@ -33,9 +34,9 @@ export default function tagUnitTest() {
     });
 
     it('imports tags with upstream import settings and removes tag map entries', 0, () => {
+      // 运行时实例。
       const runtime = new TagRuntime(new EventBus());
       const existing: TagRecord = runtime.createTag({ name: 'Existing' });
-
       const onlyExisting: TagImportResult = runtime.importTagsFromNames('char-a.png', [
         'Existing',
         'New Tag',
@@ -57,6 +58,7 @@ export default function tagUnitTest() {
     });
 
     it('sorts tags manually, alphabetically, and by entity usage', 0, () => {
+      // 运行时实例。
       const runtime = new TagRuntime(new EventBus());
       const zed = runtime.createTag({ name: 'Zed', sortOrder: 1 });
       const alpha = runtime.createTag({ name: 'Alpha', sortOrder: 2 });
@@ -64,7 +66,6 @@ export default function tagUnitTest() {
       runtime.addTagToEntity('char-a.png', alpha.id);
       runtime.addTagToEntity('char-b.png', alpha.id);
       runtime.addTagToEntity('char-c.png', zed.id);
-
       const manual: Array<TagRecord> = runtime.listTags('manual');
       const alphabetical: Array<TagRecord> = runtime.listTags('alphabetical');
       const byEntries: Array<TagRecord> = runtime.listTags('by_entries');

@@ -13,14 +13,40 @@ import type {
   ImageUploadParams,
 } from './ImageModels';
 
+/**
+ * 提供图片资源相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class ImageRuntime {
+  /**
+   * 文件存储适配器。
+   */
   private files: TavernFileStore;
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * thumbnails 列表，由当前实例内部维护。
+   */
   private thumbnails: ThumbnailRuntime;
+  /**
+   * attachments 列表，由当前实例内部维护。
+   */
   private attachments: AttachmentRuntime;
+  /**
+   * 记录副本列表，由当前实例内部维护。
+   */
   private records: Map<string, ImageRecord> = new Map<string, ImageRecord>();
+  /**
+   * 数据根路径。
+   */
   private rootPath: string = 'tavern-data/users/default/assets/images';
 
+  /**
+   * 注入图片资源运行时依赖并初始化实例状态。
+   * @param files 文件存储适配器。
+   * @param events 事件总线。
+   */
   constructor(files: TavernFileStore, events: EventBus, thumbnails: ThumbnailRuntime, attachments: AttachmentRuntime) {
     this.files = files;
     this.events = events;
@@ -28,11 +54,17 @@ export class ImageRuntime {
     this.attachments = attachments;
   }
 
+  /**
+   * 执行 uploadImage 的内部处理步骤，供当前模块复用。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   async uploadImage(params: ImageUploadParams): Promise<ImageRecord> {
     this.validateFormat(params.format);
     const now = Date.now();
     const existing = this.records.get(params.id);
+    // file 名称。
     const fileName = this.normalizedFileName(params.fileName, params.format);
+    // folder 名称。
     const folderName = this.safeOptionalSegment(params.folderName);
     const path = this.imagePath(folderName, fileName);
     let thumbnailPath = '';
@@ -74,11 +106,21 @@ export class ImageRuntime {
     return this.copyRecord(record);
   }
 
+  /**
+   * 读取Image Content 值，并转换为运行时使用的数据结构。
+   * @param imageId 目标图片标识。
+   */
   async readImageContent(imageId: string): Promise<string> {
     const record = this.requireRecord(imageId);
     return this.files.readText(record.path);
   }
 
+  /**
+   * 读取Images列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param folderName folder名称。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   async listImages(folderName: string, sortOrder: string): Promise<Array<ImageRecord>> {
     const normalizedFolder = this.safeOptionalSegment(folderName);
     const result = new Array<ImageRecord>();
@@ -94,6 +136,10 @@ export class ImageRuntime {
     return result;
   }
 
+  /**
+   * 读取Folders列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   async listFolders(): Promise<Array<string>> {
     const folders = new Set<string>();
     this.records.forEach((record: ImageRecord) => {
@@ -104,6 +150,10 @@ export class ImageRuntime {
     return Array.from(folders).sort();
   }
 
+  /**
+   * 删除指定图片，并清理相关索引或资源引用。
+   * @param imageId 目标图片标识。
+   */
   async deleteImage(imageId: string): Promise<void> {
     const record = this.requireRecord(imageId);
     this.records.delete(imageId);
@@ -122,6 +172,11 @@ export class ImageRuntime {
     this.events.publish<ImageDeletedPayload>('image.deleted', payload);
   }
 
+  /**
+   * 把图片资源对象绑定到指定作用域，后续读取会按该绑定解析。
+   * @param record 记录副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   private bindAttachmentIfNeeded(record: ImageRecord, params: ImageUploadParams): void {
     if (params.attachmentId.length === 0 || params.attachmentTargetId.length === 0) {
       return;
@@ -143,6 +198,10 @@ export class ImageRuntime {
     this.attachments.bindAttachment(params.attachmentId, params.attachmentTargetType, params.attachmentTargetId);
   }
 
+  /**
+   * 读取必须存在的Record 值，缺失时抛出错误。
+   * @param imageId 目标图片标识。
+   */
   private requireRecord(imageId: string): ImageRecord {
     const record = this.records.get(imageId);
     if (record === undefined) {
@@ -150,7 +209,6 @@ export class ImageRuntime {
     }
     return record;
   }
-
   private async persistIndex(): Promise<void> {
     await this.files.ensureDirectory(this.rootPath);
     const data: ImageIndexData = {
@@ -159,6 +217,10 @@ export class ImageRuntime {
     await this.files.writeText(`${this.rootPath}/index.json`, JSON.stringify(data), true);
   }
 
+  /**
+   * 读取AllImages列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private async listAllImages(): Promise<Array<ImageRecord>> {
     const result = new Array<ImageRecord>();
     this.records.forEach((record: ImageRecord) => {
@@ -167,7 +229,6 @@ export class ImageRuntime {
     result.sort((left: ImageRecord, right: ImageRecord) => left.id.localeCompare(right.id));
     return result;
   }
-
   private imagePath(folderName: string, fileName: string): string {
     if (folderName.length === 0) {
       return `${this.rootPath}/${fileName}`;
@@ -175,13 +236,17 @@ export class ImageRuntime {
     return `${this.rootPath}/${folderName}/${fileName}`;
   }
 
+  /**
+   * 规范化d File 名称，保证后续比较和存储使用一致格式。
+   * @param fileName 文件名称。
+   */
   private normalizedFileName(fileName: string, format: string): string {
     const sanitized = safeFileName(fileName, 'image');
     const dotIndex = sanitized.lastIndexOf('.');
+    // base 名称。
     const baseName = dotIndex < 0 ? sanitized : sanitized.substring(0, dotIndex);
     return `${baseName}.${format}`;
   }
-
   private safeOptionalSegment(value: string): string {
     if (value.length === 0) {
       return '';
@@ -189,6 +254,10 @@ export class ImageRuntime {
     return safePathSegment(value, '');
   }
 
+  /**
+   * 校验Format 值是否满足运行时约束。
+
+   */
   private validateFormat(format: string): void {
     if (format === 'png' || format === 'jpg' || format === 'jpeg' || format === 'webp' || format === 'gif') {
       return;
@@ -196,6 +265,10 @@ export class ImageRuntime {
     throw new Error(`Invalid image format: ${format}`);
   }
 
+  /**
+   * 复制Record 值，避免外部修改内部状态。
+   * @param record 记录副本。
+   */
   private copyRecord(record: ImageRecord): ImageRecord {
     return {
       schemaVersion: record.schemaVersion,

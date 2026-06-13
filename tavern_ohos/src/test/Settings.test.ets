@@ -13,6 +13,7 @@ import {
 export default function settingsUnitTest() {
   describe('settings runtime', () => {
     it('registers schema defaults and resolves scoped settings with fallback', 0, () => {
+      // 运行时实例。
       const runtime = new SettingsRuntime(new EventBus());
       runtime.registerSchema(makeSchema('theme', 'light', 'string', 1));
       runtime.setSetting('global', '', 'theme', 'dark');
@@ -26,7 +27,9 @@ export default function settingsUnitTest() {
     });
 
     it('emits settings.changed with old and new values', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new SettingsRuntime(bus);
       const changed = new Array<string>();
       bus.subscribe<SettingChangedPayload>('settings.changed', (event: RuntimeEvent<SettingChangedPayload>) => {
@@ -41,11 +44,11 @@ export default function settingsUnitTest() {
     });
 
     it('migrates settings and records snapshots', 0, () => {
+      // 运行时实例。
       const runtime = new SettingsRuntime(new EventBus());
       runtime.registerSchema(makeSchema('old_mode', 'classic', 'string', 1));
       runtime.registerSchema(makeSchema('mode', 'classic', 'string', 2));
       runtime.setSetting('global', '', 'old_mode', 'modern');
-
       const snapshot: SettingSnapshot = runtime.migrateSetting('global', '', 'old_mode', 'mode', 2);
 
       expect(runtime.getSetting('global', '', 'mode')).assertEqual('modern');
@@ -56,21 +59,21 @@ export default function settingsUnitTest() {
     });
 
     it('does not expose internal schemas, entries, or snapshots', 0, () => {
+      // 运行时实例。
       const runtime = new SettingsRuntime(new EventBus());
       const schema: SettingSchemaRecord = runtime.registerSchema(makeSchema('copy_mode', 'classic', 'string', 1));
       schema.defaultValue = 'external-default';
       expect(runtime.getSetting('global', '', 'copy_mode')).assertEqual('classic');
 
+      // 条目记录。
       const entry: SettingEntry = runtime.setSetting('global', '', 'copy_mode', 'modern');
       entry.value = 'external-value';
       expect(runtime.getSetting('global', '', 'copy_mode')).assertEqual('modern');
-
       const schemas = runtime.listSchemas();
       schemas[0].defaultValue = 'listed-default';
       const entries = runtime.listEntries('global', '');
       entries[0].value = 'listed-value';
       expect(runtime.getSetting('global', '', 'copy_mode')).assertEqual('modern');
-
       const snapshot = runtime.snapshot();
       snapshot.entries[0].value = 'snapshot-value';
       expect(runtime.getSetting('global', '', 'copy_mode')).assertEqual('modern');
@@ -78,6 +81,11 @@ export default function settingsUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeSchema 步骤，供公开方法复用。
+ * @param key 键名。
+ * @param defaultValue 未输入时使用的默认值。
+ */
 function makeSchema(key: string, defaultValue: string, valueType: string, version: number): SettingSchemaCreateParams {
   return {
     key: key,

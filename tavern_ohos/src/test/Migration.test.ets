@@ -4,15 +4,15 @@ import { EventBus, MigrationRuntime, type MigrationCompletedPayload, type Migrat
 export default function migrationUnitTest() {
   describe('MigrationRuntime', () => {
     it('创建和执行迁移计划', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new MigrationRuntime(bus);
       let completed = false;
       bus.subscribe<MigrationCompletedPayload>('migration.completed', () => { completed = true; });
-
       const plan = runtime.createPlan([{ description: '更新 schema', fromVersion: 1, toVersion: 2 }, { description: '迁移数据', fromVersion: 2, toVersion: 3 }]);
       runtime.executeStep(plan.planId, plan.steps[0].stepId);
       runtime.executeStep(plan.planId, plan.steps[1].stepId);
-
       const saved = runtime.getPlan(plan.planId);
       expect(saved.status).assertEqual('completed');
       expect(saved.steps[0].status).assertEqual('completed');
@@ -21,7 +21,9 @@ export default function migrationUnitTest() {
     });
 
     it('回滚迁移步骤', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new MigrationRuntime(bus);
       const plan = runtime.createPlan([{ description: '危险操作', fromVersion: 1, toVersion: 2 }]);
       runtime.rollbackStep(plan.planId, plan.steps[0].stepId);
@@ -30,7 +32,9 @@ export default function migrationUnitTest() {
     });
 
     it('列出迁移计划', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new MigrationRuntime(bus);
       runtime.createPlan([{ description: 'A', fromVersion: 1, toVersion: 2 }]);
       runtime.createPlan([{ description: 'B', fromVersion: 2, toVersion: 3 }]);
@@ -38,6 +42,7 @@ export default function migrationUnitTest() {
     });
 
     it('读取和导出不会暴露内部迁移计划', 0, () => {
+      // 运行时实例。
       const runtime = new MigrationRuntime(new EventBus());
       const plan = runtime.createPlan([{ description: 'A', fromVersion: 1, toVersion: 2 }]);
       plan.steps[0].status = 'completed';
@@ -51,17 +56,16 @@ export default function migrationUnitTest() {
         completedAt: 0,
         error: '',
       });
-
       const saved = runtime.getPlan(plan.planId);
       expect(saved.steps.length).assertEqual(1);
       expect(saved.steps[0].status).assertEqual('pending');
-
       const exported = runtime.exportData();
       exported.plans[0].steps[0].status = 'failed';
       expect(runtime.getPlan(plan.planId).steps[0].status).assertEqual('pending');
     });
 
     it('导入后新建迁移计划不会复用已有 ID', 0, () => {
+      // 运行时实例。
       const runtime = new MigrationRuntime(new EventBus());
       const data: MigrationExportData = {
         plans: [{

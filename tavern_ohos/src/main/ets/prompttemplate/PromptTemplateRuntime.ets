@@ -6,14 +6,35 @@ import type {
   PromptTemplateRenderedPayload,
 } from './PromptTemplateModels';
 
+/**
+ * 描述Prompt 模板模块在运行时交换的数据结构。
+ */
 interface PromptTemplateKnownHash {
+  /**
+   * hash 值，由当前实例内部维护。
+   */
   hash: string;
+  /**
+   * context 值，由当前实例内部维护。
+   */
   context: string | null;
+  /**
+   * instruct 值，由当前实例内部维护。
+   */
   instruct: string | null;
 }
 
+/**
+ * 提供Prompt 模板相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class PromptTemplateRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * templates 列表，由当前实例内部维护。
+   */
   private templates: Map<string, PromptTemplateRecord> = new Map<string, PromptTemplateRecord>();
   private knownHashes: Array<PromptTemplateKnownHash> = [
     this.makeHash('e10ca381b1ccc5cf9db52e371f3b6651576caee0a630b452e2816b2d404d4b65', 'Llama 3 Instruct'),
@@ -37,15 +58,21 @@ export class PromptTemplateRuntime {
     this.makeHash('a4c9919cbbd4acdd51ccffe22da049264b1b73e59055fa58811a99efbd7c8146', 'OpenAI Harmony'),
   ];
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 执行 deriveTemplatesFromChatTemplate 的内部处理步骤，供当前模块复用。
+   */
   deriveTemplatesFromChatTemplate(chatTemplate: string, hash: string): PromptTemplateDerivation {
     if (chatTemplate.trim().length === 0) {
       return this.none();
     }
-
     const known = this.findKnownHash(hash);
     if (known !== undefined) {
       return this.cloneKnownHash(known);
@@ -64,6 +91,10 @@ export class PromptTemplateRuntime {
     return this.none();
   }
 
+  /**
+   * 注册Template 值，使其可被后续运行时流程使用。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   registerTemplate(params: PromptTemplateRegistrationParams): PromptTemplateRecord {
     if (params.id.length === 0) {
       throw new Error('Template id is required.');
@@ -76,6 +107,11 @@ export class PromptTemplateRuntime {
     return this.cloneRecord(record);
   }
 
+  /**
+   * 读取指定Template，不存在时抛出错误。
+   * @param id 唯一标识。
+   * @returns 更新或读取后的记录副本。
+   */
   getTemplate(id: string): PromptTemplateRecord | undefined {
     const record = this.templates.get(id);
     if (record === undefined) {
@@ -84,10 +120,19 @@ export class PromptTemplateRuntime {
     return this.cloneRecord(record);
   }
 
+  /**
+   * 读取模板标识列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listTemplateIds(): Array<string> {
     return Array.from(this.templates.keys()).sort();
   }
 
+  /**
+   * 生成Template输出，供请求发送、导出或界面展示使用。
+   * @param id 唯一标识。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   renderTemplate(id: string, data: Map<string, string>): string {
     const record = this.templates.get(id);
     if (record === undefined) {
@@ -102,6 +147,11 @@ export class PromptTemplateRuntime {
     return output;
   }
 
+  /**
+   * 生成Content输出，供请求发送、导出或界面展示使用。
+   * @param content 要写入或追加的文本内容。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   renderContent(content: string, data: Map<string, string>): string {
     let output = '';
     let cursor = 0;
@@ -117,6 +167,7 @@ export class PromptTemplateRuntime {
         break;
       }
       output += content.substring(cursor, start);
+      // 键名。
       const key = content.substring(start + 2, end).trim();
       const value = data.get(key);
       output += value === undefined ? '' : value;
@@ -125,6 +176,9 @@ export class PromptTemplateRuntime {
     return output;
   }
 
+  /**
+   * 在当前集合中查找Known Hash 值，未命中时返回空值或默认位置。
+   */
   private findKnownHash(hash: string): PromptTemplateKnownHash | undefined {
     for (let index = 0; index < this.knownHashes.length; index += 1) {
       const known = this.knownHashes[index];
@@ -135,6 +189,12 @@ export class PromptTemplateRuntime {
     return undefined;
   }
 
+  /**
+   * 检查All是否满足当前规则。
+   * @param value 要保存或比较的字段值。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private containsAll(value: string, tokens: Array<string>): boolean {
     for (let index = 0; index < tokens.length; index += 1) {
       if (value.indexOf(tokens[index]) < 0) {
@@ -143,7 +203,6 @@ export class PromptTemplateRuntime {
     }
     return true;
   }
-
   private makeHash(hash: string, templateName: string): PromptTemplateKnownHash {
     return {
       hash: hash,
@@ -151,14 +210,12 @@ export class PromptTemplateRuntime {
       instruct: templateName,
     };
   }
-
   private same(templateName: string): PromptTemplateDerivation {
     return {
       context: templateName,
       instruct: templateName,
     };
   }
-
   private none(): PromptTemplateDerivation {
     return {
       context: null,
@@ -166,6 +223,9 @@ export class PromptTemplateRuntime {
     };
   }
 
+  /**
+   * 复制Known Hash 值，避免外部修改内部状态。
+   */
   private cloneKnownHash(known: PromptTemplateKnownHash): PromptTemplateDerivation {
     return {
       context: known.context,
@@ -173,6 +233,10 @@ export class PromptTemplateRuntime {
     };
   }
 
+  /**
+   * 复制Record 值，避免外部修改内部状态。
+   * @param record 记录副本。
+   */
   private cloneRecord(record: PromptTemplateRecord): PromptTemplateRecord {
     return {
       id: record.id,

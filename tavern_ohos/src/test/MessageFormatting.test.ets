@@ -24,7 +24,6 @@ export default function messageFormattingUnitTest() {
       rt.setConfig(config);
       config.enabledExtensions.push('underline');
       config.codeBlockLanguages.push('python');
-
       const saved = rt.getConfig();
       saved.enabledExtensions.push('code_block');
       saved.codeBlockLanguages.push('bash');

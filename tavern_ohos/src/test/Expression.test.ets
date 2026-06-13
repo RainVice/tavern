@@ -25,18 +25,15 @@ export default function expressionUnitTest() {
       const state = rt.setExpression('char-1', 'joy', '开心', 'happy', 0.9, 'm1');
       state.label = '外部修改';
       state.intensity = 0.1;
-
       const current = rt.getCurrentExpression('char-1');
       expect(current === undefined).assertFalse();
       if (current !== undefined) {
         expect(current.label).assertEqual('开心');
         expect(current.intensity).assertEqual(0.9);
       }
-
       const listed = rt.listExpressions('char-1');
       listed[0].label = '列表修改';
       expect(rt.getCurrentExpression('char-1')!.label).assertEqual('开心');
-
       const exported = rt.exportData();
       exported.states[0].label = '导出修改';
       expect(rt.getCurrentExpression('char-1')!.label).assertEqual('开心');

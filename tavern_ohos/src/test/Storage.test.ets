@@ -6,40 +6,71 @@ import {
   type TavernFileStore,
 } from '../../Index';
 
+/**
+ * 描述单元测试模块在运行时交换的数据结构。
+ */
 interface DemoSettings {
+  /**
+   * schema Version 值，由当前实例内部维护。
+   */
   schemaVersion: number;
+  /**
+   * 名称。
+   */
   name: string;
+  /**
+   * extra 值，由当前实例内部维护。
+   */
   extra: DemoSettingsExtra;
 }
 
+/**
+ * 描述单元测试模块在运行时交换的数据结构。
+ */
 interface DemoSettingsExtra {
+  /**
+   * upstream 值，由当前实例内部维护。
+   */
   upstream: string;
+  /**
+   * host 值，由当前实例内部维护。
+   */
   host: string;
 }
 
+/**
+ * 描述单元测试模块在运行时交换的数据结构。
+ */
 interface DemoMessage {
+  /**
+   * 标识。
+   */
   id: string;
+  /**
+   * role 值，由当前实例内部维护。
+   */
   role: string;
+  /**
+   * 文本内容。
+   */
   text: string;
 }
 
 export default function storageUnitTest() {
   describe('storage foundation', () => {
-    it('creates required tavern data directories', 0, async () => {
+    it('按实际写入路径创建父目录', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
 
-      await files.ensureTavernDataLayout('tavern-data');
+      await files.writeText('tavern-data/users/default/chats/chat-1/messages.jsonl', '{"text":"hello"}', false);
 
-      expect(await files.exists('tavern-data/app')).assertTrue();
-      expect(await files.exists('tavern-data/app/manifest.json')).assertTrue();
-      expect(await files.exists('tavern-data/app/settings.json')).assertTrue();
-      expect(await files.exists('tavern-data/app/runtime-state.json')).assertTrue();
-      expect(await files.exists('tavern-data/users/default/profile.json')).assertTrue();
-      expect(await files.exists('tavern-data/users/default/settings.json')).assertTrue();
+      expect(await files.exists('tavern-data')).assertTrue();
+      expect(await files.exists('tavern-data/users')).assertTrue();
+      expect(await files.exists('tavern-data/users/default')).assertTrue();
       expect(await files.exists('tavern-data/users/default/chats')).assertTrue();
-      expect(await files.exists('tavern-data/users/default/characters')).assertTrue();
-      expect(await files.exists('tavern-data/users/default/worldbooks')).assertTrue();
-      expect(await files.exists('tavern-data/users/default/assets/thumbnails')).assertTrue();
+      expect(await files.exists('tavern-data/users/default/chats/chat-1')).assertTrue();
+      expect(await files.exists('tavern-data/users/default/chats/chat-1/messages.jsonl')).assertTrue();
+      expect(await files.exists('tavern-data/users/default/worldbooks')).assertFalse();
+      expect(await files.exists('tavern-data/users/default/assets/thumbnails')).assertFalse();
     });
 
     it('reads a JSON default and preserves explicit fields after write', 0, async () => {
@@ -53,7 +84,6 @@ export default function storageUnitTest() {
           host: '',
         },
       };
-
       const missing = await store.read(defaultSettings);
       const settingsToWrite: DemoSettings = {
         schemaVersion: 2,

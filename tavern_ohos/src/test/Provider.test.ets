@@ -21,14 +21,17 @@ import {
 export default function providerUnitTest() {
   describe('provider runtime', () => {
     it('normalizes OpenAI-compatible SSE chunks into streaming snapshots', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const streaming = new StreamingRuntime(bus);
+      // 来源类型。
       const source = new ScriptedStreamSource([
         'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n',
         'data: {"choices":[{"delta":{"content":"lo"}}]}\n\n',
         'data: [DONE]\n\n',
       ], '');
       const provider = new ProviderRuntime(bus, streaming);
+      // 调用参数。
       const params: ProviderStreamStartParams = {
         taskId: 'task-provider-1',
         chatId: 'chat-1',
@@ -36,7 +39,6 @@ export default function providerUnitTest() {
         request: makeRequest(),
         source: source,
       };
-
       const task = await provider.startOpenAICompatibleStream(params);
       const session: StreamSession = streaming.getSession(task.sessionId);
 
@@ -46,15 +48,16 @@ export default function providerUnitTest() {
     });
 
     it('accumulates reasoning deltas separately from visible text', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const streaming = new StreamingRuntime(bus);
+      // 来源类型。
       const source = new ScriptedStreamSource([
         'data: {"choices":[{"delta":{"reasoning_content":"Think"}}]}\n\n',
         'data: {"choices":[{"delta":{"content":"Answer"}}]}\n\n',
         'data: [DONE]\n\n',
       ], '');
       const provider = new ProviderRuntime(bus, streaming);
-
       const task = await provider.startOpenAICompatibleStream({
         taskId: 'task-provider-2',
         chatId: 'chat-1',
@@ -70,13 +73,14 @@ export default function providerUnitTest() {
     });
 
     it('aborts the streaming session when provider stream fails', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const streaming = new StreamingRuntime(bus);
+      // 来源类型。
       const source = new ScriptedStreamSource([
         'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n',
       ], 'network failed');
       const provider = new ProviderRuntime(bus, streaming);
-
       const task = await provider.startOpenAICompatibleStream({
         taskId: 'task-provider-3',
         chatId: 'chat-1',
@@ -93,10 +97,10 @@ export default function providerUnitTest() {
     });
 
     it('marks stream task as failed when provider source throws during start', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const streaming = new StreamingRuntime(bus);
       const provider = new ProviderRuntime(bus, streaming);
-
       const task = await provider.startOpenAICompatibleStream({
         taskId: 'task-provider-throw',
         chatId: 'chat-1',
@@ -112,13 +116,13 @@ export default function providerUnitTest() {
     });
 
     it('does not expose internal provider stream tasks', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const streaming = new StreamingRuntime(bus);
       const provider = new ProviderRuntime(bus, streaming);
       bus.subscribe<ProviderGenerationPayload>('generation.started', (event: RuntimeEvent<ProviderGenerationPayload>) => {
         event.payload.task.status = 'event-mutated';
       });
-
       const task = await provider.startOpenAICompatibleStream({
         taskId: 'task-provider-copy',
         chatId: 'chat-1',
@@ -127,14 +131,12 @@ export default function providerUnitTest() {
         source: new ScriptedStreamSource(['data: [DONE]\n\n'], ''),
       });
       task.status = 'external-mutated';
-
       const saved = provider.getTask('task-provider-copy');
       expect(saved.status).assertEqual('completed');
     });
 
     it('maps generic text completion prompts to OpenAI-compatible completion requests', 0, () => {
       const provider = new ProviderRuntime(new EventBus(), new StreamingRuntime(new EventBus()));
-
       const request: ProviderTextCompletionRequest = provider.buildTextCompletionRequest({
         apiType: 'generic',
         model: 'llama-3',
@@ -160,7 +162,6 @@ export default function providerUnitTest() {
 
     it('maps Ollama text completion prompts to raw generate requests', 0, () => {
       const provider = new ProviderRuntime(new EventBus(), new StreamingRuntime(new EventBus()));
-
       const request: ProviderTextCompletionRequest = provider.buildTextCompletionRequest({
         apiType: 'ollama',
         model: 'mistral',
@@ -186,7 +187,6 @@ export default function providerUnitTest() {
     it('does not reuse caller stop arrays in text completion requests', 0, () => {
       const provider = new ProviderRuntime(new EventBus(), new StreamingRuntime(new EventBus()));
       const stop = ['User:', 'Assistant:'];
-
       const openaiRequest: ProviderTextCompletionRequest = provider.buildTextCompletionRequest({
         apiType: 'openai',
         model: 'gpt',
@@ -217,7 +217,6 @@ export default function providerUnitTest() {
       const first: ProviderCapability = getBackendCapability('openrouter');
       first.supportsStreaming = false;
       first.maxContext = 1;
-
       const second: ProviderCapability = getBackendCapability('openrouter');
 
       expect(second.supportsStreaming).assertTrue();
@@ -227,7 +226,6 @@ export default function providerUnitTest() {
     it('保留后端能力常量导出并隔离运行时查询模板', 0, () => {
       OPENROUTER_CAPABILITY.supportsStreaming = false;
       OPENROUTER_CAPABILITY.maxContext = 1;
-
       const queried: ProviderCapability = getBackendCapability('openrouter');
 
       expect(queried.supportsStreaming).assertTrue();
@@ -236,15 +234,34 @@ export default function providerUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试相关状态和行为。
+ */
 class ScriptedStreamSource implements ProviderStreamSource {
+  /**
+   * chunks 列表，由当前实例内部维护。
+   */
   private chunks: Array<string>;
+  /**
+   * error Message 值，由当前实例内部维护。
+   */
   private errorMessage: string;
 
+  /**
+   * 注入单元测试运行时依赖并初始化实例状态。
+
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   constructor(chunks: Array<string>, errorMessage: string) {
     this.chunks = chunks;
     this.errorMessage = errorMessage;
   }
 
+  /**
+   * 启动目标对象流程，并记录初始任务或会话状态。
+   * @param request 待处理的请求对象。
+   */
   async start(request: ProviderStreamRequest, sink: ProviderStreamSink): Promise<ProviderStreamHandle> {
     if (!request.stream) {
       await sink.onError('stream disabled');
@@ -262,12 +279,25 @@ class ScriptedStreamSource implements ProviderStreamSource {
   }
 }
 
+/**
+ * 封装单元测试相关状态和行为。
+ */
 class ScriptedStreamHandle implements ProviderStreamHandle {
+  /**
+   * 封装单元测试中的 close 步骤，供公开方法复用。
+   */
   close(): void {
   }
 }
 
+/**
+ * 封装单元测试相关状态和行为。
+ */
 class ThrowingStreamSource implements ProviderStreamSource {
+  /**
+   * 启动目标对象流程，并记录初始任务或会话状态。
+   * @param request 待处理的请求对象。
+   */
   async start(request: ProviderStreamRequest, sink: ProviderStreamSink): Promise<ProviderStreamHandle> {
     if (!request.stream) {
       await sink.onError('stream disabled');
@@ -276,6 +306,9 @@ class ThrowingStreamSource implements ProviderStreamSource {
   }
 }
 
+/**
+ * 封装单元测试中的 makeRequest 步骤，供公开方法复用。
+ */
 function makeRequest(): ProviderStreamRequest {
   return {
     provider: 'openai-compatible',
@@ -288,6 +321,9 @@ function makeRequest(): ProviderStreamRequest {
   };
 }
 
+/**
+ * 封装单元测试中的 makeMessage 步骤，供公开方法复用。
+ */
 function makeMessage(): ProviderChatMessage {
   return {
     role: 'user',

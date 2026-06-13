@@ -11,15 +11,15 @@ import {
 export default function contentManagerUnitTest() {
   describe('ContentManagerRuntime', () => {
     it('安装内容并跟踪状态', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ContentManagerRuntime(bus);
       let installed = false;
       bus.subscribe<ContentInstalledPayload>('content.installed', () => { installed = true; });
-
       const item = runtime.installContent('extension', 'url', 'https://example.com/ext.zip', '测试扩展');
       runtime.updateProgress(item.itemId, 50);
       runtime.completeInstall(item.itemId, '/data/ext/test', '1.0.0');
-
       const saved = runtime.getItem(item.itemId);
       expect(saved.status).assertEqual('installed');
       expect(saved.displayName).assertEqual('测试扩展');
@@ -29,7 +29,9 @@ export default function contentManagerUnitTest() {
     });
 
     it('按类型过滤内容', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ContentManagerRuntime(bus);
       runtime.installContent('extension', 'url', '', 'A');
       runtime.installContent('background', 'file', '', 'B');
@@ -40,7 +42,9 @@ export default function contentManagerUnitTest() {
     });
 
     it('安装失败和移除', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ContentManagerRuntime(bus);
       const item = runtime.installContent('theme', 'url', '', 'X');
       runtime.failInstall(item.itemId, '网络错误');
@@ -50,7 +54,9 @@ export default function contentManagerUnitTest() {
     });
 
     it('包管理', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ContentManagerRuntime(bus);
       const pkg = runtime.registerPackage('语音包', 'asset', '2.0', 'author', '/data/voice');
       expect(runtime.listPackages().length).assertEqual(1);
@@ -74,17 +80,16 @@ export default function contentManagerUnitTest() {
     });
 
     it('读取和导出不会暴露内部内容与包对象', 0, () => {
+      // 运行时实例。
       const runtime = new ContentManagerRuntime(new EventBus());
       const item = runtime.installContent('extension', 'url', 'https://example.com/a.zip', '扩展');
       item.displayName = '外部内容';
       item.metadata['source'] = 'external';
       expect(runtime.getItem(item.itemId).displayName).assertEqual('扩展');
       expect(runtime.getItem(item.itemId).metadata['source'] === undefined).assertTrue();
-
       const pkg = runtime.registerPackage('包', 'extension', '1.0', 'author', '/pkg');
       pkg.dependencies.push('外部依赖');
       expect(runtime.listPackages()[0].dependencies.length).assertEqual(0);
-
       const exported = runtime.exportData();
       exported.items[0].displayName = '导出内容';
       exported.packages[0].dependencies.push('导出依赖');
@@ -93,7 +98,9 @@ export default function contentManagerUnitTest() {
     });
 
     it('下载进度会限制在有效范围', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ContentManagerRuntime(bus);
       let reported = 0;
       bus.subscribe<ContentDownloadProgressPayload>(
@@ -110,6 +117,7 @@ export default function contentManagerUnitTest() {
     });
 
     it('导入后新建内容和包不会复用已有 ID，且不会保留导入源引用', 0, () => {
+      // 运行时实例。
       const runtime = new ContentManagerRuntime(new EventBus());
       const metadata: Record<string, string> = {};
       metadata['origin'] = 'import';
@@ -148,7 +156,6 @@ export default function contentManagerUnitTest() {
       runtime.importData(data);
       data.items[0].metadata['origin'] = 'external';
       data.packages[0].dependencies.push('external');
-
       const item = runtime.installContent('extension', 'url', '', '新内容');
       const pkg = runtime.registerPackage('新包', 'extension', '1.0', 'author', '/new');
       expect(item.itemId).assertEqual('content-6');
@@ -158,6 +165,7 @@ export default function contentManagerUnitTest() {
     });
 
     it('导入时拒绝覆盖已有内容或包 ID', 0, () => {
+      // 运行时实例。
       const runtime = new ContentManagerRuntime(new EventBus());
       const item = runtime.installContent('extension', 'url', '', '已有内容');
       const pkg = runtime.registerPackage('已有包', 'extension', '1.0', 'author', '/pkg');

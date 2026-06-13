@@ -54,27 +54,11 @@
     },
     {
       "name": "openai_ohos",
-      "srcPath": "./openai_ohos",
-      "targets": [
-        {
-          "name": "default",
-          "applyToProducts": [
-            "default"
-          ]
-        }
-      ]
+      "srcPath": "./openai_ohos"
     },
     {
       "name": "tavern_ohos",
-      "srcPath": "./tavern_ohos",
-      "targets": [
-        {
-          "name": "default",
-          "applyToProducts": [
-            "default"
-          ]
-        }
-      ]
+      "srcPath": "./tavern_ohos"
     },
     {
       "name": "router",

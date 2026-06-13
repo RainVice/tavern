@@ -12,17 +12,17 @@ import {
 export default function asrUnitTest() {
   describe('ASRRuntime', () => {
     it('发起转录并跟踪状态', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ASRRuntime(bus);
       const statuses = new Array<string>();
       bus.subscribe<ASRTranscriptionStartedPayload>('asr.transcription.started', (e: RuntimeEvent<ASRTranscriptionStartedPayload>) => { statuses.push(e.payload.task.status); });
       bus.subscribe<ASRTranscriptionProgressPayload>('asr.transcription.progress', (e: RuntimeEvent<ASRTranscriptionProgressPayload>) => { statuses.push(e.payload.task.status); });
       bus.subscribe<ASRTranscriptionCompletedPayload>('asr.transcription.completed', (e: RuntimeEvent<ASRTranscriptionCompletedPayload>) => { statuses.push(e.payload.task.status); });
-
       const task = runtime.startTranscription({ source: 'audio.mp3', provider: 'openai_whisper', language: 'zh', model: 'whisper-1', autoSend: true, prompt: '' });
       runtime.updateProgress(task.taskId, 50);
       runtime.completeTranscription(task.taskId, { taskId: task.taskId, transcript: '你好世界', confidence: 0.95, duration: 3.5, language: 'zh' });
-
       const saved = runtime.getTask(task.taskId);
       expect(saved.status).assertEqual('completed');
       expect(saved.transcript).assertEqual('你好世界');
@@ -35,14 +35,14 @@ export default function asrUnitTest() {
     });
 
     it('转录失败和取消', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ASRRuntime(bus);
-
       const t1 = runtime.startTranscription({ source: 'a.mp3', provider: 'system', language: 'en', model: '', autoSend: false, prompt: '' });
       runtime.cancelTranscription(t1.taskId);
       expect(runtime.getTask(t1.taskId).status).assertEqual('cancelled');
       expect(runtime.getTask(t1.taskId).error).assertEqual('已取消');
-
       const t2 = runtime.startTranscription({ source: 'b.mp3', provider: 'openai_whisper', language: 'en', model: 'whisper-1', autoSend: false, prompt: '' });
       runtime.failTranscription(t2.taskId, '音频格式不支持');
       expect(runtime.getTask(t2.taskId).status).assertEqual('failed');
@@ -50,7 +50,9 @@ export default function asrUnitTest() {
     });
 
     it('按状态过滤任务', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ASRRuntime(bus);
       const t1 = runtime.startTranscription({ source: 'a.mp3', provider: 'openai_whisper', language: 'zh', model: 'whisper-1', autoSend: false, prompt: '' });
       const t2 = runtime.startTranscription({ source: 'b.mp3', provider: 'system', language: 'en', model: '', autoSend: false, prompt: '' });
@@ -62,7 +64,9 @@ export default function asrUnitTest() {
     });
 
     it('构建 Whisper 请求', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ASRRuntime(bus);
       const req = runtime.buildWhisperRequest('audio.mp3', 'whisper-1', 'zh', '转录提示');
       expect(req.model).assertEqual('whisper-1');
@@ -82,15 +86,14 @@ export default function asrUnitTest() {
     });
 
     it('读取和导出不会暴露内部转录任务', 0, () => {
+      // 运行时实例。
       const runtime = new ASRRuntime(new EventBus());
       const task = runtime.startTranscription({ source: 'x.mp3', provider: 'openai_whisper', language: 'zh', model: 'whisper-1', autoSend: false, prompt: '' });
       task.status = 'completed';
       task.params.language = 'en';
-
       const saved = runtime.getTask(task.taskId);
       expect(saved.status).assertEqual('pending');
       expect(saved.params.language).assertEqual('zh');
-
       const exported = runtime.exportData();
       exported.tasks[0].status = 'failed';
       exported.tasks[0].params.source = 'changed.mp3';
@@ -99,6 +102,7 @@ export default function asrUnitTest() {
     });
 
     it('导入后新建转录任务不会复用已有 ID', 0, () => {
+      // 运行时实例。
       const runtime = new ASRRuntime(new EventBus());
       const data: ASRExportData = {
         tasks: [{

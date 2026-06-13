@@ -4,6 +4,7 @@ import { CharacterCodecRuntime, type CharacterCodecResult } from '../../Index';
 export default function characterCodecUnitTest() {
   describe('CharacterCodecRuntime', () => {
     it('解析 V2 角色卡', 0, () => {
+      // 运行时实例。
       const runtime = new CharacterCodecRuntime();
       const v2 = '{"spec":"chara_card_v2","spec_version":"2.0","data":{"name":"测试","description":"描述","personality":"性格","scenario":"场景","first_mes":"你好","mes_example":"示例","tags":["tag1"],"extensions":{"talkativeness":0.8}}}';
       const result = runtime.parseCharacterJson(v2);
@@ -14,9 +15,9 @@ export default function characterCodecUnitTest() {
     });
 
     it('保留 V2 角色卡中的未知 extensions 字段', 0, () => {
+      // 运行时实例。
       const runtime = new CharacterCodecRuntime();
       const v2 = '{"spec":"chara_card_v2","spec_version":"2.0","data":{"name":"扩展","extensions":{"talkativeness":0.7,"fav":true,"world":"main"}}}';
-
       const result = runtime.parseCharacterJson(v2);
 
       expect(result.extensions['talkativeness']).assertEqual('0.7');
@@ -25,6 +26,7 @@ export default function characterCodecUnitTest() {
     });
 
     it('解析 V1 角色卡', 0, () => {
+      // 运行时实例。
       const runtime = new CharacterCodecRuntime();
       const v1 = JSON.stringify({ name: 'V1角色', description: 'V1描述', personality: '', scenario: '', first_mes: '你好', mes_example: '' });
       const result = runtime.parseCharacterJson(v1);
@@ -33,6 +35,7 @@ export default function characterCodecUnitTest() {
     });
 
     it('识别卡片格式', 0, () => {
+      // 运行时实例。
       const runtime = new CharacterCodecRuntime();
       expect(runtime.detectFormat(JSON.stringify({ spec: 'chara_card_v2' }))).assertEqual('v2');
       expect(runtime.detectFormat(JSON.stringify({ name: 'test' }))).assertEqual('v1');
@@ -41,8 +44,10 @@ export default function characterCodecUnitTest() {
     });
 
     it('导出为 V2 格式', 0, () => {
+      // 运行时实例。
       const runtime = new CharacterCodecRuntime();
       const src: CharacterCodecResult = { format: 'v2', raw: '', name: '导出', description: 'D', personality: 'P', scenario: 'S', firstMessage: 'F', exampleDialogue: 'E', creatorNotes: '', systemPrompt: '', postHistoryInstructions: '', creator: '', characterVersion: '', tags: ['a'], alternateGreetings: [], extensions: {} };
+      // JSON 字符串。
       const json = runtime.exportToV2(src);
       expect(json).assertContain('"spec":"chara_card_v2"');
       expect(json).assertContain('"name":"导出"');
@@ -50,6 +55,7 @@ export default function characterCodecUnitTest() {
     });
 
     it('解析 CharacterBook', 0, () => {
+      // 运行时实例。
       const runtime = new CharacterCodecRuntime();
       const book = runtime.parseCharacterBook('{"name":"测试书","entries":[{"id":"1","keys":["key1"],"content":"内容","enabled":true}]}');
       expect(book.name).assertEqual('测试书');
@@ -58,9 +64,9 @@ export default function characterCodecUnitTest() {
     });
 
     it('导出并解析 PNG metadata 角色卡', 0, () => {
+      // 运行时实例。
       const runtime = new CharacterCodecRuntime();
       const src: CharacterCodecResult = { format: 'v2', raw: '', name: 'PNG角色', description: 'D', personality: 'P', scenario: 'S', firstMessage: 'F', exampleDialogue: 'E', creatorNotes: '', systemPrompt: '', postHistoryInstructions: '', creator: '', characterVersion: '', tags: ['png'], alternateGreetings: [], extensions: {} };
-
       const png = runtime.exportToPng(src, makeMinimalPng());
       const parsed = runtime.parsePngCharacterCard(png);
 
@@ -72,6 +78,9 @@ export default function characterCodecUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeMinimalPng 步骤，供公开方法复用。
+ */
 function makeMinimalPng(): ArrayBuffer {
   const bytes = new Uint8Array(20);
   bytes[0]=0x89; bytes[1]=0x50; bytes[2]=0x4E; bytes[3]=0x47;

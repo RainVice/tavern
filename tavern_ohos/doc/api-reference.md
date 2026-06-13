@@ -26,7 +26,7 @@ import {
 | 分类 | Runtime |
 |---|---|
 | 基础 | `EventBus`、`TaskRuntime`、`LockManager` |
-| 存储 | `TavernFileStore`、`InMemoryFileStore`、`JsonStore`、`JsonlStore` |
+| 存储 | `TavernFileStore`、`SandboxTavernFileStore`、`InMemoryFileStore`、`JsonStore`、`JsonlStore` |
 | 角色与聊天 | `CharacterRuntime`、`CharacterCodecRuntime`、`AvatarRuntime`、`ChatRuntime`、`MessageRuntime`、`SwipeRuntime`、`BookmarkRuntime`、`BranchRuntime` |
 | Prompt | `PromptRuntime`、`WorldInfoRuntime`、`AuthorNoteRuntime`、`PromptTemplateRuntime`、`InstructRuntime`、`RegexRuntime`、`TokenizerRuntime`、`PromptCompressionRuntime` |
 | 生成和 Provider | `ProviderRuntime`、`StreamingRuntime`、`ReasoningRuntime`、`ConnectionProfileRuntime`、`SecretRuntime`、`NetworkService`、`NetworkPolicyRuntime` |
@@ -78,24 +78,47 @@ publish<T extends Object>(eventName: string, payload: T): RuntimeEvent<T>
 
 ### TavernFileStore
 
-`TavernFileStore` 是所有文件型 Runtime 的存储抽象：
+`TavernFileStore` 是所有文件型 Runtime 的最小存储抽象。正式应用通常不需要自己实现它，直接使用 `SandboxTavernFileStore`。
 
 ```ts
 interface TavernFileStore {
-  readText(path: string): Promise<string>;
-  writeText(path: string, value: string, overwrite: boolean): Promise<void>;
+  ensureDirectory(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
+  readText(path: string): Promise<string>;
+  writeText(path: string, content: string, createBackup: boolean): Promise<void>;
+  appendText(path: string, content: string): Promise<void>;
   delete(path: string): Promise<void>;
   list(path: string): Promise<Array<string>>;
-  ensureDirectory(path: string): Promise<void>;
 }
 ```
 
-实现要求：
+### SandboxTavernFileStore
+
+HarmonyOS / OpenHarmony 应用沙箱默认实现：
+
+```ts
+new SandboxTavernFileStore(baseDirectory: string)
+```
+
+使用方式：
+
+```ts
+const files = new SandboxTavernFileStore(appFilesDir);
+```
+
+行为说明：
+
+- 所有传入路径都会解析到 `baseDirectory` 下。
+- `writeText()` 和 `appendText()` 会按需创建父目录。
+- SDK 不再要求初始化时创建全套 Tavern 目录。
+- `..` 路径会被拒绝。
+- `createBackup` 为 `true` 时，覆盖前会生成同路径 `.bak`。
+
+自定义实现要求：
 
 - 路径建议统一用 `/`。
 - 必须阻止 `..` 和绝对路径逃逸。
-- `writeText()` 应能配合 `ensureDirectory()` 正常写入父目录。
+- `writeText()` 和 `appendText()` 应按需创建父目录。
 - `list()` 返回直接子节点名称，不返回完整路径。
 
 ### InMemoryFileStore

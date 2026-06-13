@@ -12,15 +12,36 @@ import type {
   ConnectionResolvedProfile,
 } from './ConnectionProfileModels';
 
+/**
+ * 提供连接配置相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class ConnectionProfileRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * profiles 列表，由当前实例内部维护。
+   */
   private profiles: Map<string, ConnectionProfileRecord> = new Map<string, ConnectionProfileRecord>();
+  /**
+   * active Profiles 列表，由当前实例内部维护。
+   */
   private activeProfiles: Map<string, ConnectionActiveProfileRecord> = new Map<string, ConnectionActiveProfileRecord>();
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 创建新的连接配置记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   createProfile(params: ConnectionProfileCreateParams): ConnectionProfileRecord {
     if (this.profiles.has(params.id)) {
       throw new Error(`Connection profile already exists: ${params.id}`);
@@ -34,6 +55,12 @@ export class ConnectionProfileRuntime {
     return this.cloneProfile(record);
   }
 
+  /**
+   * 更新指定连接配置，写回存储并按需发布变更事件。
+   * @param profileId 目标连接或预设配置标识。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   updateProfile(profileId: string, params: ConnectionProfileCreateParams): ConnectionProfileRecord {
     const existing = this.requireProfile(profileId);
     const record = this.toRecord(params, Date.now());
@@ -46,10 +73,20 @@ export class ConnectionProfileRuntime {
     return this.cloneProfile(record);
   }
 
+  /**
+   * 读取指定连接配置，不存在时抛出错误。
+   * @param profileId 目标连接或预设配置标识。
+   * @returns 更新或读取后的记录副本。
+   */
   getProfile(profileId: string): ConnectionProfileRecord {
     return this.cloneProfile(this.requireProfile(profileId));
   }
 
+  /**
+   * 读取Profiles列表，返回副本，调用方修改返回值不会直接改变内部状态。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listProfiles(apiType: string): Array<ConnectionProfileRecord> {
     const records = Array.from(this.profiles.values());
     if (apiType.length === 0) {
@@ -64,6 +101,10 @@ export class ConnectionProfileRuntime {
     return result;
   }
 
+  /**
+   * 删除指定连接配置，并清理相关索引或资源引用。
+   * @param profileId 目标连接或预设配置标识。
+   */
   deleteProfile(profileId: string): void {
     this.requireProfile(profileId);
     this.profiles.delete(profileId);
@@ -74,6 +115,12 @@ export class ConnectionProfileRuntime {
     this.events.publish<ConnectionProfileDeletedPayload>('connectionProfile.deleted', payload);
   }
 
+  /**
+   * 设置当前连接配置，用于切换运行时状态或保存配置。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param profileId 目标连接或预设配置标识。
+   */
   setActiveProfile(scope: string, scopeId: string, profileId: string): ConnectionActiveProfileRecord {
     this.requireProfile(profileId);
     const binding: ConnectionActiveProfileRecord = {
@@ -90,6 +137,11 @@ export class ConnectionProfileRuntime {
     return this.cloneBinding(binding);
   }
 
+  /**
+   * 根据当前上下文解析Active Profile 值，返回实际可用值。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   */
   resolveActiveProfile(scope: string, scopeId: string): ConnectionResolvedProfile {
     const binding = this.activeProfiles.get(this.bindingKey(scope, scopeId));
     if (binding === undefined) {
@@ -104,6 +156,10 @@ export class ConnectionProfileRuntime {
     return resolved;
   }
 
+  /**
+   * 根据当前连接配置生成 ProviderRuntime 可使用的请求参数。
+   * @param profileId 目标连接或预设配置标识。
+   */
   toProviderRequest(profileId: string): ConnectionProviderRequest {
     const profile = this.requireProfile(profileId);
     const request: ConnectionProviderRequest = {
@@ -125,6 +181,10 @@ export class ConnectionProfileRuntime {
     return request;
   }
 
+  /**
+   * 把创建参数规范化为连接配置记录。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   private toRecord(params: ConnectionProfileCreateParams, updatedAt: number): ConnectionProfileRecord {
     const record: ConnectionProfileRecord = {
       id: params.id,
@@ -149,6 +209,10 @@ export class ConnectionProfileRuntime {
     return record;
   }
 
+  /**
+   * 读取必须存在的Profile 值，缺失时抛出错误。
+   * @param profileId 目标连接或预设配置标识。
+   */
   private requireProfile(profileId: string): ConnectionProfileRecord {
     const profile = this.profiles.get(profileId);
     if (profile === undefined) {
@@ -157,6 +221,9 @@ export class ConnectionProfileRuntime {
     return profile;
   }
 
+  /**
+   * 复制Profile 值，避免外部修改内部状态。
+   */
   private cloneProfile(profile: ConnectionProfileRecord): ConnectionProfileRecord {
     return {
       id: profile.id,
@@ -180,6 +247,11 @@ export class ConnectionProfileRuntime {
     };
   }
 
+  /**
+   * 复制Profiles 列表，避免外部修改内部状态。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private cloneProfiles(profiles: Array<ConnectionProfileRecord>): Array<ConnectionProfileRecord> {
     const result = new Array<ConnectionProfileRecord>();
     for (let index = 0; index < profiles.length; index += 1) {
@@ -188,6 +260,9 @@ export class ConnectionProfileRuntime {
     return result;
   }
 
+  /**
+   * 复制Binding 值，避免外部修改内部状态。
+   */
   private cloneBinding(binding: ConnectionActiveProfileRecord): ConnectionActiveProfileRecord {
     return {
       scope: binding.scope,
@@ -197,6 +272,11 @@ export class ConnectionProfileRuntime {
     };
   }
 
+  /**
+   * 复制Headers 列表，避免外部修改内部状态。
+   * @param headers 请求头列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private cloneHeaders(headers: Array<ConnectionHeaderRecord>): Array<ConnectionHeaderRecord> {
     const result = new Array<ConnectionHeaderRecord>();
     for (let index = 0; index < headers.length; index += 1) {
@@ -210,6 +290,11 @@ export class ConnectionProfileRuntime {
     return result;
   }
 
+  /**
+   * 复制Headers Masked 值，避免外部修改内部状态。
+   * @param headers 请求头列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private cloneHeadersMasked(headers: Array<ConnectionHeaderRecord>): Array<ConnectionHeaderRecord> {
     const result = new Array<ConnectionHeaderRecord>();
     for (let index = 0; index < headers.length; index += 1) {
@@ -224,6 +309,10 @@ export class ConnectionProfileRuntime {
     return result;
   }
 
+  /**
+   * 移除当前激活绑定列表，用于解除注册、绑定或索引关系。
+   * @param profileId 目标连接或预设配置标识。
+   */
   private removeActiveBindings(profileId: string): void {
     const keys = Array.from(this.activeProfiles.keys());
     for (let index = 0; index < keys.length; index += 1) {
@@ -234,6 +323,11 @@ export class ConnectionProfileRuntime {
     }
   }
 
+  /**
+   * 把连接配置对象绑定到指定作用域，后续读取会按该绑定解析。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   */
   private bindingKey(scope: string, scopeId: string): string {
     return `${scope}:${scopeId}`;
   }

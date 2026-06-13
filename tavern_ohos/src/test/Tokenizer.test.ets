@@ -14,13 +14,14 @@ import {
 export default function tokenizerUnitTest() {
   describe('tokenizer runtime', () => {
     it('registers tokenizer profiles and caches deterministic token counts', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new TokenizerRuntime(bus);
       const counts = new Array<TokenCountResult>();
       bus.subscribe<TokenizerCountedPayload>('tokenizer.counted', (event: RuntimeEvent<TokenizerCountedPayload>) => {
         counts.push(event.payload.result);
       });
-
       const profile: TokenizerProfile = runtime.registerProfile({
         id: 'openai-cl100k',
         name: 'OpenAI cl100k compatible',
@@ -40,6 +41,7 @@ export default function tokenizerUnitTest() {
     });
 
     it('重注册 profile 后清理旧计数缓存并隔离返回对象', 0, () => {
+      // 运行时实例。
       const runtime = new TokenizerRuntime(new EventBus());
       runtime.registerProfile({
         id: 'mutable',
@@ -72,8 +74,8 @@ export default function tokenizerUnitTest() {
     });
 
     it('provides built-in tokenizer profiles for common upstream resources', 0, () => {
+      // 运行时实例。
       const runtime = new TokenizerRuntime(new EventBus());
-
       const claude = runtime.getProfile('claude-3-5-sonnet');
       const llama2 = runtime.getProfile('llama');
       const llama = runtime.getProfile('llama-3');
@@ -95,8 +97,8 @@ export default function tokenizerUnitTest() {
     });
 
     it('exposes tokenizer options and best-match model selection', 0, () => {
+      // 运行时实例。
       const runtime = new TokenizerRuntime(new EventBus());
-
       const options = runtime.listTokenizerOptions();
       const claude = runtime.selectBestTokenizer({
         api: 'openai',
@@ -125,6 +127,7 @@ export default function tokenizerUnitTest() {
     });
 
     it('counts chat message arrays with per-message overhead and model binding', 0, () => {
+      // 运行时实例。
       const runtime = new TokenizerRuntime(new EventBus());
       runtime.registerProfile({
         id: 'gpt-compatible',
@@ -135,7 +138,6 @@ export default function tokenizerUnitTest() {
         messageOverhead: 2,
       });
       runtime.bindModel('gpt-4.1-mini', 'gpt-compatible');
-
       const count = runtime.countMessages('gpt-4.1-mini', [
         { role: 'system', content: 'Follow rules' },
         { role: 'user', content: 'Say hello now' },
@@ -149,6 +151,7 @@ export default function tokenizerUnitTest() {
     });
 
     it('builds budget reports and trims oldest messages to fit context', 0, () => {
+      // 运行时实例。
       const runtime = new TokenizerRuntime(new EventBus());
       runtime.registerProfile({
         id: 'budget',
@@ -158,7 +161,6 @@ export default function tokenizerUnitTest() {
         maxContext: 10,
         messageOverhead: 1,
       });
-
       const budget: TokenBudgetResult = runtime.buildBudget('budget', [
         { role: 'system', content: 'system prompt' },
         { role: 'user', content: 'first user message' },
@@ -178,7 +180,9 @@ export default function tokenizerUnitTest() {
     });
 
     it('does not let tokenizer event handlers mutate returned results', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new TokenizerRuntime(bus);
       bus.subscribe<TokenizerCountedPayload>('tokenizer.counted', (event: RuntimeEvent<TokenizerCountedPayload>) => {
         event.payload.result.tokens = 999;
@@ -196,7 +200,6 @@ export default function tokenizerUnitTest() {
         messageOverhead: 0,
       });
       const messages: Array<TokenMessage> = [{ role: 'user', content: 'hello world' }];
-
       const count = runtime.countText('copy-budget', 'hello world');
       const budget = runtime.buildBudget('copy-budget', messages, 2);
 

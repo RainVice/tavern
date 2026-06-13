@@ -17,6 +17,7 @@ export default function chatUnitTest() {
   describe('chat runtime', () => {
     it('creates chats, appends JSONL messages, edits, hides, and deletes messages', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const messageEvents = new Array<string>();
@@ -28,7 +29,6 @@ export default function chatUnitTest() {
         characterId: 'char-1',
         personaId: 'persona-default',
       };
-
       const chat = await chats.createChat(chatParams);
       const messages = new MessageRuntime(files, bus, 'tavern-data', 'default', chat.id);
       const userMessageParams: ChatMessageCreateParams = {
@@ -69,6 +69,7 @@ export default function chatUnitTest() {
 
     it('更新或删除不存在的消息时抛错', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const chat = await chats.createChat({ title: 'Strict chat', characterId: 'char-1', personaId: 'persona-default' });
@@ -77,7 +78,6 @@ export default function chatUnitTest() {
         text: 'missing',
         isSystem: false,
       };
-
       let updateFailed = false;
       try {
         await messages.updateMessage('missing-message', updateParams);
@@ -97,6 +97,7 @@ export default function chatUnitTest() {
 
     it('supports message lookup pagination movement batch delete and event isolation', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const chat = await chats.createChat({ title: 'Message tools', characterId: 'char-1', personaId: 'persona-default' });
@@ -107,19 +108,19 @@ export default function chatUnitTest() {
       const first = await messages.addMessage({ name: 'User', role: 'user', text: 'One' });
       const second = await messages.addMessage({ name: 'Alice', role: 'assistant', text: 'Two' });
       const third = await messages.addMessage({ name: 'User', role: 'user', text: 'Three' });
-
       const page = await messages.listMessagesPage(1, 2);
       const loaded = await messages.getMessage(second.id);
       loaded.text = 'external-mutated';
       const moved = await messages.moveMessage(third.id, 0);
       const reordered = await messages.listMessages();
+      const loadedAgain = await messages.getMessage(second.id);
       const deletedIds = await messages.deleteMessages([first.id, second.id]);
       const remaining = await messages.listMessages();
 
       expect(page.length).assertEqual(2);
       expect(page[0].id).assertEqual(second.id);
       expect(page[1].id).assertEqual(third.id);
-      expect((await messages.getMessage(second.id)).text).assertEqual('Two');
+      expect(loadedAgain.text).assertEqual('Two');
       expect(moved.text).assertEqual('Three');
       expect(reordered[0].id).assertEqual(third.id);
       expect(reordered[0].index).assertEqual(0);
@@ -133,10 +134,10 @@ export default function chatUnitTest() {
 
     it('读取不存在的聊天或向其写消息时抛错', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const messages = new MessageRuntime(files, bus, 'tavern-data', 'default', 'missing-chat');
-
       let getFailed = false;
       try {
         await chats.getChat('missing-chat');
@@ -156,10 +157,10 @@ export default function chatUnitTest() {
 
     it('导入导出 JSONL 时保留 swipes 和 extra 字段', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const jsonl = '{"chat_metadata":{"chat_id":"old","title":"Old","character_id":"char-1","persona_id":"persona-default"},"user_name":"User","character_name":"Alice"}\n{"name":"Alice","is_user":false,"is_system":false,"send_date":"2026-01-01T00:00:00.000Z","mes":"Hello","swipes":["Hello","Alt"],"extra":{"rating":4,"bookmarked":true,"bookmark_link":"bookmark-1","branches":["branch-1"]}}\n';
-
       const chat = await chats.importChatJsonl(jsonl, 'Imported chat', 'char-1', 'persona-default');
       const messages = await chats.messages(chat.id).listMessages();
       const exported = await chats.exportChatJsonl(chat.id);
@@ -177,6 +178,7 @@ export default function chatUnitTest() {
 
     it('导入畸形 JSONL 不会留下半创建聊天', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       let failed = false;
@@ -186,7 +188,6 @@ export default function chatUnitTest() {
       } catch (error) {
         failed = true;
       }
-
       const listed = await chats.listChats();
       expect(failed).assertTrue();
       expect(listed.length).assertEqual(0);
@@ -194,6 +195,7 @@ export default function chatUnitTest() {
 
     it('renames and archives chat index entries', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const chatParams: ChatCreateParams = {
@@ -201,7 +203,6 @@ export default function chatUnitTest() {
         characterId: 'char-1',
         personaId: 'persona-default',
       };
-
       const chat = await chats.createChat(chatParams);
       const renamed = await chats.renameChat(chat.id, 'Final');
       const archived = await chats.archiveChat(chat.id, true);
@@ -215,6 +216,7 @@ export default function chatUnitTest() {
 
     it('不会暴露内部聊天记录给事件和返回值修改', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const observed = new Array<string>();
@@ -224,7 +226,6 @@ export default function chatUnitTest() {
       bus.subscribe<ChatEventPayload>('chat.created', (event: RuntimeEvent<ChatEventPayload>) => {
         observed.push(event.payload.chat.title);
       });
-
       const created = await chats.createChat({ title: 'Original', characterId: 'char-1', personaId: 'persona-default' });
       created.title = 'return-mutated';
       const loaded = await chats.getChat(created.id);
@@ -235,11 +236,11 @@ export default function chatUnitTest() {
 
     it('searches freshly added message previews without requiring a prior list refresh', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const chat = await chats.createChat({ title: 'Search chat', characterId: 'char-1', personaId: 'persona-default' });
       await chats.messages(chat.id).addMessage({ name: 'User', role: 'user', text: 'fresh dragon clue' });
-
       const results = await chats.searchChats('dragon');
 
       expect(results.length).assertEqual(1);
@@ -249,6 +250,7 @@ export default function chatUnitTest() {
 
     it('duplicates and deletes chats with their message files', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       const events = new Array<string>();
@@ -260,7 +262,6 @@ export default function chatUnitTest() {
       });
       const chat = await chats.createChat({ title: 'Original', characterId: 'char-1', personaId: 'persona-default' });
       await chats.messages(chat.id).addMessage({ name: 'User', role: 'user', text: 'Hello copy' });
-
       const duplicate = await chats.duplicateChat(chat.id, 'Copy');
       const duplicateMessages = await chats.messages(duplicate.id).listMessages();
       await chats.deleteChat(chat.id);
@@ -282,10 +283,10 @@ export default function chatUnitTest() {
 
     it('拒绝通过路径穿越别名读取聊天或写入消息', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const chats = new ChatRuntime(files, bus, 'tavern-data', 'default');
       await chats.createChat({ title: 'Safe chat', characterId: 'char-1', personaId: 'persona-default' });
-
       let getFailed = false;
       try {
         await chats.getChat('../chats/chat-1');

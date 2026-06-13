@@ -14,12 +14,12 @@ import {
 export default function attachmentUnitTest() {
   describe('attachment runtime', () => {
     it('creates attachments for prompt, rag, caption, and translation flows', 0, () => {
+      // 运行时实例。
       const runtime = new AttachmentRuntime(new EventBus());
       const text = runtime.createAttachment(makeAttachment('att-1', 'text', 'notes.md', 'text/markdown', 'Hello note'));
       const image = runtime.createAttachment(makeAttachment('att-2', 'generated_image', 'image.png', 'image/png', ''));
       runtime.markCaptionResult(image.id, 'A bridge screenshot.');
       runtime.markTranslationResult(text.id, 'zh-CN', '你好笔记');
-
       const promptRecords: Array<AttachmentPromptRecord> = runtime.listPromptAttachments();
       const ragRecords: Array<AttachmentRecord> = runtime.listRagDocuments();
 
@@ -31,7 +31,9 @@ export default function attachmentUnitTest() {
     });
 
     it('binds attachments to messages, characters, chats, personas, databank, and plugins', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new AttachmentRuntime(bus);
       const added = new Array<string>();
       bus.subscribe<AttachmentAddedPayload>('attachment.added', (event: RuntimeEvent<AttachmentAddedPayload>) => {
@@ -55,10 +57,10 @@ export default function attachmentUnitTest() {
     });
 
     it('exports attachments and deletes records with bindings', 0, () => {
+      // 运行时实例。
       const runtime = new AttachmentRuntime(new EventBus());
       runtime.createAttachment(makeAttachment('att-4', 'json', 'data.json', 'application/json', '{"ok":true}'));
       runtime.bindAttachment('att-4', 'message', 'msg-2');
-
       const exported: AttachmentExportData = runtime.exportAttachment('att-4');
       const imported = new AttachmentRuntime(new EventBus());
       const restored = imported.importAttachment(exported, 'att-5');
@@ -72,10 +74,10 @@ export default function attachmentUnitTest() {
     });
 
     it('rejects importing an attachment over an existing id', 0, () => {
+      // 运行时实例。
       const runtime = new AttachmentRuntime(new EventBus());
       runtime.createAttachment(makeAttachment('att-existing', 'text', 'old.txt', 'text/plain', 'old'));
       const exported: AttachmentExportData = runtime.exportAttachment('att-existing');
-
       let thrown = false;
       try {
         runtime.importAttachment(exported, 'att-existing');
@@ -88,7 +90,9 @@ export default function attachmentUnitTest() {
     });
 
     it('does not reuse attachment added payload across event names', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new AttachmentRuntime(bus);
       const names = new Array<string>();
       bus.subscribe<AttachmentAddedPayload>('attachment.added', (event: RuntimeEvent<AttachmentAddedPayload>) => {
@@ -106,16 +110,16 @@ export default function attachmentUnitTest() {
     });
 
     it('does not expose internal attachment or binding records', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new AttachmentRuntime(bus);
       bus.subscribe<AttachmentAddedPayload>('attachment.added', (event: RuntimeEvent<AttachmentAddedPayload>) => {
         event.payload.attachment.fileName = 'event-mutated.txt';
       });
-
       const attachment = runtime.createAttachment(makeAttachment('att-copy', 'text', 'copy.md', 'text/markdown', 'copy'));
       attachment.fileName = 'external.md';
       expect(runtime.getAttachment('att-copy').fileName).assertEqual('copy.md');
-
       const binding = runtime.bindAttachment('att-copy', 'message', 'msg-copy');
       binding.targetId = 'external-message';
       const bindings = runtime.listBindings('att-copy');
@@ -125,9 +129,9 @@ export default function attachmentUnitTest() {
     });
 
     it('安全序列化翻译目标元数据', 0, () => {
+      // 运行时实例。
       const runtime = new AttachmentRuntime(new EventBus());
       runtime.createAttachment(makeAttachment('att-json', 'text', 'note.md', 'text/markdown', 'hello'));
-
       const updated = runtime.markTranslationResult('att-json', 'zh-"CN', '你好');
       const metadata = JSON.parse(updated.metadataJson) as Record<string, string>;
 
@@ -137,6 +141,14 @@ export default function attachmentUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeAttachment 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param kind 记录类型。
+ * @param fileName file 名称。
+
+ * @param content 要写入或追加的文本内容。
+ */
 function makeAttachment(id: string, kind: string, fileName: string, mimeType: string, content: string): AttachmentCreateParams {
   return {
     id: id,

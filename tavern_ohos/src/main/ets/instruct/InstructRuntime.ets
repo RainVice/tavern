@@ -16,11 +16,29 @@ import {
   INSTRUCT_NAMES_BEHAVIOR_NONE,
 } from './InstructModels';
 
+/**
+ * 提供指令模板相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class InstructRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * presets 列表，由当前实例内部维护。
+   */
   private presets: Map<string, InstructPreset> = new Map<string, InstructPreset>();
+  /**
+   * mappings 列表，由当前实例内部维护。
+   */
   private mappings: Map<string, InstructTemplateMapping> = new Map<string, InstructTemplateMapping>();
+  /**
+   * selected Context Preset 值，由当前实例内部维护。
+   */
   private selectedContextPreset: string = '';
+  /**
+   * state 值，由当前实例内部维护。
+   */
   private state: InstructState = this.defaultState();
   private context: InstructContextState = {
     chat_start: '',
@@ -29,10 +47,18 @@ export class InstructRuntime {
     story_string_position_in_chat: false,
   };
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 读取或解析Presets，调用方应处理不存在或不匹配的情况。
+
+   */
   loadPresets(presets: Array<InstructPreset>): void {
     this.presets.clear();
     for (let index = 0; index < presets.length; index += 1) {
@@ -41,6 +67,10 @@ export class InstructRuntime {
     }
   }
 
+  /**
+   * 读取Presets列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listPresets(): Array<InstructPreset> {
     const values = Array.from(this.presets.values());
     values.sort((left: InstructPreset, right: InstructPreset) => left.name.localeCompare(right.name));
@@ -51,33 +81,67 @@ export class InstructRuntime {
     return result;
   }
 
+  /**
+   * 更新指定状态，写回存储并按需发布变更事件。
+
+   * @returns 更新或读取后的记录副本。
+   */
   updateState(patch: InstructStatePatch): InstructState {
     this.state = this.mergeState(this.state, patch);
     this.publishState('instruct.state.changed');
     return this.getState();
   }
 
+  /**
+   * 更新指定Context，写回存储并按需发布变更事件。
+
+   * @returns 更新或读取后的记录副本。
+   */
   updateContext(patch: InstructContextStatePatch): InstructContextState {
     this.context = this.mergeContext(this.context, patch);
     return this.getContext();
   }
 
+  /**
+   * 读取指定状态，不存在时抛出错误。
+   * @returns 更新或读取后的记录副本。
+   */
   getState(): InstructState {
     return this.cloneState(this.state);
   }
 
+  /**
+   * 读取指定Context，不存在时抛出错误。
+   * @returns 更新或读取后的记录副本。
+   */
   getContext(): InstructContextState {
     return this.cloneContext(this.context);
   }
 
+  /**
+   * 读取指定预设，不存在时抛出错误。
+   * @returns 更新或读取后的记录副本。
+   */
   getContextPreset(): string {
     return this.selectedContextPreset;
   }
 
+  /**
+   * 设置模型模板映射，用于切换运行时状态或保存配置。
+   * @param modelId 目标模型标识。
+
+
+   */
   setModelTemplateMapping(modelId: string, instruct: string, context: string): void {
     this.mappings.set(modelId, { instruct: instruct, context: context });
   }
 
+  /**
+   * 读取或解析预设，调用方应处理不存在或不匹配的情况。
+   * @param name 显示名称或注册名称。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   selectPreset(name: string, forceGet: boolean): InstructPreset {
     if (name.length === 0) {
       if (!this.state.enabled && !forceGet) {
@@ -93,13 +157,18 @@ export class InstructRuntime {
     return this.clonePreset(preset);
   }
 
+  /**
+   * 执行 autoSelectPreset 的内部处理步骤，供当前模块复用。
+   * @param modelId 目标模型标识。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   autoSelectPreset(modelId: string, contextPreset: string): boolean {
     const mapped = this.mappings.get(modelId);
     if (mapped !== undefined) {
       this.applyExternalSelection(mapped.instruct, mapped.context);
       return true;
     }
-
     const values = Array.from(this.presets.values());
     for (let index = 0; index < values.length; index += 1) {
       let regexSource = '';
@@ -123,6 +192,13 @@ export class InstructRuntime {
     return true;
   }
 
+  /**
+   * 读取Stopping Sequences 列表，不存在时通常抛出错误或返回空值。
+   * @param userName user名称。
+   * @param characterName 角色名称。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   getStoppingSequences(userName: string, characterName: string, useStopStrings: boolean): Array<string> {
     const result = new Array<string>();
     if (this.state.enabled) {
@@ -150,7 +226,20 @@ export class InstructRuntime {
     return result;
   }
 
+  /**
+   * 生成消息输出，供请求发送、导出或界面展示使用。
+   * @param name 显示名称或注册名称。
+   * @param message 消息记录。
+
+
+
+   * @param userName user名称。
+   * @param characterName 角色名称。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   formatChatMessage(name: string, message: string, isUser: boolean, isNarrator: boolean, forceAvatar: string, userName: string, characterName: string, forceOutputSequence: number): string {
+    // include 名称。
     const includeName = this.shouldIncludeMessageName(name, isUser, isNarrator, forceAvatar, userName);
     let prefix = this.getMessagePrefix(isUser, isNarrator, forceOutputSequence);
     let suffix = this.getMessageSuffix(isUser, isNarrator);
@@ -166,6 +255,12 @@ export class InstructRuntime {
     return this.joinNonEmpty([prefix, body], separator);
   }
 
+  /**
+   * 生成StoryString输出，供请求发送、导出或界面展示使用。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   formatStoryString(storyString: string, inChatPosition: boolean): string {
     if (storyString.length === 0) {
       return '';
@@ -184,7 +279,20 @@ export class InstructRuntime {
     return output;
   }
 
+  /**
+   * 生成提示词Line输出，供请求发送、导出或界面展示使用。
+   * @param name 显示名称或注册名称。
+
+
+   * @param userName user名称。
+   * @param characterName 角色名称。
+
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   formatPromptLine(name: string, isImpersonate: boolean, promptBias: string, userName: string, characterName: string, isQuiet: boolean, isQuietToLoud: boolean, forceOutputSequence: number): string {
+    // include 名称。
     const includeName = name.length > 0 && (this.state.names_behavior === INSTRUCT_NAMES_BEHAVIOR_ALWAYS || this.state.names_behavior === INSTRUCT_NAMES_BEHAVIOR_FORCE) && !(isQuiet && !isQuietToLoud);
     let sequence = this.getPromptSequence(isImpersonate, isQuiet, isQuietToLoud, forceOutputSequence);
     if (this.state.macro) {
@@ -201,6 +309,10 @@ export class InstructRuntime {
     return `${this.state.wrap ? this.trimEnd(text) : text}${includeName ? '' : separator}`;
   }
 
+  /**
+   * 规范化Preset 值，保证后续比较和存储使用一致格式。
+   * @param input 待处理的输入对象。
+   */
   private normalizePreset(input: InstructPreset): InstructPreset {
     const state = this.mergeState(this.defaultState(), this.presetToPatch(input));
     if (input.separator_sequence !== undefined) {
@@ -211,7 +323,6 @@ export class InstructRuntime {
     }
     return this.stateToPreset(state, input.name);
   }
-
   private applyPreset(preset: InstructPreset, enable: boolean): void {
     const normalized = this.normalizePreset(preset);
     this.state = this.mergeState(this.state, this.presetToPatch(normalized));
@@ -221,7 +332,6 @@ export class InstructRuntime {
     }
     this.publishState('instruct.selected');
   }
-
   private applyExternalSelection(instruct: string, context: string): void {
     this.state.preset = instruct;
     this.state.enabled = true;
@@ -229,6 +339,11 @@ export class InstructRuntime {
     this.publishState('instruct.selected');
   }
 
+  /**
+   * 创建或写入StopSequences，完成持久化后返回可供调用方使用的结果。
+   * @param result 返回结果。
+
+   */
   private addStopSequences(result: Array<string>, combined: string): void {
     const seen: Map<string, boolean> = new Map<string, boolean>();
     const parts = combined.split('\n');
@@ -241,7 +356,6 @@ export class InstructRuntime {
       result.push(this.state.wrap ? `\n${sequence}` : sequence);
     }
   }
-
   private shouldIncludeMessageName(name: string, isUser: boolean, isNarrator: boolean, forceAvatar: string, userName: string): boolean {
     if (isNarrator) {
       return false;
@@ -252,6 +366,13 @@ export class InstructRuntime {
     return this.state.names_behavior === INSTRUCT_NAMES_BEHAVIOR_FORCE && !isUser && forceAvatar.length > 0 && name !== userName;
   }
 
+  /**
+   * 读取指定前缀长度，不存在时抛出错误。
+
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private getMessagePrefix(isUser: boolean, isNarrator: boolean, forceOutputSequence: number): string {
     if (isNarrator) {
       return this.state.system_same_as_user ? this.state.input_sequence : this.state.system_sequence;
@@ -274,6 +395,12 @@ export class InstructRuntime {
     return this.state.output_sequence;
   }
 
+  /**
+   * 读取指定消息Suffix，不存在时抛出错误。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private getMessageSuffix(isUser: boolean, isNarrator: boolean): string {
     if (isNarrator) {
       return this.state.system_same_as_user ? this.state.input_suffix : this.state.system_suffix;
@@ -281,6 +408,14 @@ export class InstructRuntime {
     return isUser ? this.state.input_suffix : this.state.output_suffix;
   }
 
+  /**
+   * 读取指定提示词Sequence，不存在时抛出错误。
+
+
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private getPromptSequence(isImpersonate: boolean, isQuiet: boolean, isQuietToLoud: boolean, forceOutputSequence: number): string {
     if (isImpersonate) {
       return this.state.last_input_sequence.length > 0 ? this.state.last_input_sequence : this.state.input_sequence;
@@ -294,6 +429,10 @@ export class InstructRuntime {
     return this.state.last_output_sequence.length > 0 ? this.state.last_output_sequence : this.state.output_sequence;
   }
 
+  /**
+   * 在当前集合中查找Preset 值，未命中时返回空值或默认位置。
+   * @param name 显示名称或注册名称。
+   */
   private findPreset(name: string): InstructPreset | undefined {
     const exact = this.presets.get(name);
     if (exact !== undefined) {
@@ -309,6 +448,12 @@ export class InstructRuntime {
     return undefined;
   }
 
+  /**
+   * 检查正则脚本是否满足当前规则。
+   * @param source 来源类型。
+   * @param value 要保存或比较的字段值。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private matchesActivationRegex(source: string, value: string): boolean {
     try {
       if (source.length >= 2 && source[0] === '/') {
@@ -324,15 +469,12 @@ export class InstructRuntime {
       return false;
     }
   }
-
   private applyMacros(value: string, name: string, userName: string, characterName: string): string {
     return value.replace(/{{name1}}/gi, userName).replace(/{{name2}}/gi, characterName).replace(/{{name}}/gi, name);
   }
-
   private replaceNameToken(value: string, name: string): string {
     return value.replace(/{{name}}/gi, name);
   }
-
   private joinNonEmpty(values: Array<string>, separator: string): string {
     const parts = new Array<string>();
     for (let index = 0; index < values.length; index += 1) {
@@ -343,6 +485,10 @@ export class InstructRuntime {
     return parts.join(separator);
   }
 
+  /**
+   * 按预算裁剪End 值，避免超出上下文限制。
+   * @param value 要保存或比较的字段值。
+   */
   private trimEnd(value: string): string {
     let end = value.length;
     while (end > 0 && (value[end - 1] === ' ' || value[end - 1] === '\n' || value[end - 1] === '\t' || value[end - 1] === '\r')) {
@@ -350,7 +496,6 @@ export class InstructRuntime {
     }
     return value.substring(0, end);
   }
-
   private mergeState(base: InstructState, patch: InstructStatePatch): InstructState {
     return {
       enabled: patch.enabled === undefined ? base.enabled : patch.enabled,
@@ -380,7 +525,6 @@ export class InstructRuntime {
       sequences_as_stop_strings: patch.sequences_as_stop_strings === undefined ? base.sequences_as_stop_strings : patch.sequences_as_stop_strings,
     };
   }
-
   private mergeContext(base: InstructContextState, patch: InstructContextStatePatch): InstructContextState {
     return {
       chat_start: patch.chat_start === undefined ? base.chat_start : patch.chat_start,
@@ -389,7 +533,6 @@ export class InstructRuntime {
       story_string_position_in_chat: patch.story_string_position_in_chat === undefined ? base.story_string_position_in_chat : patch.story_string_position_in_chat,
     };
   }
-
   private defaultState(): InstructState {
     return {
       enabled: false,
@@ -419,7 +562,6 @@ export class InstructRuntime {
       sequences_as_stop_strings: true,
     };
   }
-
   private stateToPreset(state: InstructState, name?: string): InstructPreset {
     return {
       name: name === undefined ? state.preset : name,
@@ -450,7 +592,6 @@ export class InstructRuntime {
       sequences_as_stop_strings: state.sequences_as_stop_strings,
     };
   }
-
   private presetToPatch(preset: InstructPreset): InstructStatePatch {
     const patch: InstructStatePatch = {};
     patch.enabled = preset.enabled;
@@ -480,7 +621,6 @@ export class InstructRuntime {
     patch.sequences_as_stop_strings = preset.sequences_as_stop_strings;
     return patch;
   }
-
   private stateToPatch(state: InstructState): InstructStatePatch {
     const patch: InstructStatePatch = {};
     patch.enabled = state.enabled;
@@ -510,7 +650,6 @@ export class InstructRuntime {
     patch.sequences_as_stop_strings = state.sequences_as_stop_strings;
     return patch;
   }
-
   private contextToPatch(context: InstructContextState): InstructContextStatePatch {
     const patch: InstructContextStatePatch = {};
     patch.chat_start = context.chat_start;
@@ -519,7 +658,6 @@ export class InstructRuntime {
     patch.story_string_position_in_chat = context.story_string_position_in_chat;
     return patch;
   }
-
   private defaultContext(): InstructContextState {
     return {
       chat_start: '',
@@ -529,18 +667,31 @@ export class InstructRuntime {
     };
   }
 
+  /**
+   * 复制Preset 值，避免外部修改内部状态。
+   */
   private clonePreset(preset: InstructPreset): InstructPreset {
     return this.stateToPreset(this.mergeState(this.defaultState(), this.presetToPatch(preset)), preset.name);
   }
 
+  /**
+   * 复制State 值，避免外部修改内部状态。
+   */
   private cloneState(state: InstructState): InstructState {
     return this.mergeState(this.defaultState(), this.stateToPatch(state));
   }
 
+  /**
+   * 复制Context 值，避免外部修改内部状态。
+   */
   private cloneContext(context: InstructContextState): InstructContextState {
     return this.mergeContext(this.defaultContext(), this.contextToPatch(context));
   }
 
+  /**
+   * 发布指令模板事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+   */
   private publishState(eventName: string): void {
     const payload: InstructStatePayload = {
       state: this.getState(),

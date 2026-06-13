@@ -20,6 +20,7 @@ import {
 export default function quickReplyUnitTest() {
   describe('quick reply runtime', () => {
     it('creates scoped quick reply sets, exposes button data, and executes commands', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const commands = new CommandRuntime(bus);
       commands.registerCommand(makeEchoCommand());
@@ -30,7 +31,6 @@ export default function quickReplyUnitTest() {
       });
       const set = quickReplies.createSet(makeSet('set-1', 'Main', 'global', ''));
       const item = quickReplies.addItem(set.id, makeItem('qr-1', 'Say', '/echo hello', false, ''));
-
       const buttons: Array<QuickReplyButtonData> = quickReplies.listButtons('global', '');
       const result = await quickReplies.executeItem(set.id, item.id, makeOptions());
 
@@ -43,6 +43,7 @@ export default function quickReplyUnitTest() {
     });
 
     it('executes matching auto triggers and skips hidden or scoped-out replies', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const commands = new CommandRuntime(bus);
       commands.registerCommand(makeEchoCommand());
@@ -53,7 +54,6 @@ export default function quickReplyUnitTest() {
       quickReplies.addItem(globalSet.id, makeItem('qr-3', 'Hidden', '/echo hidden', false, ''));
       quickReplies.setItemVisible(globalSet.id, 'qr-3', false);
       quickReplies.addItem(chatSet.id, makeItem('qr-4', 'ChatOnly', '/echo chat', true, 'user'));
-
       const startup = await quickReplies.executeAutoTrigger('startup', 'global', '', makeOptions());
       const chatUser = await quickReplies.executeAutoTrigger('user', 'chat', 'chat-1', makeOptions());
       const wrongChat = await quickReplies.executeAutoTrigger('user', 'chat', 'chat-2', makeOptions());
@@ -66,12 +66,12 @@ export default function quickReplyUnitTest() {
     });
 
     it('exports and imports quick reply sets', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const commands = new CommandRuntime(bus);
       const quickReplies = new QuickReplyRuntime(bus, commands);
       const set = quickReplies.createSet(makeSet('set-4', 'Exported', 'character', 'char-1'));
       quickReplies.addItem(set.id, makeItem('qr-5', 'Export item', '/echo exported', false, ''));
-
       const exported: QuickReplyExportData = quickReplies.exportSet(set.id);
       const imported = quickReplies.importSet(exported, 'set-5');
 
@@ -81,6 +81,7 @@ export default function quickReplyUnitTest() {
     });
 
     it('rejects creating a quick reply set over an existing id', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const commands = new CommandRuntime(bus);
       const quickReplies = new QuickReplyRuntime(bus, commands);
@@ -98,12 +99,12 @@ export default function quickReplyUnitTest() {
     });
 
     it('rejects importing a quick reply set over an existing id', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const commands = new CommandRuntime(bus);
       const quickReplies = new QuickReplyRuntime(bus, commands);
       const set = quickReplies.createSet(makeSet('set-existing', 'Existing', 'global', ''));
       const exported: QuickReplyExportData = quickReplies.exportSet(set.id);
-
       let thrown = false;
       try {
         quickReplies.importSet(exported, 'set-existing');
@@ -116,6 +117,7 @@ export default function quickReplyUnitTest() {
     });
 
     it('does not expose internal quick reply sets, items, or execution payloads', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const commands = new CommandRuntime(bus);
       commands.registerCommand(makeEchoCommand());
@@ -127,19 +129,15 @@ export default function quickReplyUnitTest() {
         event.payload.item.label = 'event-item';
         event.payload.commandResult.output = 'event-output';
       });
-
       const set = quickReplies.createSet(makeSet('set-copy', 'Copy', 'global', ''));
       set.name = 'external-set';
       expect(quickReplies.getSet('set-copy').name).assertEqual('Copy');
-
       const item = quickReplies.addItem('set-copy', makeItem('qr-copy', 'Copy item', '/echo copied', false, ''));
       item.label = 'external-item';
       expect(quickReplies.getSet('set-copy').items[0].label).assertEqual('Copy item');
-
       const listed = quickReplies.listSets();
       listed[0].items[0].label = 'listed-item';
       expect(quickReplies.getSet('set-copy').items[0].label).assertEqual('Copy item');
-
       const result = await quickReplies.executeItem('set-copy', 'qr-copy', makeOptions());
       result.item.label = 'result-item';
       result.commandResult.output = 'result-output';
@@ -152,7 +150,13 @@ export default function quickReplyUnitTest() {
   });
 }
 
+/**
+ * 实现一个可执行动作，供运行时在对应场景中调用。
+ */
 class EchoAction implements CommandAction {
+  /**
+   * 封装单元测试中的 execute 步骤，供公开方法复用。
+   */
   execute(invocation: CommandInvocation): Promise<CommandExecutionResult> {
     const result: CommandExecutionResult = {
       ok: true,
@@ -165,6 +169,9 @@ class EchoAction implements CommandAction {
   }
 }
 
+/**
+ * 封装单元测试中的 makeEchoCommand 步骤，供公开方法复用。
+ */
 function makeEchoCommand(): CommandRegistrationParams {
   return {
     name: 'echo',
@@ -177,6 +184,13 @@ function makeEchoCommand(): CommandRegistrationParams {
   };
 }
 
+/**
+ * 封装单元测试中的 makeSet 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param name 显示名称或注册名称。
+ * @param scope 绑定或查询使用的作用域。
+ * @param scopeId 作用域下的具体对象标识。
+ */
 function makeSet(id: string, name: string, scope: string, scopeId: string): QuickReplySetCreateParams {
   return {
     id: id,
@@ -187,6 +201,15 @@ function makeSet(id: string, name: string, scope: string, scopeId: string): Quic
   };
 }
 
+/**
+ * 封装单元测试中的 makeItem 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param label 展示标签。
+
+
+
+ * @returns 条件命中时返回 true，否则返回 false。
+ */
 function makeItem(id: string, label: string, command: string, auto: boolean, trigger: string): QuickReplyItemCreateParams {
   return {
     id: id,
@@ -201,6 +224,9 @@ function makeItem(id: string, label: string, command: string, auto: boolean, tri
   };
 }
 
+/**
+ * 封装单元测试中的 makeOptions 步骤，供公开方法复用。
+ */
 function makeOptions(): CommandExecuteOptions {
   return {
     allowedPermissions: ['public'],

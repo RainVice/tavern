@@ -14,11 +14,11 @@ import {
 export default function connectionProfileUnitTest() {
   describe('connection profile runtime', () => {
     it('creates, updates, lists, and deletes connection profiles', 0, () => {
+      // 运行时实例。
       const runtime = new ConnectionProfileRuntime(new EventBus());
       const created = runtime.createProfile(makeProfile('profile-1', 'OpenAI', 'openai', 'gpt-4o'));
       const updated = runtime.updateProfile(created.id, makeProfile('profile-1', 'OpenAI Updated', 'openai', 'gpt-4.1'));
       runtime.createProfile(makeProfile('profile-2', 'Claude', 'anthropic', 'claude-3-5'));
-
       const openaiProfiles: Array<ConnectionProfileRecord> = runtime.listProfiles('openai');
       const allProfiles: Array<ConnectionProfileRecord> = runtime.listProfiles('');
 
@@ -31,9 +31,9 @@ export default function connectionProfileUnitTest() {
     });
 
     it('sets active profile by scope and resolves provider request metadata', 0, () => {
+      // 运行时实例。
       const runtime = new ConnectionProfileRuntime(new EventBus());
       runtime.createProfile(makeProfile('profile-3', 'Chat Provider', 'openai-compatible', 'local-model'));
-
       const active = runtime.setActiveProfile('chat', 'chat-1', 'profile-3');
       const resolved: ConnectionResolvedProfile = runtime.resolveActiveProfile('chat', 'chat-1');
       const request: ConnectionProviderRequest = runtime.toProviderRequest('profile-3');
@@ -49,6 +49,7 @@ export default function connectionProfileUnitTest() {
     });
 
     it('rejects duplicate profile ids during create', 0, () => {
+      // 运行时实例。
       const runtime = new ConnectionProfileRuntime(new EventBus());
       runtime.createProfile(makeProfile('profile-duplicate', 'Original', 'openai', 'gpt-4o'));
       let thrown = false;
@@ -65,7 +66,9 @@ export default function connectionProfileUnitTest() {
     });
 
     it('emits profile update events', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ConnectionProfileRuntime(bus);
       const updatedIds = new Array<string>();
       bus.subscribe<ConnectionProfileUpdatedPayload>(
@@ -83,7 +86,9 @@ export default function connectionProfileUnitTest() {
     });
 
     it('does not expose internal profiles or active bindings', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ConnectionProfileRuntime(bus);
       bus.subscribe<ConnectionProfileUpdatedPayload>(
         'connectionProfile.updated',
@@ -91,7 +96,6 @@ export default function connectionProfileUnitTest() {
           event.payload.profile.model = 'event-mutated';
         },
       );
-
       const created = runtime.createProfile(makeProfile('profile-copy', 'Copy', 'openai', 'gpt-4o'));
       created.stopStrings.push('external-stop');
       created.additionalHeaders[0].value = 'external-header';
@@ -100,7 +104,6 @@ export default function connectionProfileUnitTest() {
 
       runtime.updateProfile('profile-copy', makeProfile('profile-copy', 'Copy Updated', 'openai', 'gpt-4.1'));
       expect(runtime.getProfile('profile-copy').model).assertEqual('gpt-4.1');
-
       const listed = runtime.listProfiles('');
       listed[0].model = 'list-mutated';
       const active = runtime.setActiveProfile('chat', 'chat-copy', 'profile-copy');
@@ -117,6 +120,13 @@ export default function connectionProfileUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeProfile 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param name 显示名称或注册名称。
+
+ * @param model 模型名称。
+ */
 function makeProfile(id: string, name: string, apiType: string, model: string): ConnectionProfileCreateParams {
   return {
     id: id,
@@ -141,6 +151,13 @@ function makeProfile(id: string, name: string, apiType: string, model: string): 
   };
 }
 
+/**
+ * 封装单元测试中的 makeHeader 步骤，供公开方法复用。
+ * @param name 显示名称或注册名称。
+ * @param value 要保存或比较的字段值。
+
+ * @returns 条件命中时返回 true，否则返回 false。
+ */
 function makeHeader(name: string, value: string, secret: boolean): ConnectionHeaderRecord {
   return {
     name: name,

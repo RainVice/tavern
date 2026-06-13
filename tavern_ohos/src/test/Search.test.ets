@@ -17,7 +17,9 @@ import {
 export default function searchUnitTest() {
   describe('search runtime', () => {
     it('indexes characters, chats, messages, files, and settings for full text search', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new SearchRuntime(bus);
       const indexed = new Array<string>();
       bus.subscribe<SearchIndexedPayload>('search.indexed', (event: RuntimeEvent<SearchIndexedPayload>) => {
@@ -29,6 +31,7 @@ export default function searchUnitTest() {
       runtime.upsertDocument(makeDocument('message', 'msg-a', 'Greeting', 'hello from user', ['chat-a'], 'chats/alice.jsonl'));
       runtime.upsertDocument(makeDocument('file', 'file-a', 'lore note', 'tavern map attachment', ['map'], 'databank/map.txt'));
       runtime.upsertDocument(makeDocument('setting', 'setting-a', 'temperature', 'generation sampler value', ['sampler'], 'settings.json'));
+      // 查询条件。
       const query: SearchQuery = {
         text: 'tavern',
         domains: new Array<string>(),
@@ -42,17 +45,17 @@ export default function searchUnitTest() {
       expect(indexed.length).assertEqual(5);
       expect(results.length).assertEqual(2);
       expect(results[0].documentId).assertEqual('chat-a');
-      expect(results[0].score).assertTrue();
+      expect(results[0].score > 0).assertTrue();
       expect(results[1].documentId).assertEqual('file-a');
     });
 
     it('filters by domain, tag, and metadata', 0, () => {
+      // 运行时实例。
       const runtime = new SearchRuntime(new EventBus());
       const document = makeDocument('worldinfo', 'wi-a', 'Dragon lore', 'ancient dragon keyword', ['lore', 'dragon'], 'worldbooks/main.json');
       document.metadata.push({ key: 'book', value: 'main' });
       runtime.upsertDocument(document);
       runtime.upsertDocument(makeDocument('attachment', 'att-a', 'dragon image', 'image attachment', ['image'], 'assets/dragon.png'));
-
       const domainResults = runtime.search({
         text: 'dragon',
         domains: ['worldinfo'],
@@ -73,7 +76,9 @@ export default function searchUnitTest() {
     });
 
     it('removes indexed documents and emits search results', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new SearchRuntime(bus);
       const resultCounts = new Array<number>();
       bus.subscribe<SearchResult>('search.result', (event: RuntimeEvent<SearchResult>) => {
@@ -93,7 +98,9 @@ export default function searchUnitTest() {
     });
 
     it('publishes total hits before applying result limits', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new SearchRuntime(bus);
       const totals = new Array<number>();
       const hitCounts = new Array<number>();
@@ -103,7 +110,6 @@ export default function searchUnitTest() {
       });
       runtime.upsertDocument(makeDocument('message', 'msg-1', 'A', 'shared word one', ['chat'], 'a.jsonl'));
       runtime.upsertDocument(makeDocument('message', 'msg-2', 'B', 'shared word two', ['chat'], 'b.jsonl'));
-
       const results = runtime.search({
         text: 'shared',
         domains: new Array<string>(),
@@ -119,6 +125,7 @@ export default function searchUnitTest() {
     });
 
     it('applies frontend filter helper search, tag, favorite, group, and folder filters', 0, () => {
+      // 运行时实例。
       const runtime = new SearchRuntime(new EventBus());
       const entities: Array<SearchFilterEntity> = [
         makeEntity('char-a', 'character', 'Alice Mage', 'curious lore keeper', ['lore'], true, false, false),
@@ -134,7 +141,6 @@ export default function searchUnitTest() {
         groupOnly: false,
         folderOnly: false,
       };
-
       const loreResults = runtime.filterEntities(entities, filter);
       filter.favoriteOnly = true;
       const favoriteResults = runtime.filterEntities(entities, filter);
@@ -160,6 +166,16 @@ export default function searchUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeDocument 步骤，供公开方法复用。
+
+ * @param id 唯一标识。
+ * @param title 标题。
+
+
+ * @param path 目标文件或目录路径。
+ * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+ */
 function makeDocument(domain: string, id: string, title: string, body: string, tags: Array<string>, path: string): SearchDocument {
   return {
     id: id,
@@ -173,6 +189,18 @@ function makeDocument(domain: string, id: string, title: string, body: string, t
   };
 }
 
+/**
+ * 封装单元测试中的 makeEntity 步骤，供公开方法复用。
+ * @param id 唯一标识。
+
+ * @param title 标题。
+
+
+
+
+
+ * @returns 条件命中时返回 true，否则返回 false。
+ */
 function makeEntity(id: string, type: string, title: string, body: string, tags: Array<string>, favorite: boolean, group: boolean, folder: boolean): SearchFilterEntity {
   return {
     id: id,

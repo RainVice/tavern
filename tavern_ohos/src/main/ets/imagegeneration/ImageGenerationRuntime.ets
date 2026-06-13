@@ -18,20 +18,46 @@ import type {
   WorkersAIRequest,
 } from './ImageGenerationModels';
 
+/**
+ * 提供图片生成相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class ImageGenerationRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * tasks 列表，由当前实例内部维护。
+   */
   private tasks: Map<string, ImageGenerationTask> = new Map<string, ImageGenerationTask>();
+  /**
+   * presets 列表，由当前实例内部维护。
+   */
   private presets: Map<string, ImageGenerationPreset> = new Map<string, ImageGenerationPreset>();
+  /**
+   * task Counter 值，由当前实例内部维护。
+   */
   private taskCounter: number = 0;
+  /**
+   * preset Counter 值，由当前实例内部维护。
+   */
   private presetCounter: number = 0;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
-  // 发起图片生成
+  /**
+   * 执行 generateImage 的内部处理步骤，供当前模块复用。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   generateImage(params: ImageGenerationParams): ImageGenerationTask {
     this.taskCounter += 1;
+    // task 标识。
     const taskId = `img-gen-${this.taskCounter}`;
     const now = Date.now();
     const task: ImageGenerationTask = {
@@ -52,7 +78,12 @@ export class ImageGenerationRuntime {
     return this.cloneTask(task);
   }
 
-  // 更新任务进度
+  /**
+   * 更新Progress 列表，同步内部状态并按需发布变更事件。
+   * @param taskId 目标任务标识。
+
+   * @returns 更新或读取后的记录副本。
+   */
   updateProgress(taskId: string, progress: number): ImageGenerationTask {
     const task = this.requireTask(taskId);
     task.progress = Math.max(0, Math.min(100, progress));
@@ -63,7 +94,13 @@ export class ImageGenerationRuntime {
     return this.cloneTask(task);
   }
 
-  // 完成任务
+  /**
+   * 标记Generation 值完成，并写入最终结果。
+   * @param taskId 目标任务标识。
+   * @param attachmentIds 目标附件标识列表。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   completeGeneration(taskId: string, attachmentIds: Array<string>, metadata: ImageGenerationMetadata): ImageGenerationTask {
     const task = this.requireTask(taskId);
     task.status = 'completed';
@@ -76,7 +113,11 @@ export class ImageGenerationRuntime {
     return this.cloneTask(task);
   }
 
-  // 任务失败
+  /**
+   * 标记Generation 值失败，并保存错误信息。
+   * @param taskId 目标任务标识。
+   * @param error 错误信息。
+   */
   failGeneration(taskId: string, error: string): ImageGenerationTask {
     const task = this.requireTask(taskId);
     task.status = 'failed';
@@ -87,7 +128,10 @@ export class ImageGenerationRuntime {
     return this.cloneTask(task);
   }
 
-  // 取消生成
+  /**
+   * 取消Generation 值任务，并发布取消状态。
+   * @param taskId 目标任务标识。
+   */
   cancelGeneration(taskId: string): ImageGenerationTask {
     const task = this.requireTask(taskId);
     task.status = 'cancelled';
@@ -98,12 +142,20 @@ export class ImageGenerationRuntime {
     return this.cloneTask(task);
   }
 
-  // 获取单个任务
+  /**
+   * 读取指定任务，不存在时抛出错误。
+   * @param taskId 目标任务标识。
+   * @returns 更新或读取后的记录副本。
+   */
   getTask(taskId: string): ImageGenerationTask {
     return this.cloneTask(this.requireTask(taskId));
   }
 
-  // 列出所有任务
+  /**
+   * 读取Tasks列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param status 状态值。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listTasks(status?: ImageGenerationStatus): Array<ImageGenerationTask> {
     const result = new Array<ImageGenerationTask>();
     const values = Array.from(this.tasks.values());
@@ -115,7 +167,10 @@ export class ImageGenerationRuntime {
     return result;
   }
 
-  // 移除已完成/已失败/已取消的任务（清理）
+  /**
+   * 移除已完成/已失败/已取消的任务（清理）。
+   * @param taskId 任务标识。
+   */
   cleanupTask(taskId: string): void {
     const task = this.tasks.get(taskId);
     if (task === undefined) {
@@ -126,9 +181,14 @@ export class ImageGenerationRuntime {
     }
   }
 
-  // 保存预设
+  /**
+   * 创建或写入预设，完成持久化后返回可供调用方使用的结果。
+   * @param name 显示名称或注册名称。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   savePreset(name: string, params: ImageGenerationParams): ImageGenerationPreset {
     this.presetCounter += 1;
+    // preset 标识。
     const presetId = `img-preset-${this.presetCounter}`;
     const now = Date.now();
     const preset: ImageGenerationPreset = {
@@ -144,7 +204,10 @@ export class ImageGenerationRuntime {
     return this.clonePreset(preset);
   }
 
-  // 加载预设
+  /**
+   * 读取或解析预设，调用方应处理不存在或不匹配的情况。
+   * @param presetId 目标预设标识。
+   */
   loadPreset(presetId: string): ImageGenerationParams {
     const preset = this.requirePreset(presetId);
     return this.cloneParams(preset.params);
@@ -160,13 +223,20 @@ export class ImageGenerationRuntime {
     return result;
   }
 
-  // 删除预设
+  /**
+   * 删除预设。
+   * @param presetId 目标预设标识。
+   */
   deletePreset(presetId: string): void {
     this.requirePreset(presetId);
     this.presets.delete(presetId);
   }
 
-  // 构建 SD WebUI 请求体
+  /**
+   * 根据入参构建Sd Web UIRequest 值，仅生成数据结构，不直接执行外部请求。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
+   */
   buildSdWebUIRequest(params: ImageGenerationParams): SdWebUIRequest {
     return {
       prompt: params.prompt,
@@ -181,7 +251,12 @@ export class ImageGenerationRuntime {
     };
   }
 
-  // 构建 ComfyUI 请求体
+  /**
+   * 根据入参构建Comfy UIRequest 值，仅生成数据结构，不直接执行外部请求。
+
+   * @param clientId 目标客户端标识。
+   * @returns 构建好的请求、Prompt 或中间数据。
+   */
   buildComfyUIRequest(workflow: Object, clientId: string): ComfyUIRequest {
     return {
       workflow: workflow,
@@ -189,7 +264,14 @@ export class ImageGenerationRuntime {
     };
   }
 
-  // 构建 OpenAI 图片请求体
+  /**
+   * 根据入参构建Open AIImage Request 值，仅生成数据结构，不直接执行外部请求。
+
+   * @param model 模型名称。
+
+
+   * @returns 构建好的请求、Prompt 或中间数据。
+   */
   buildOpenAIImageRequest(prompt: string, model: string, n: number, size: string): OpenAIImageRequest {
     return {
       model: model,
@@ -200,7 +282,11 @@ export class ImageGenerationRuntime {
     };
   }
 
-  // 构建 Workers AI 请求体
+  /**
+   * 根据入参构建Workers AIRequest 值，仅生成数据结构，不直接执行外部请求。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
+   */
   buildWorkersAIRequest(params: ImageGenerationParams): WorkersAIRequest {
     return {
       prompt: params.prompt,
@@ -221,7 +307,10 @@ export class ImageGenerationRuntime {
     };
   }
 
-  // 导入
+  /**
+   * 导入。
+   * @param data 数据内容。
+   */
   importData(data: ImageGenerationExportData): void {
     for (let index = 0; index < data.presets.length; index += 1) {
       const preset = this.clonePreset(data.presets[index]);
@@ -235,6 +324,10 @@ export class ImageGenerationRuntime {
     }
   }
 
+  /**
+   * 读取必须存在的Task 值，缺失时抛出错误。
+   * @param taskId 目标任务标识。
+   */
   private requireTask(taskId: string): ImageGenerationTask {
     const task = this.tasks.get(taskId);
     if (task === undefined) {
@@ -243,6 +336,10 @@ export class ImageGenerationRuntime {
     return task;
   }
 
+  /**
+   * 读取必须存在的Preset 值，缺失时抛出错误。
+   * @param presetId 目标预设标识。
+   */
   private requirePreset(presetId: string): ImageGenerationPreset {
     const preset = this.presets.get(presetId);
     if (preset === undefined) {
@@ -251,6 +348,10 @@ export class ImageGenerationRuntime {
     return preset;
   }
 
+  /**
+   * 复制Params 列表，避免外部修改内部状态。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   private cloneParams(params: ImageGenerationParams): ImageGenerationParams {
     return {
       backend: params.backend,
@@ -266,6 +367,9 @@ export class ImageGenerationRuntime {
     };
   }
 
+  /**
+   * 复制Task 值，避免外部修改内部状态。
+   */
   private cloneTask(task: ImageGenerationTask): ImageGenerationTask {
     return {
       taskId: task.taskId,
@@ -281,6 +385,9 @@ export class ImageGenerationRuntime {
     };
   }
 
+  /**
+   * 复制Preset 值，避免外部修改内部状态。
+   */
   private clonePreset(preset: ImageGenerationPreset): ImageGenerationPreset {
     return {
       presetId: preset.presetId,
@@ -291,6 +398,9 @@ export class ImageGenerationRuntime {
     };
   }
 
+  /**
+   * 复制Metadata 值，避免外部修改内部状态。
+   */
   private cloneMetadata(metadata: ImageGenerationMetadata): ImageGenerationMetadata {
     const result: ImageGenerationMetadata = {};
     if (metadata.model !== undefined) result.model = metadata.model;
@@ -300,6 +410,10 @@ export class ImageGenerationRuntime {
     return result;
   }
 
+  /**
+   * 解析TaskCounter，非法输入会返回失败标记或空结果。
+   * @param taskId 目标任务标识。
+   */
   private parseTaskCounter(taskId: string): number {
     if (!taskId.startsWith('img-gen-')) {
       return 0;
@@ -308,6 +422,10 @@ export class ImageGenerationRuntime {
     return parsed > 0 ? parsed : 0;
   }
 
+  /**
+   * 解析PresetCounter，非法输入会返回失败标记或空结果。
+   * @param presetId 目标预设标识。
+   */
   private parsePresetCounter(presetId: string): number {
     if (!presetId.startsWith('img-preset-')) {
       return 0;

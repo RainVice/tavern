@@ -6,7 +6,13 @@ import type {
   ProxySettings,
 } from './ProxyModels';
 
+/**
+ * 提供代理配置相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class ProxyRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
   private settings: ProxySettings = {
     enabled: false,
@@ -16,10 +22,17 @@ export class ProxyRuntime {
     privateRequestFilterEnabled: false,
   };
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 执行 configure 的内部处理步骤，供当前模块复用。
+   */
   configure(settings: ProxySettings): ProxySettings {
     this.settings = this.cloneSettings(settings);
     const payload: ProxyConfiguredPayload = {
@@ -29,10 +42,17 @@ export class ProxyRuntime {
     return this.cloneSettings(this.settings);
   }
 
+  /**
+   * 读取Settings 列表，不存在时通常抛出错误或返回空值。
+   * @returns 更新或读取后的记录副本。
+   */
   getSettings(): ProxySettings {
     return this.cloneSettings(this.settings);
   }
 
+  /**
+   * 根据当前上下文解析目标对象，返回实际可用值。
+   */
   resolve(targetUrl: string): ProxyResolutionRecord {
     let resolution: ProxyResolutionRecord;
     if (!this.settings.enabled) {
@@ -54,7 +74,6 @@ export class ProxyRuntime {
       resolution = this.makeResolution(targetUrl, 'direct', '', true, false, 'bypass', '');
       return this.publishResolved(resolution);
     }
-
     const warning = this.settings.privateRequestFilterEnabled ? 'private-request-filter-bypassed' : '';
     resolution = this.makeResolution(
       targetUrl,
@@ -68,6 +87,9 @@ export class ProxyRuntime {
     return this.publishResolved(resolution);
   }
 
+  /**
+   * 发布代理配置事件，把状态变化通知给宿主或其他 Runtime。
+   */
   private publishResolved(resolution: ProxyResolutionRecord): ProxyResolutionRecord {
     const payload: ProxyResolvedPayload = {
       resolution: this.cloneResolution(resolution),
@@ -75,7 +97,6 @@ export class ProxyRuntime {
     this.events.publish<ProxyResolvedPayload>('proxy.resolved', payload);
     return this.cloneResolution(resolution);
   }
-
   private makeResolution(
     targetUrl: string,
     mode: string,
@@ -96,6 +117,11 @@ export class ProxyRuntime {
     };
   }
 
+  /**
+   * 检查Bypass是否满足当前规则。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private matchesBypass(targetUrl: string): boolean {
     const host = this.extractHost(targetUrl);
     if (host.length === 0) {
@@ -120,6 +146,11 @@ export class ProxyRuntime {
     return false;
   }
 
+  /**
+   * 判断Valid Url 值是否满足条件。
+   * @param value 要保存或比较的字段值。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private isValidUrl(value: string): boolean {
     const schemeIndex = value.indexOf('://');
     if (schemeIndex <= 0) {
@@ -129,6 +160,10 @@ export class ProxyRuntime {
     return host.length > 0;
   }
 
+  /**
+   * 解析或导入主机数据，转换为当前 SDK 可使用的结构。
+   * @param value 要保存或比较的字段值。
+   */
   private extractHost(value: string): string {
     const schemeIndex = value.indexOf('://');
     if (schemeIndex < 0) {
@@ -154,6 +189,10 @@ export class ProxyRuntime {
     return remainder.substring(0, endIndex).toLowerCase();
   }
 
+  /**
+   * 解析或导入Hostname数据，转换为当前 SDK 可使用的结构。
+   * @param host 目标主机名。
+   */
   private extractHostname(host: string): string {
     const colonIndex = host.indexOf(':');
     if (colonIndex < 0) {
@@ -162,6 +201,9 @@ export class ProxyRuntime {
     return host.substring(0, colonIndex);
   }
 
+  /**
+   * 复制Settings 列表，避免外部修改内部状态。
+   */
   private cloneSettings(settings: ProxySettings): ProxySettings {
     return {
       enabled: settings.enabled,
@@ -172,6 +214,9 @@ export class ProxyRuntime {
     };
   }
 
+  /**
+   * 复制Resolution 值，避免外部修改内部状态。
+   */
   private cloneResolution(resolution: ProxyResolutionRecord): ProxyResolutionRecord {
     return {
       targetUrl: resolution.targetUrl,

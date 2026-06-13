@@ -1,15 +1,36 @@
 import type { ProviderSSEEvent } from './ProviderModels';
 
+/**
+ * 描述Provider 请求模块在运行时交换的数据结构。
+ */
 interface SSESeparator {
+  /**
+   * 索引数据或循环位置，由当前实例内部维护。
+   */
   index: number;
+  /**
+   * length 值，由当前实例内部维护。
+   */
   length: number;
 }
 
+/**
+ * 封装Provider 请求相关状态和行为。
+ */
 export class ProviderSSEParser {
+  /**
+   * buffer 值，由当前实例内部维护。
+   */
   private buffer: string = '';
 
+  /**
+   * 执行 push 的内部处理步骤，供当前模块复用。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   push(chunk: string): Array<ProviderSSEEvent> {
     this.buffer = this.buffer + chunk;
+    // 事件总线。
     const events = new Array<ProviderSSEEvent>();
     while (true) {
       const separator = this.findSeparator(this.buffer);
@@ -26,6 +47,10 @@ export class ProviderSSEParser {
     return events;
   }
 
+  /**
+   * 执行 flush 的内部处理步骤，供当前模块复用。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   flush(): Array<ProviderSSEEvent> {
     if (this.buffer.length === 0) {
       return [];
@@ -39,6 +64,10 @@ export class ProviderSSEParser {
     return [event];
   }
 
+  /**
+   * 在当前集合中查找Separator 值，未命中时返回空值或默认位置。
+   * @param value 要保存或比较的字段值。
+   */
   private findSeparator(value: string): SSESeparator {
     const lf = value.indexOf('\n\n');
     const crlf = value.indexOf('\r\n\r\n');
@@ -51,9 +80,14 @@ export class ProviderSSEParser {
     return { index: crlf, length: 4 };
   }
 
+  /**
+   * 解析RawEvent，非法输入会返回失败标记或空结果。
+   */
   private parseRawEvent(rawEvent: string): ProviderSSEEvent | null {
     const lines = rawEvent.replace(/\r\n/g, '\n').split('\n');
+    // event 名称。
     let eventName = 'message';
+    // event 标识。
     let eventId = '';
     const dataLines = new Array<string>();
     for (let index = 0; index < lines.length; index += 1) {

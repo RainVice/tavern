@@ -16,7 +16,9 @@ import {
 export default function permissionUnitTest() {
   describe('permission runtime', () => {
     it('grants plugin, command, tool, secret, storage, file, media, and network permissions with audit', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PermissionRuntime(bus);
       const granted = new Array<string>();
       bus.subscribe<PermissionGrantedPayload>('permission.granted', (event: RuntimeEvent<PermissionGrantedPayload>) => {
@@ -42,6 +44,7 @@ export default function permissionUnitTest() {
     });
 
     it('handles user consent requests and resolved grants', 0, () => {
+      // 运行时实例。
       const runtime = new PermissionRuntime(new EventBus());
       const request: PermissionConsentRequest = runtime.requestConsent('plugin', 'plugin-b', 'file:write', 'Write export file');
       const approved = runtime.resolveConsent(request.id, true);
@@ -56,12 +59,12 @@ export default function permissionUnitTest() {
     });
 
     it('enforces network policy, file policy, dangerous API blocklist, timeout, and crash isolation', 0, () => {
+      // 运行时实例。
       const runtime = new PermissionRuntime(new EventBus());
       runtime.grant(makeGrant('plugin', 'plugin-c', 'network:https'));
       runtime.addAllowedFileRoot('plugin', 'plugin-c', 'exports/');
       runtime.blockDangerousApi('eval');
       const timeout: PermissionPolicyRecord = runtime.setExecutionTimeout('plugin', 'plugin-c', 3000);
-
       const publicNetwork = runtime.checkNetworkAccess('plugin', 'plugin-c', 'https://api.example.com');
       const privateNetwork = runtime.checkNetworkAccess('plugin', 'plugin-c', 'http://192.168.0.2');
       const allowedFile = runtime.checkFileAccess('plugin', 'plugin-c', 'exports/data.json');
@@ -81,9 +84,9 @@ export default function permissionUnitTest() {
     });
 
     it('matches allowed file roots on path boundaries', 0, () => {
+      // 运行时实例。
       const runtime = new PermissionRuntime(new EventBus());
       runtime.addAllowedFileRoot('plugin', 'plugin-root', '/data/app');
-
       const exact = runtime.checkFileAccess('plugin', 'plugin-root', '/data/app');
       const child = runtime.checkFileAccess('plugin', 'plugin-root', '/data/app/file.txt');
       const sibling = runtime.checkFileAccess('plugin', 'plugin-root', '/data/app2/file.txt');
@@ -94,10 +97,10 @@ export default function permissionUnitTest() {
     });
 
     it('classifies private network checks by parsed host instead of full URL text', 0, () => {
+      // 运行时实例。
       const runtime = new PermissionRuntime(new EventBus());
       runtime.grant(makeGrant('plugin', 'plugin-net', 'network:https'));
       runtime.grant(makeGrant('plugin', 'plugin-net', 'network:http'));
-
       const publicWithPrivateQuery = runtime.checkNetworkAccess(
         'plugin',
         'plugin-net',
@@ -118,7 +121,9 @@ export default function permissionUnitTest() {
     });
 
     it('does not expose internal grants, consent requests, audits, policies, or check results', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PermissionRuntime(bus);
       bus.subscribe<PermissionGrantedPayload>('permission.granted', (event: RuntimeEvent<PermissionGrantedPayload>) => {
         event.payload.grant.permission = 'event-mutated';
@@ -129,18 +134,16 @@ export default function permissionUnitTest() {
       bus.subscribe<PermissionConsentPayload>('permission.consent.requested', (event: RuntimeEvent<PermissionConsentPayload>) => {
         event.payload.request.permission = 'event-mutated';
       });
-
       const grant = runtime.grant(makeGrant('plugin', 'plugin-copy', 'network:https'));
       grant.permission = 'return-mutated';
       const check = runtime.check('plugin', 'plugin-copy', 'network:https', 'https://api.example.com');
       check.allowed = false;
-
       const request = runtime.requestConsent('plugin', 'plugin-copy', 'file:write', 'Write export file');
+      // request 标识。
       const requestId = request.id;
       request.permission = 'return-mutated';
       const approved = runtime.resolveConsent(requestId, true);
       approved.permission = 'return-mutated';
-
       const timeout = runtime.setExecutionTimeout('plugin', 'plugin-copy', 3000);
       timeout.value = '1';
       const policies = runtime.listPolicies('plugin', 'plugin-copy');
@@ -156,6 +159,11 @@ export default function permissionUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeGrant 步骤，供公开方法复用。
+
+ * @param subjectId subject 标识。
+ */
 function makeGrant(subjectType: string, subjectId: string, permission: string): PermissionGrantParams {
   return {
     subjectType: subjectType,

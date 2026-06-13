@@ -17,14 +17,15 @@ export default function imageUnitTest() {
   describe('image runtime', () => {
     it('uploads images into character folders and creates thumbnails', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const thumbnails = new ThumbnailRuntime(files, bus);
+      // 运行时实例。
       const runtime = new ImageRuntime(files, bus, thumbnails, new AttachmentRuntime(bus));
       const uploaded = new Array<string>();
       bus.subscribe<ImageUploadedPayload>('image.uploaded', (event: RuntimeEvent<ImageUploadedPayload>) => {
         uploaded.push(`${event.payload.image.folderName}:${event.payload.image.fileName}`);
       });
-
       const image: ImageRecord = await runtime.uploadImage(makeImage('img-1', 'portrait.png', 'Alice', 'avatar'));
       const saved = await files.readText('tavern-data/users/default/assets/images/Alice/portrait.png');
       const thumb = await thumbnails.getThumbnail('avatar', 'portrait.png');
@@ -40,7 +41,9 @@ export default function imageUnitTest() {
 
     it('lists folders and images in stable order', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ImageRuntime(files, bus, new ThumbnailRuntime(files, bus), new AttachmentRuntime(bus));
 
       await runtime.uploadImage(makeImage('img-2', 'zeta.jpg', 'Bob', 'bg'));
@@ -59,15 +62,16 @@ export default function imageUnitTest() {
 
     it('binds uploaded images as attachments and deletes cached media', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const thumbnails = new ThumbnailRuntime(files, bus);
       const attachments = new AttachmentRuntime(bus);
+      // 运行时实例。
       const runtime = new ImageRuntime(files, bus, thumbnails, attachments);
       const deleted = new Array<string>();
       bus.subscribe<ImageDeletedPayload>('image.deleted', (event: RuntimeEvent<ImageDeletedPayload>) => {
         deleted.push(`${event.payload.imageId}:${event.payload.path}`);
       });
-
       const image = await runtime.uploadImage(makeBoundImage('img-5', 'scene.png'));
       const bound = attachments.listAttachmentsForTarget('message', 'chat-1:0');
       await runtime.deleteImage('img-5');
@@ -84,13 +88,15 @@ export default function imageUnitTest() {
 
     it('净化图片文件名、文件夹并安全写入附件元数据', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
       const thumbnails = new ThumbnailRuntime(files, bus);
       const attachments = new AttachmentRuntime(bus);
+      // 运行时实例。
       const runtime = new ImageRuntime(files, bus, thumbnails, attachments);
+      // 调用参数。
       const params = makeBoundImage('img-"safe', '../portrait.png');
       params.folderName = '../Alice';
-
       const image = await runtime.uploadImage(params);
       const saved = await files.readText('tavern-data/users/default/assets/images/..~2fAlice/..~2fportrait.png');
       const escapedExists = await files.exists('tavern-data/users/default/assets/Alice/portrait.png');
@@ -104,6 +110,12 @@ export default function imageUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeImage 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param fileName file 名称。
+ * @param folderName folder 名称。
+ */
 function makeImage(id: string, fileName: string, folderName: string, thumbnailType: string): ImageUploadParams {
   return {
     id: id,
@@ -124,6 +136,11 @@ function makeImage(id: string, fileName: string, folderName: string, thumbnailTy
   };
 }
 
+/**
+ * 封装单元测试中的 makeBoundImage 步骤，供公开方法复用。
+ * @param id 唯一标识。
+ * @param fileName file 名称。
+ */
 function makeBoundImage(id: string, fileName: string): ImageUploadParams {
   const params = makeImage(id, fileName, '', 'bg');
   params.thumbnailWidth = 160;

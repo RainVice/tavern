@@ -17,16 +17,37 @@ import type {
   QuickReplySetUpdatedPayload,
 } from './QuickReplyModels';
 
+/**
+ * 提供快捷回复相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class QuickReplyRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * commands 列表，由当前实例内部维护。
+   */
   private commands: CommandRuntime;
+  /**
+   * sets 列表，由当前实例内部维护。
+   */
   private sets: Map<string, QuickReplySetRecord> = new Map<string, QuickReplySetRecord>();
 
+  /**
+   * 注入快捷回复运行时依赖并初始化实例状态。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus, commands: CommandRuntime) {
     this.events = events;
     this.commands = commands;
   }
 
+  /**
+   * 创建新的快捷回复集合记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   createSet(params: QuickReplySetCreateParams): QuickReplySetRecord {
     if (this.sets.has(params.id)) {
       throw new Error(`Quick reply set already exists: ${params.id}`);
@@ -44,10 +65,19 @@ export class QuickReplyRuntime {
     return this.cloneSet(record);
   }
 
+  /**
+   * 读取指定Set，不存在时抛出错误。
+   * @param setId 目标快捷回复集合标识。
+   * @returns 更新或读取后的记录副本。
+   */
   getSet(setId: string): QuickReplySetRecord {
     return this.cloneSet(this.requireSet(setId));
   }
 
+  /**
+   * 读取Sets列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listSets(): Array<QuickReplySetRecord> {
     const result = new Array<QuickReplySetRecord>();
     const values = Array.from(this.sets.values());
@@ -57,11 +87,20 @@ export class QuickReplyRuntime {
     return result;
   }
 
+  /**
+   * 删除指定Set，并清理相关索引或资源引用。
+   * @param setId 目标快捷回复集合标识。
+   */
   deleteSet(setId: string): void {
     this.requireSet(setId);
     this.sets.delete(setId);
   }
 
+  /**
+   * 创建或写入Item，完成持久化后返回可供调用方使用的结果。
+   * @param setId 目标快捷回复集合标识。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   */
   addItem(setId: string, params: QuickReplyItemCreateParams): QuickReplyItemRecord {
     const set = this.requireSet(setId);
     const item: QuickReplyItemRecord = {
@@ -85,6 +124,13 @@ export class QuickReplyRuntime {
     return this.cloneItem(item);
   }
 
+  /**
+   * 设置快捷回复项可见状态，用于切换运行时状态或保存配置。
+   * @param setId 目标快捷回复集合标识。
+   * @param itemId 目标内容项标识。
+   * @param visible 是否显示对应 UI。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   setItemVisible(setId: string, itemId: string, visible: boolean): QuickReplyItemRecord {
     const set = this.requireSet(setId);
     const item = this.requireItem(set, itemId);
@@ -93,6 +139,11 @@ export class QuickReplyRuntime {
     return this.cloneItem(item);
   }
 
+  /**
+   * 移除内容项，用于解除注册、绑定或索引关系。
+   * @param setId 目标快捷回复集合标识。
+   * @param itemId 目标内容项标识。
+   */
   removeItem(setId: string, itemId: string): void {
     const set = this.requireSet(setId);
     const index = this.findItemIndex(set, itemId);
@@ -103,6 +154,12 @@ export class QuickReplyRuntime {
     this.publishSetUpdated(set);
   }
 
+  /**
+   * 读取Buttons列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listButtons(scope: string, scopeId: string): Array<QuickReplyButtonData> {
     const buttons = new Array<QuickReplyButtonData>();
     const sets = Array.from(this.sets.values());
@@ -121,6 +178,12 @@ export class QuickReplyRuntime {
     return buttons;
   }
 
+  /**
+   * 执行 executeItem 的内部处理步骤，供当前模块复用。
+   * @param setId 目标快捷回复集合标识。
+   * @param itemId 目标内容项标识。
+   * @param options 控制本次调用行为的选项。
+   */
   async executeItem(
     setId: string,
     itemId: string,
@@ -152,6 +215,13 @@ export class QuickReplyRuntime {
     };
   }
 
+  /**
+   * 执行 executeAutoTrigger 的内部处理步骤，供当前模块复用。
+
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param options 控制本次调用行为的选项。
+   */
   async executeAutoTrigger(
     trigger: string,
     scope: string,
@@ -176,6 +246,11 @@ export class QuickReplyRuntime {
     return results;
   }
 
+  /**
+   * 导出快捷回复集合，用于备份、迁移或与 SillyTavern 数据互通。
+   * @param setId 目标快捷回复集合标识。
+   * @returns 可持久化或可传输的导出内容。
+   */
   exportSet(setId: string): QuickReplyExportData {
     const data: QuickReplyExportData = {
       set: this.cloneSet(this.requireSet(setId)),
@@ -183,6 +258,12 @@ export class QuickReplyRuntime {
     return data;
   }
 
+  /**
+   * 从外部数据导入Set 值，转换为当前运行时的数据结构。
+   * @param data 导入或恢复使用的序列化数据。
+   * @param newId 目标新记录标识。
+   * @returns 更新或读取后的记录副本。
+   */
   importSet(data: QuickReplyExportData, newId: string): QuickReplySetRecord {
     if (this.sets.has(newId)) {
       throw new Error(`Quick reply set already exists: ${newId}`);
@@ -193,7 +274,6 @@ export class QuickReplyRuntime {
     this.publishSetUpdated(imported);
     return this.cloneSet(imported);
   }
-
   private async executeCommand(command: string, options: CommandExecuteOptions): Promise<CommandExecutionResult> {
     if (command.trim().length === 0) {
       return this.makeCommandResult(false, 'quick-reply', '', 'Quick reply command is empty.', false);
@@ -208,8 +288,8 @@ export class QuickReplyRuntime {
       return this.makeCommandResult(false, 'quick-reply', '', String(error), false);
     }
   }
-
   private pipelineToExecutionResult(pipeline: CommandPipelineResult): CommandExecutionResult {
+    // command 名称。
     let commandName = 'quick-reply';
     if (pipeline.steps.length > 0) {
       commandName = pipeline.steps[pipeline.steps.length - 1].commandName;
@@ -222,11 +302,9 @@ export class QuickReplyRuntime {
       pipeline.cancelled,
     );
   }
-
   private makeSkippedResult(item: QuickReplyItemRecord): CommandExecutionResult {
     return this.makeCommandResult(false, item.id, '', 'Quick reply item is disabled or hidden.', false);
   }
-
   private makeCommandResult(
     ok: boolean,
     commandName: string,
@@ -243,7 +321,6 @@ export class QuickReplyRuntime {
     };
     return result;
   }
-
   private scopeMatches(set: QuickReplySetRecord, scope: string, scopeId: string): boolean {
     if (set.scope === 'global') {
       return scope === 'global';
@@ -257,10 +334,20 @@ export class QuickReplyRuntime {
     return set.scopeId === scopeId;
   }
 
+  /**
+   * 判断Runnable Item 值是否满足条件。
+   * @param item 项目记录。
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private isRunnableItem(item: QuickReplyItemRecord): boolean {
     return item.enabled && item.visible;
   }
 
+  /**
+   * 把快捷回复项转换为界面按钮数据。
+
+   * @param item 项目记录。
+   */
   private toButton(set: QuickReplySetRecord, item: QuickReplyItemRecord): QuickReplyButtonData {
     const button: QuickReplyButtonData = {
       setId: set.id,
@@ -275,6 +362,10 @@ export class QuickReplyRuntime {
     return button;
   }
 
+  /**
+   * 读取必须存在的Set 值，缺失时抛出错误。
+   * @param setId 目标快捷回复集合标识。
+   */
   private requireSet(setId: string): QuickReplySetRecord {
     const set = this.sets.get(setId);
     if (set === undefined) {
@@ -283,6 +374,11 @@ export class QuickReplyRuntime {
     return set;
   }
 
+  /**
+   * 读取必须存在的Item 值，缺失时抛出错误。
+
+   * @param itemId 目标内容项标识。
+   */
   private requireItem(set: QuickReplySetRecord, itemId: string): QuickReplyItemRecord {
     const index = this.findItemIndex(set, itemId);
     if (index < 0) {
@@ -291,6 +387,11 @@ export class QuickReplyRuntime {
     return set.items[index];
   }
 
+  /**
+   * 在当前集合中查找Item Index 值，未命中时返回空值或默认位置。
+
+   * @param itemId 目标内容项标识。
+   */
   private findItemIndex(set: QuickReplySetRecord, itemId: string): number {
     for (let index = 0; index < set.items.length; index += 1) {
       if (set.items[index].id === itemId) {
@@ -300,6 +401,9 @@ export class QuickReplyRuntime {
     return -1;
   }
 
+  /**
+   * 复制Set 值，避免外部修改内部状态。
+   */
   private cloneSet(set: QuickReplySetRecord): QuickReplySetRecord {
     const items = new Array<QuickReplyItemRecord>();
     for (let index = 0; index < set.items.length; index += 1) {
@@ -316,6 +420,10 @@ export class QuickReplyRuntime {
     return cloned;
   }
 
+  /**
+   * 复制Item 值，避免外部修改内部状态。
+   * @param item 项目记录。
+   */
   private cloneItem(item: QuickReplyItemRecord): QuickReplyItemRecord {
     const cloned: QuickReplyItemRecord = {
       id: item.id,
@@ -331,6 +439,10 @@ export class QuickReplyRuntime {
     return cloned;
   }
 
+  /**
+   * 复制Command Result 值，避免外部修改内部状态。
+   * @param result 返回结果。
+   */
   private cloneCommandResult(result: CommandExecutionResult): CommandExecutionResult {
     return {
       ok: result.ok,
@@ -341,6 +453,10 @@ export class QuickReplyRuntime {
     };
   }
 
+  /**
+   * 发布快捷回复事件，把状态变化通知给宿主或其他 Runtime。
+
+   */
   private publishSetUpdated(set: QuickReplySetRecord): void {
     const payload: QuickReplySetUpdatedPayload = {
       set: this.cloneSet(set),

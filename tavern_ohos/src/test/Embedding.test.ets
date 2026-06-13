@@ -11,7 +11,9 @@ import {
 export default function embeddingUnitTest() {
   describe('EmbeddingRuntime', () => {
     it('注册和列出模型', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new EmbeddingRuntime(bus);
       runtime.registerModel('openai', 'text-embedding-3-small', 1536, 'OpenAI v3 small');
       runtime.registerModel('ollama', 'nomic-embed-text', 768, 'Nomic Embed');
@@ -23,7 +25,9 @@ export default function embeddingUnitTest() {
     });
 
     it('检查维度匹配', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new EmbeddingRuntime(bus);
       runtime.registerModel('openai', 'ada', 1536, 'Ada');
       expect(runtime.checkDimension('openai:ada', 1536)).assertTrue();
@@ -31,20 +35,21 @@ export default function embeddingUnitTest() {
     });
 
     it('构建各提供商请求', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new EmbeddingRuntime(bus);
       const oai = runtime.buildOpenAIRequest('ada', ['hello']);
       expect(oai.model).assertEqual('ada');
       expect(oai.encoding_format).assertEqual('float');
-
       const ollama = runtime.buildOllamaRequest('nomic', 'hello');
       expect(ollama.model).assertEqual('nomic');
-
       const cohere = runtime.buildCohereRequest('embed-v3', ['hello']);
       expect(cohere.input_type).assertEqual('search_document');
     });
 
     it('导出和导入', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const rt = new EmbeddingRuntime(bus);
       rt.registerModel('openai', 'ada', 1536, '');
@@ -56,15 +61,14 @@ export default function embeddingUnitTest() {
 
     it('读取、列表和导出不会暴露内部模型', 0, () => {
       const rt = new EmbeddingRuntime(new EventBus());
+      // 模型名称。
       const model = rt.registerModel('openai', 'safe', 1536, '原始描述');
       model.dimensions = 1;
       model.enabled = false;
       expect(rt.checkDimension('openai:safe', 1536)).assertTrue();
-
       const listed = rt.listModels();
       listed[0].description = '列表修改';
       expect(rt.getModel('openai:safe').description).assertEqual('原始描述');
-
       const exported = rt.exportData();
       exported.models[0].enabled = false;
       expect(rt.getModel('openai:safe').enabled).assertTrue();
@@ -88,6 +92,7 @@ export default function embeddingUnitTest() {
     });
 
     it('保存向量结果事件不会暴露调用方对象', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const rt = new EmbeddingRuntime(bus);
       bus.subscribe<EmbeddingResultPayload>('embedding.result', (event: RuntimeEvent<EmbeddingResultPayload>) => {

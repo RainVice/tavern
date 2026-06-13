@@ -17,13 +17,14 @@ export default function spriteUnitTest() {
   describe('sprite runtime', () => {
     it('uploads and lists character sprites with expression labels', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new SpriteRuntime(files, bus);
       const uploaded = new Array<string>();
       bus.subscribe<SpriteUploadedPayload>('sprite.uploaded', (event: RuntimeEvent<SpriteUploadedPayload>) => {
         uploaded.push(`${event.payload.sprite.characterName}:${event.payload.sprite.spriteName}`);
       });
-
       const sprite: SpriteRecord = await runtime.uploadSprite(makeSprite('Alice', 'joy', 'joy-1', 'joy.png'));
       await runtime.uploadSprite(makeSprite('Alice', 'sadness', 'sadness', 'sadness.webp'));
       const sprites = await runtime.listSprites('Alice', '');
@@ -39,6 +40,7 @@ export default function spriteUnitTest() {
 
     it('imports RisuAI sprites and supports subfolder costumes', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new SpriteRuntime(files, new EventBus());
       const imports = new Array<RisuSpriteImport>();
       imports.push({ label: 'neutral', content: 'neutral-data' });
@@ -58,7 +60,9 @@ export default function spriteUnitTest() {
 
     it('sets expression state and clears deleted selected sprites', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new SpriteRuntime(files, bus);
       const changed = new Array<string>();
       const deleted = new Array<string>();
@@ -84,8 +88,8 @@ export default function spriteUnitTest() {
 
     it('净化角色、子目录、sprite 名称并在删除选择项时清空状态', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
       const runtime = new SpriteRuntime(files, new EventBus());
-
       const sprite = await runtime.uploadSprite(makeSpriteInSubfolder('../Alice', '../formal', 'joy', '../joy', 'joy.txt'));
       const selected = await runtime.setExpression('../Alice', '../formal', 'joy', '../joy');
       await runtime.deleteSprite('../Alice', '../formal', '../joy');
@@ -104,10 +108,25 @@ export default function spriteUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeSprite 步骤，供公开方法复用。
+ * @param characterName character 名称。
+ * @param label 展示标签。
+ * @param spriteName sprite 名称。
+ * @param fileName file 名称。
+ */
 function makeSprite(characterName: string, label: string, spriteName: string, fileName: string): SpriteUploadParams {
   return makeSpriteInSubfolder(characterName, '', label, spriteName, fileName);
 }
 
+/**
+ * 封装单元测试中的 makeSpriteInSubfolder 步骤，供公开方法复用。
+ * @param characterName character 名称。
+ * @param subfolderName subfolder 名称。
+ * @param label 展示标签。
+ * @param spriteName sprite 名称。
+ * @param fileName file 名称。
+ */
 function makeSpriteInSubfolder(characterName: string, subfolderName: string, label: string, spriteName: string, fileName: string): SpriteUploadParams {
   return {
     characterName: characterName,

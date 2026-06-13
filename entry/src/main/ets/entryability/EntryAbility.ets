@@ -3,6 +3,7 @@ import { window } from '@kit.ArkUI';
 import { AppUtil, LogUtil } from '@pura/harmony-utils';
 import BuildProfile from 'entry/BuildProfile';
 import { RVRouter } from 'router';
+import { TavernRuntimeContainer } from '../tavern/TavernRuntimeContainer';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -25,5 +26,8 @@ export default class EntryAbility extends UIAbility {
     RVRouter.init(this.context)
     AppUtil.init(this.context)
     LogUtil.setShowLog(BuildProfile.DEBUG)
+    TavernRuntimeContainer.configure(this.context.filesDir).init().catch((error: Error) => {
+      LogUtil.error('TavernRuntime 初始化失败: ' + error.message)
+    })
   }
 }

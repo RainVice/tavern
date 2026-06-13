@@ -16,7 +16,9 @@ import {
 export default function toolCallingUnitTest() {
   describe('tool calling runtime', () => {
     it('registers tools, exports OpenAI schema, invokes calls, and emits events', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ToolCallingRuntime(bus);
       const calledTools = new Array<string>();
       bus.subscribe<ToolCalledPayload>('tool.called', (event: RuntimeEvent<ToolCalledPayload>) => {
@@ -45,7 +47,9 @@ export default function toolCallingUnitTest() {
     });
 
     it('records stealth calls without user-visible invocations', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ToolCallingRuntime(bus);
       runtime.registerTool(makeEchoTool(true));
       const call: ToolCallRequest = {
@@ -55,7 +59,6 @@ export default function toolCallingUnitTest() {
         signature: '',
         reasoning: '',
       };
-
       const result = await runtime.invokeToolCalls([call], '');
 
       expect(result.invocations.length).assertEqual(0);
@@ -64,7 +67,9 @@ export default function toolCallingUnitTest() {
     });
 
     it('reports tool errors and enforces call loop recursion limit', 0, async () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ToolCallingRuntime(bus);
       runtime.registerTool(makeFailTool());
       const first: ToolCallRequest = {
@@ -86,7 +91,6 @@ export default function toolCallingUnitTest() {
         maxDepth: 1,
         reasoningText: '',
       };
-
       const result = await runtime.executeCallLoop(loop);
 
       expect(result.errors.length).assertEqual(2);
@@ -95,12 +99,13 @@ export default function toolCallingUnitTest() {
     });
 
     it('does not expose internal tool definitions through returns, events, or lists', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new ToolCallingRuntime(bus);
       bus.subscribe<ToolRegisteredPayload>('tool.registered', (event: RuntimeEvent<ToolRegisteredPayload>) => {
         event.payload.tool.enabled = false;
       });
-
       const registered: ToolDefinitionRecord = runtime.registerTool(makeEchoTool(false));
       registered.enabled = false;
       const listed = runtime.listTools();
@@ -112,7 +117,14 @@ export default function toolCallingUnitTest() {
   });
 }
 
+/**
+ * 实现一个可执行动作，供运行时在对应场景中调用。
+ */
 class EchoAction implements ToolAction {
+  /**
+   * 封装单元测试中的 execute 步骤，供公开方法复用。
+   * @param argumentsJson arguments JSON 字符串。
+   */
   execute(argumentsJson: string): Promise<ToolExecutionResult> {
     const result: ToolExecutionResult = {
       ok: true,
@@ -123,7 +135,14 @@ class EchoAction implements ToolAction {
   }
 }
 
+/**
+ * 实现一个可执行动作，供运行时在对应场景中调用。
+ */
 class FailAction implements ToolAction {
+  /**
+   * 封装单元测试中的 execute 步骤，供公开方法复用。
+   * @param argumentsJson arguments JSON 字符串。
+   */
   execute(argumentsJson: string): Promise<ToolExecutionResult> {
     if (argumentsJson.length >= 0) {
       const result: ToolExecutionResult = {
@@ -142,6 +161,11 @@ class FailAction implements ToolAction {
   }
 }
 
+/**
+ * 封装单元测试中的 makeEchoTool 步骤，供公开方法复用。
+
+ * @returns 条件命中时返回 true，否则返回 false。
+ */
 function makeEchoTool(stealth: boolean): ToolRegistrationParams {
   return {
     name: 'Echo',
@@ -155,6 +179,9 @@ function makeEchoTool(stealth: boolean): ToolRegistrationParams {
   };
 }
 
+/**
+ * 封装单元测试中的 makeFailTool 步骤，供公开方法复用。
+ */
 function makeFailTool(): ToolRegistrationParams {
   return {
     name: 'Fail',

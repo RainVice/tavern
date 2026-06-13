@@ -53,7 +53,6 @@ export default function imageMetadataUnitTest() {
       v[4]=0x0D; v[5]=0x0A; v[6]=0x1A; v[7]=0x0A;
       v[8]=0x00; v[9]=0x00; v[10]=0x00; v[11]=0x20;
       v[12]=0x74; v[13]=0x45; v[14]=0x58; v[15]=0x74;
-
       const metadata = rt.extractMetadata(png);
 
       expect(metadata.format).assertEqual('png');
@@ -62,8 +61,8 @@ export default function imageMetadataUnitTest() {
     });
     it('写入并提取 PNG 角色卡 metadata', 0, () => {
       const rt = new ImageMetadataRuntime();
+      // card JSON 字符串。
       const cardJson = '{"spec":"chara_card_v2","data":{"name":"测试"}}';
-
       const written = rt.writePngCharacterCard(makeMinimalPng(), cardJson);
       const result = rt.extractCharacterCard(written);
 
@@ -95,6 +94,9 @@ export default function imageMetadataUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeMinimalPng 步骤，供公开方法复用。
+ */
 function makeMinimalPng(): ArrayBuffer {
   const bytes = new Uint8Array(20);
   bytes[0]=0x89; bytes[1]=0x50; bytes[2]=0x4E; bytes[3]=0x47;
@@ -105,6 +107,9 @@ function makeMinimalPng(): ArrayBuffer {
   return bytes.buffer;
 }
 
+/**
+ * 封装单元测试中的 makeMinimalWebp 步骤，供公开方法复用。
+ */
 function makeMinimalWebp(): ArrayBuffer {
   const bytes = new Uint8Array(12);
   bytes[0]=0x52; bytes[1]=0x49; bytes[2]=0x46; bytes[3]=0x46;

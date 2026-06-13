@@ -18,10 +18,10 @@ export default function macroUnitTest() {
   describe('macro runtime', () => {
     it('expands built-in, variable, nested, and conditional macros', 0, () => {
       const variables = new VariableRuntime(new EventBus());
+      // 运行时实例。
       const runtime = new MacroRuntime(new EventBus(), variables);
       const context = makeMacroContext();
       variables.setContextVariable('chat', 'mood', 'calm', context.variableContext);
-
       const result: MacroExpansionResult = runtime.expand(
         '{{char}} greets {{user}} with {{getvar::mood}} {{if::{{getvar::mood}}::ok::bad}} {{random::spark}}',
         context,
@@ -32,7 +32,9 @@ export default function macroUnitTest() {
     });
 
     it('registers plugin and command macros with events and autocomplete', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new MacroRuntime(bus, new VariableRuntime(new EventBus()));
       const expandedEvents = new Array<string>();
       bus.subscribe<MacroExpandedPayload>('macro.expanded', (event: RuntimeEvent<MacroExpandedPayload>) => {
@@ -40,7 +42,6 @@ export default function macroUnitTest() {
       });
       runtime.registerMacro(makeMacro('pluginBadge', 'plugin', 'plugin-a', new StaticMacroAction('badge')));
       runtime.registerMacro(makeMacro('cmdEcho', 'command', '', new EchoMacroAction()));
-
       const result = runtime.expand('Use {{pluginBadge}} then {{cmdEcho::now}}', makeMacroContext());
       const options = runtime.autocomplete('pluginB');
 
@@ -51,7 +52,9 @@ export default function macroUnitTest() {
     });
 
     it('does not expose internal macro records or diagnostics', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new MacroRuntime(bus, new VariableRuntime(new EventBus()));
       bus.subscribe<MacroExpandedPayload>('macro.expanded', (event: RuntimeEvent<MacroExpandedPayload>) => {
         event.payload.diagnostics.push({
@@ -61,19 +64,15 @@ export default function macroUnitTest() {
           raw: '',
         });
       });
-
       const registered = runtime.registerMacro(makeMacro('copyMacro', 'plugin', 'plugin-a', new StaticMacroAction('ok')));
       registered.name = 'mutated';
       expect(runtime.autocomplete('copyMacro').length).assertEqual(1);
-
       const listed = runtime.listMacros();
       listed[0].name = 'list-mutated';
       expect(runtime.autocomplete('copyMacro').length).assertEqual(1);
-
       const options = runtime.autocomplete('copyMacro');
       options[0].name = 'option-mutated';
       expect(runtime.autocomplete('copyMacro')[0].name).assertEqual('copyMacro');
-
       const result = runtime.expand('A {{missingMacro}}', makeMacroContext());
       result.diagnostics.push({
         macroName: 'result-mutated',
@@ -87,8 +86,8 @@ export default function macroUnitTest() {
     });
 
     it('records diagnostics and applies unknown macro strategy', 0, () => {
+      // 运行时实例。
       const runtime = new MacroRuntime(new EventBus(), new VariableRuntime(new EventBus()));
-
       const keep = runtime.expandWithStrategy('A {{missing}}', makeMacroContext(), 'keep');
       const remove = runtime.expandWithStrategy('A {{missing}}', makeMacroContext(), 'remove');
       const diagnostics: Array<MacroDiagnostic> = runtime.diagnose('A {{missing}} and {{char}}', makeMacroContext());
@@ -102,13 +101,26 @@ export default function macroUnitTest() {
   });
 }
 
+/**
+ * 实现一个可执行动作，供运行时在对应场景中调用。
+ */
 class StaticMacroAction implements MacroAction {
+  /**
+   * 字段值。
+   */
   private value: string;
 
+  /**
+   * 初始化当前实例。
+   * @param value 字段值。
+   */
   constructor(value: string) {
     this.value = value;
   }
 
+  /**
+   * 封装单元测试中的 expand 步骤，供公开方法复用。
+   */
   expand(context: MacroExecutionContext): string {
     const rawLength = context.raw.length;
     if (rawLength < 0) {
@@ -118,12 +130,24 @@ class StaticMacroAction implements MacroAction {
   }
 }
 
+/**
+ * 实现一个可执行动作，供运行时在对应场景中调用。
+ */
 class EchoMacroAction implements MacroAction {
+  /**
+   * 封装单元测试中的 expand 步骤，供公开方法复用。
+   */
   expand(context: MacroExecutionContext): string {
     return `cmd:${context.args.join(':')}`;
   }
 }
 
+/**
+ * 封装单元测试中的 makeMacro 步骤，供公开方法复用。
+ * @param name 显示名称或注册名称。
+
+ * @param pluginId 插件标识。
+ */
 function makeMacro(name: string, category: string, pluginId: string, action: MacroAction): MacroRegistrationParams {
   return {
     name: name,
@@ -135,6 +159,9 @@ function makeMacro(name: string, category: string, pluginId: string, action: Mac
   };
 }
 
+/**
+ * 封装单元测试中的 makeMacroContext 步骤，供公开方法复用。
+ */
 function makeMacroContext(): MacroEvaluationContext {
   return {
     userName: 'Pilot',
@@ -147,6 +174,9 @@ function makeMacroContext(): MacroEvaluationContext {
   };
 }
 
+/**
+ * 封装单元测试中的 makeVariableContext 步骤，供公开方法复用。
+ */
 function makeVariableContext(): VariableResolveContext {
   return {
     userId: 'user-1',

@@ -26,6 +26,7 @@ export default function promptCompressionUnitTest() {
       expect(tokens > 0).assertTrue();
     });
     it('配置和事件结果不暴露内部对象', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const rt = new PromptCompressionRuntime(bus);
       bus.subscribe<CompressionAppliedPayload>('prompt.compression.applied', (event: RuntimeEvent<CompressionAppliedPayload>) => {
@@ -34,7 +35,6 @@ export default function promptCompressionUnitTest() {
       const config: CompressionConfig = { enabled: true, strategy: 'trim', maxTokens: 4096, preserveSystemPrompt: true, preserveLastMessages: 5 };
       rt.setConfig(config);
       config.maxTokens = 1;
-
       const saved = rt.getConfig();
       saved.maxTokens = 2;
       const result = rt.applyCompression(10000, 10000);

@@ -10,8 +10,8 @@ import {
 export default function promptTemplateUnitTest() {
   describe('prompt template runtime', () => {
     it('derives known chat template hashes into context and instruct templates', 0, () => {
+      // 运行时实例。
       const runtime = new PromptTemplateRuntime(new EventBus());
-
       const result: PromptTemplateDerivation = runtime.deriveTemplatesFromChatTemplate(
         'ignored body',
         'e10ca381b1ccc5cf9db52e371f3b6651576caee0a630b452e2816b2d404d4b65',
@@ -22,8 +22,8 @@ export default function promptTemplateUnitTest() {
     });
 
     it('returns no derivation for empty or unknown templates', 0, () => {
+      // 运行时实例。
       const runtime = new PromptTemplateRuntime(new EventBus());
-
       const empty = runtime.deriveTemplatesFromChatTemplate('   ', '');
       const unknown = runtime.deriveTemplatesFromChatTemplate('plain template', 'unknown-hash');
 
@@ -34,9 +34,9 @@ export default function promptTemplateUnitTest() {
     });
 
     it('does not expose known hash derivation records', 0, () => {
+      // 运行时实例。
       const runtime = new PromptTemplateRuntime(new EventBus());
       const hash = 'e10ca381b1ccc5cf9db52e371f3b6651576caee0a630b452e2816b2d404d4b65';
-
       const first = runtime.deriveTemplatesFromChatTemplate('ignored body', hash);
       first.context = 'mutated';
       first.instruct = 'mutated';
@@ -47,10 +47,10 @@ export default function promptTemplateUnitTest() {
     });
 
     it('derives templates from ChatML and Harmony template tokens', 0, () => {
+      // 运行时实例。
       const runtime = new PromptTemplateRuntime(new EventBus());
       const chatMl = '<|im_start|>user\n{{message}}<|im_end|>\n<|im_start|>assistant';
       const harmony = '<|start|>user<|message|>{{message}}<|end|><|start|>assistant<|channel|>final<|message|>';
-
       const chatMlResult = runtime.deriveTemplatesFromChatTemplate(chatMl, '');
       const harmonyResult = runtime.deriveTemplatesFromChatTemplate(harmony, '');
 
@@ -61,7 +61,9 @@ export default function promptTemplateUnitTest() {
     });
 
     it('registers, renders, and lists simple headless templates', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new PromptTemplateRuntime(bus);
       const rendered = new Array<string>();
       bus.subscribe<PromptTemplateRenderedPayload>('promptTemplate.rendered', (event: RuntimeEvent<PromptTemplateRenderedPayload>) => {

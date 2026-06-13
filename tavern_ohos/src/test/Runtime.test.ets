@@ -8,13 +8,20 @@ import {
   type TaskUpdatePayload,
 } from '../../Index';
 
+/**
+ * 描述单元测试事件发布时携带的数据结构。
+ */
 interface DemoEventPayload {
+  /**
+   * 字段值。
+   */
   value: string;
 }
 
 export default function runtimeUnitTest() {
   describe('runtime foundation', () => {
     it('publishes events in order and stops after unsubscribe', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const received = new Array<string>();
       const subscription = bus.subscribe<DemoEventPayload>('demo.changed', (event: RuntimeEvent<DemoEventPayload>) => {
@@ -33,7 +40,6 @@ export default function runtimeUnitTest() {
 
     it('prevents duplicate lock acquisition until release', 0, async () => {
       const locks = new LockManager();
-
       const firstLease = await locks.acquire('chat:1');
       const secondWhileHeld = await locks.tryAcquire('chat:1');
       firstLease.release();
@@ -45,13 +51,13 @@ export default function runtimeUnitTest() {
     });
 
     it('tracks task status and emits task update events', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const tasks = new TaskRuntime(bus);
       const statuses = new Array<string>();
       bus.subscribe<TaskUpdatePayload>('task.updated', (event: RuntimeEvent<TaskUpdatePayload>) => {
         statuses.push(event.payload.task.status);
       });
-
       const created = tasks.createTask('storage.compact', 'Compact chat log');
       tasks.updateTask(created.id, 'running', 40, 'rewriting jsonl');
       tasks.completeTask(created.id, 'done');
@@ -67,16 +73,15 @@ export default function runtimeUnitTest() {
     });
 
     it('does not expose internal task records', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
       const tasks = new TaskRuntime(bus);
       bus.subscribe<TaskUpdatePayload>('task.updated', (event: RuntimeEvent<TaskUpdatePayload>) => {
         event.payload.task.status = 'event-mutated';
       });
-
       const created = tasks.createTask('storage.compact', 'Compact chat log');
       created.status = 'external-mutated';
       expect(tasks.getTask(created.id).status).assertEqual('pending');
-
       const listed = tasks.listTasks();
       listed[0].status = 'list-mutated';
       expect(tasks.getTask(created.id).status).assertEqual('pending');

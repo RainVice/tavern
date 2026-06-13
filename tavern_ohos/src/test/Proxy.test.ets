@@ -9,9 +9,9 @@ import {
 export default function proxyUnitTest() {
   describe('proxy runtime', () => {
     it('returns direct mode when proxy is disabled', 0, () => {
+      // 运行时实例。
       const runtime = new ProxyRuntime(new EventBus());
       runtime.configure(makeSettings(false, 'http://127.0.0.1:7890'));
-
       const resolution: ProxyResolutionRecord = runtime.resolve('https://openai.com/v1');
 
       expect(resolution.mode).assertEqual('direct');
@@ -20,9 +20,9 @@ export default function proxyUnitTest() {
     });
 
     it('returns proxy mode for non-bypassed targets when proxy url is valid', 0, () => {
+      // 运行时实例。
       const runtime = new ProxyRuntime(new EventBus());
       runtime.configure(makeSettings(true, 'http://127.0.0.1:7890'));
-
       const resolution: ProxyResolutionRecord = runtime.resolve('https://openai.com/v1/chat/completions');
 
       expect(resolution.mode).assertEqual('proxy');
@@ -32,12 +32,12 @@ export default function proxyUnitTest() {
     });
 
     it('bypasses matching hosts and reports proxy/filter conflict warnings', 0, () => {
+      // 运行时实例。
       const runtime = new ProxyRuntime(new EventBus());
       const settings = makeSettings(true, 'http://127.0.0.1:7890');
       settings.bypass = ['api.internal.test', '.lan'];
       settings.privateRequestFilterEnabled = true;
       runtime.configure(settings);
-
       const bypassed: ProxyResolutionRecord = runtime.resolve('https://api.internal.test/v1');
       const warned: ProxyResolutionRecord = runtime.resolve('https://openai.com/v1');
 
@@ -49,9 +49,9 @@ export default function proxyUnitTest() {
     });
 
     it('falls back to direct mode when proxy url is missing or invalid', 0, () => {
+      // 运行时实例。
       const runtime = new ProxyRuntime(new EventBus());
       runtime.configure(makeSettings(true, 'not-a-url'));
-
       const resolution: ProxyResolutionRecord = runtime.resolve('https://openai.com/v1');
 
       expect(resolution.mode).assertEqual('direct');
@@ -61,6 +61,12 @@ export default function proxyUnitTest() {
   });
 }
 
+/**
+ * 封装单元测试中的 makeSettings 步骤，供公开方法复用。
+ * @param enabled 是否启用该能力。
+
+ * @returns 条件命中时返回 true，否则返回 false。
+ */
 function makeSettings(enabled: boolean, url: string): ProxySettings {
   return {
     enabled: enabled,

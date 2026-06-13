@@ -6,8 +6,14 @@ import type {
 } from './CharacterCodecModels';
 import { ImageMetadataRuntime } from '../imagemetadata/ImageMetadataRuntime';
 
+/**
+ * 提供角色卡编解码相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class CharacterCodecRuntime {
-  // 解析角色卡 JSON
+  /**
+   * 解析输入内容并转换为Character JSON 字符串结构。
+   * @param json 外部传入的 JSON 字符串。
+   */
   parseCharacterJson(json: string): CharacterCodecResult {
     const obj = JSON.parse(json) as CharacterCardV2Input;
     if (obj.spec === 'chara_card_v2') { return this.parseV2(obj); }
@@ -17,6 +23,10 @@ export class CharacterCodecRuntime {
     throw new Error('无法识别的角色卡格式');
   }
 
+  /**
+   * 解析PngCharacterCard，非法输入会返回失败标记或空结果。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   parsePngCharacterCard(data: ArrayBuffer): CharacterCodecResult {
     const metadata = new ImageMetadataRuntime();
     const extracted = metadata.extractCharacterCard(data);
@@ -27,7 +37,11 @@ export class CharacterCodecRuntime {
     return this.withFormat(parsed, 'png_metadata', extracted.characterCardJson);
   }
 
-  // 导出为 V2
+  /**
+   * 导出为角色卡 V2 结构，用于备份、迁移或与 SillyTavern 数据互通。
+   * @param result 返回结果。
+   * @returns 可持久化或可传输的导出内容。
+   */
   exportToV2(result: CharacterCodecResult): string {
     const data: CharacterCardV2ExportData = {
       name: result.name, description: result.description, personality: result.personality,
@@ -45,12 +59,21 @@ export class CharacterCodecRuntime {
     return JSON.stringify(card);
   }
 
+  /**
+   * 导出为 PNG 角色卡，用于备份、迁移或与 SillyTavern 数据互通。
+   * @param result 返回结果。
+
+   * @returns 可持久化或可传输的导出内容。
+   */
   exportToPng(result: CharacterCodecResult, sourcePng: ArrayBuffer): ArrayBuffer {
     const metadata = new ImageMetadataRuntime();
     return metadata.writePngCharacterCard(sourcePng, this.exportToV2(result));
   }
 
-  // 识别格式
+  /**
+   * 识别输入数据的Format 值，供导入流程选择后续解析方式。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   detectFormat(data: string): CharacterCardFormat {
     try { const obj = JSON.parse(data) as CharacterCardV2Input;
       if (obj.spec==='chara_card_v2') return 'v2';
@@ -61,6 +84,10 @@ export class CharacterCodecRuntime {
     } catch { return 'unknown'; }
   }
 
+  /**
+   * 识别输入数据的Binary Format 值，供导入流程选择后续解析方式。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   detectBinaryFormat(data: ArrayBuffer): CharacterCardFormat {
     const metadata = new ImageMetadataRuntime();
     const extracted = metadata.extractCharacterCard(data);
@@ -70,7 +97,10 @@ export class CharacterCodecRuntime {
     return 'unknown';
   }
 
-  // 解析 CharacterBook
+  /**
+   * 解析CharacterBook，非法输入会返回失败标记或空结果。
+   * @param json 外部传入的 JSON 字符串。
+   */
   parseCharacterBook(json: string): CharacterBook {
     const obj = JSON.parse(json) as CharacterBookInput;
     const entries = new Array<CharacterBookEntry>();
@@ -83,9 +113,16 @@ export class CharacterCodecRuntime {
     return { name: obj.name || '', entries: entries };
   }
 
-  // 导出 CharacterBook
+  /**
+   * 导出角色Book，用于备份、迁移或与 SillyTavern 数据互通。
+
+   * @returns 可持久化或可传输的导出内容。
+   */
   exportCharacterBook(book: CharacterBook): string { return JSON.stringify(book); }
 
+  /**
+   * 解析V1，非法输入会返回失败标记或空结果。
+   */
   private parseV1(card: CharacterCardV1): CharacterCodecResult {
     return { format: 'v1', raw: JSON.stringify(card), name: card.name||'', description: card.description||'',
       personality: card.personality||'', scenario: card.scenario||'', firstMessage: card.first_mes||'',
@@ -94,6 +131,9 @@ export class CharacterCodecRuntime {
       extensions: {} };
   }
 
+  /**
+   * 解析V2，非法输入会返回失败标记或空结果。
+   */
   private parseV2(obj: CharacterCardV2Input): CharacterCodecResult {
     const data: CharacterCardV2InputData = obj.data !== undefined ? obj.data : {};
     const extensions = this.readExtensions(data);
@@ -108,6 +148,10 @@ export class CharacterCodecRuntime {
       extensions: extensions };
   }
 
+  /**
+   * 读取Extensions 列表，并转换为运行时使用的数据结构。
+   * @param data 导入或恢复使用的序列化数据。
+   */
   private readExtensions(data: CharacterCardV2InputData): Record<string, string> {
     const extensions: Record<string, string> = {};
     if (data.extensions === undefined) {
@@ -115,12 +159,16 @@ export class CharacterCodecRuntime {
     }
     const keys = Object.keys(data.extensions);
     for (let index = 0; index < keys.length; index += 1) {
+      // 键名。
       const key = keys[index];
       extensions[key] = String(data.extensions[key]);
     }
     return extensions;
   }
 
+  /**
+   * 解析Charx，非法输入会返回失败标记或空结果。
+   */
   private parseCharx(archive: CharxArchive): CharacterCodecResult {
     if (archive.characters.length===0) throw new Error('charx 归档中无角色');
     const first = archive.characters[0];
@@ -131,7 +179,6 @@ export class CharacterCodecRuntime {
       postHistoryInstructions: '', creator: '', characterVersion: '',
       tags: new Array<string>(), alternateGreetings: new Array<string>(), extensions: {} };
   }
-
   private withFormat(result: CharacterCodecResult, format: CharacterCardFormat, raw: string): CharacterCodecResult {
     return {
       format: format,
@@ -153,6 +200,9 @@ export class CharacterCodecRuntime {
     };
   }
 
+  /**
+   * 复制Extensions 列表，避免外部修改内部状态。
+   */
   private copyExtensions(extensions: Record<string, string>): Record<string, string> {
     const result: Record<string, string> = {};
     const keys = Object.keys(extensions);

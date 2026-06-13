@@ -32,7 +32,6 @@ export default function galleryUnitTest() {
       const saved = rt.getImage(img.imageId);
       expect(saved.caption).assertEqual('内部 caption');
       expect(saved.tags.length).assertEqual(0);
-
       const exported = rt.exportData();
       exported.images[0].caption = '导出修改';
       expect(rt.getImage(img.imageId).caption).assertEqual('内部 caption');

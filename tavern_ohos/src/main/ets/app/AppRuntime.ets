@@ -2,19 +2,41 @@ import { JsonStore } from '../storage/JsonStore';
 import type { TavernFileStore } from '../storage/TavernFileStore';
 import type { RuntimeManifest, RuntimeStateRecord } from './AppModels';
 
+/**
+ * 提供应用运行状态相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class AppRuntime {
+  /**
+   * manifest Store 值，由当前实例内部维护。
+   */
   private manifestStore: JsonStore<RuntimeManifest>;
+  /**
+   * state Store 值，由当前实例内部维护。
+   */
   private stateStore: JsonStore<RuntimeStateRecord>;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param files 文件存储适配器。
+   * @param rootPath 数据根路径。
+   */
   constructor(files: TavernFileStore, rootPath: string = 'tavern-data') {
     this.manifestStore = new JsonStore<RuntimeManifest>(files, `${rootPath}/app/manifest.json`);
     this.stateStore = new JsonStore<RuntimeStateRecord>(files, `${rootPath}/app/runtime-state.json`);
   }
 
+  /**
+   * 读取或解析Manifest，调用方应处理不存在或不匹配的情况。
+   */
   async loadManifest(): Promise<RuntimeManifest> {
     return this.manifestStore.read(this.defaultManifest());
   }
 
+  /**
+   * 创建或写入Manifest，完成持久化后返回可供调用方使用的结果。
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   async saveManifest(globalMode: boolean): Promise<RuntimeManifest> {
     const current = await this.loadManifest();
     const now = Date.now();
@@ -29,10 +51,21 @@ export class AppRuntime {
     return manifest;
   }
 
+  /**
+   * 读取或解析状态，调用方应处理不存在或不匹配的情况。
+   */
   async loadRuntimeState(): Promise<RuntimeStateRecord> {
     return this.stateStore.read(this.defaultState());
   }
 
+  /**
+   * 创建或写入状态，完成持久化后返回可供调用方使用的结果。
+
+
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   async saveRuntimeState(phase: string, ready: boolean, globalMode: boolean, lastSignal: string): Promise<RuntimeStateRecord> {
     const current = await this.loadRuntimeState();
     const state: RuntimeStateRecord = {
@@ -49,6 +82,9 @@ export class AppRuntime {
     return state;
   }
 
+  /**
+   * 创建或写入状态，完成持久化后返回可供调用方使用的结果。
+   */
   async saveDetailedRuntimeState(
     phase: string,
     ready: boolean,
@@ -70,7 +106,6 @@ export class AppRuntime {
     await this.stateStore.write(state);
     return state;
   }
-
   private defaultManifest(): RuntimeManifest {
     return {
       schemaVersion: 1,
@@ -80,7 +115,6 @@ export class AppRuntime {
       updatedAt: 0,
     };
   }
-
   private defaultState(): RuntimeStateRecord {
     return {
       schemaVersion: 1,

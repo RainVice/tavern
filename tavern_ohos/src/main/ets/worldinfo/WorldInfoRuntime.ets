@@ -16,17 +16,48 @@ import type {
   WorldInfoMatch,
 } from './WorldInfoModels';
 
+/**
+ * 描述世界书模块在运行时交换的数据结构。
+ */
 interface WorldInfoActivationCandidate {
+  /**
+   * 本轮激活命中的世界书条目。
+   */
   entry: WorldInfoEntry;
+  /**
+   * 条目命中的关键词和来源信息。
+   */
   match: WorldInfoMatch;
 }
 
+/**
+ * 提供世界书相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class WorldInfoRuntime {
+  /**
+   * 文件存储适配器。
+   */
   private files: TavernFileStore;
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * 数据根路径。
+   */
   private rootPath: string;
+  /**
+   * 用户标识。
+   */
   private userId: string;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param files 文件存储适配器。
+   * @param events 事件总线。
+   * @param rootPath 数据根路径。
+   * @param userId 用户标识。
+   */
   constructor(files: TavernFileStore, events: EventBus, rootPath: string, userId: string) {
     this.files = files;
     this.events = events;
@@ -34,6 +65,11 @@ export class WorldInfoRuntime {
     this.userId = userId;
   }
 
+  /**
+   * 创建新的世界书记录，写入存储并返回副本。
+   * @param name 显示名称或注册名称。
+   * @returns 更新或读取后的记录副本。
+   */
   async createWorldBook(name: string): Promise<WorldBook> {
     const index = await this.readIndex();
     const id = `worldbook-${index.nextId}`;
@@ -55,11 +91,20 @@ export class WorldInfoRuntime {
     return this.copyBook(book);
   }
 
+  /**
+   * 读取世界书索引列表，用于世界书管理页快速展示。
+   * @returns 世界书索引项副本列表。
+   */
   async listWorldBooks(): Promise<Array<WorldBookIndexEntry>> {
     const index = await this.readIndex();
     return this.copyIndexEntries(index.items);
   }
 
+  /**
+   * 读取指定世界书，不存在时抛出错误。
+   * @param worldBookId 世界书标识。
+   * @returns 更新或读取后的记录副本。
+   */
   async getWorldBook(worldBookId: string): Promise<WorldBook> {
     const exists = await this.files.exists(this.worldBookPath(worldBookId));
     if (!exists) {
@@ -69,6 +114,10 @@ export class WorldInfoRuntime {
     return this.copyBook(await store.read(this.defaultWorldBook(worldBookId)));
   }
 
+  /**
+   * 删除指定世界书文件，并从世界书索引中移除该记录。
+   * @param worldBookId 世界书标识。
+   */
   async deleteWorldBook(worldBookId: string): Promise<void> {
     const book = await this.getWorldBook(worldBookId);
     await this.files.delete(this.worldBookPath(worldBookId));
@@ -84,6 +133,12 @@ export class WorldInfoRuntime {
     this.publishWorldBookEvent('worldinfo.deleted', book);
   }
 
+  /**
+   * 在指定世界书中创建条目，并发布 worldinfo.updated 事件。
+   * @param worldBookId 世界书标识。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 新建条目的副本。
+   */
   async createEntry(worldBookId: string, params: WorldInfoEntryCreateParams): Promise<WorldInfoEntry> {
     const book = await this.getWorldBook(worldBookId);
     const now = Date.now();
@@ -112,6 +167,13 @@ export class WorldInfoRuntime {
     return this.copyEntry(entry);
   }
 
+  /**
+   * 更新指定条目，写回存储并按需发布变更事件。
+   * @param worldBookId 世界书标识。
+   * @param entryId 条目标识。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
+   */
   async updateEntry(worldBookId: string, entryId: string, params: WorldInfoEntryUpdateParams): Promise<WorldInfoEntry> {
     const book = await this.getWorldBook(worldBookId);
     let updated: WorldInfoEntry | undefined = undefined;
@@ -142,6 +204,11 @@ export class WorldInfoRuntime {
     return this.copyEntry(updated);
   }
 
+  /**
+   * 删除指定世界书条目，并更新世界书索引里的条目数量。
+   * @param worldBookId 世界书标识。
+   * @param entryId 条目标识。
+   */
   async deleteEntry(worldBookId: string, entryId: string): Promise<void> {
     const book = await this.getWorldBook(worldBookId);
     const remaining = new Array<WorldInfoEntry>();
@@ -163,11 +230,22 @@ export class WorldInfoRuntime {
     this.publishWorldBookEvent('worldinfo.updated', book);
   }
 
+  /**
+   * 导出世界书 JSON 字符串，用于备份、迁移或与 SillyTavern 数据互通。
+   * @param worldBookId 世界书标识。
+   * @returns 可持久化或可传输的导出内容。
+   */
   async exportWorldBookJson(worldBookId: string): Promise<string> {
     const book = await this.getWorldBook(worldBookId);
     return JSON.stringify(book);
   }
 
+  /**
+   * 从外部数据导入World Book JSON 字符串，转换为当前运行时的数据结构。
+   * @param json 外部传入的 JSON 字符串。
+   * @param name 显示名称或注册名称。
+   * @returns 更新或读取后的记录副本。
+   */
   async importWorldBookJson(json: string, name: string): Promise<WorldBook> {
     const imported = JSON.parse(json) as WorldInfoImportData;
     const index = await this.readIndex();
@@ -191,6 +269,12 @@ export class WorldInfoRuntime {
     return this.copyBook(book);
   }
 
+  /**
+   * 更新条目状态，必要时写回存储并发布对应事件。
+   * @param worldBookIds 目标世界书标识列表。
+   * @param messages 消息列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   async activateEntries(worldBookIds: Array<string>, messages: Array<string>): Promise<WorldInfoActivation> {
     const buffer = messages.join('\n');
     const candidates = new Array<WorldInfoActivationCandidate>();
@@ -229,7 +313,6 @@ export class WorldInfoRuntime {
     this.events.publish<WorldInfoActivationPayload>('worldinfo.activated', payload);
     return activation;
   }
-
   private matchEntry(worldBookId: string, entry: WorldInfoEntry, buffer: string): WorldInfoMatch {
     if (!entry.enabled) {
       return this.emptyMatch();
@@ -241,7 +324,6 @@ export class WorldInfoRuntime {
         key: '',
       };
     }
-
     const primaryKey = this.findFirstMatch(entry.keys, buffer, entry.caseSensitive);
     if (primaryKey.length === 0) {
       return this.emptyMatch();
@@ -260,9 +342,17 @@ export class WorldInfoRuntime {
     };
   }
 
+  /**
+   * 在当前集合中查找First Match 值，未命中时返回空值或默认位置。
+
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
+   */
   private findFirstMatch(keys: Array<string>, buffer: string, caseSensitive: boolean): string {
     const haystack = caseSensitive ? buffer : buffer.toLowerCase();
     for (let index = 0; index < keys.length; index += 1) {
+      // 键名。
       const key = keys[index];
       const needle = caseSensitive ? key : key.toLowerCase();
       if (needle.length > 0 && haystack.indexOf(needle) >= 0) {
@@ -272,6 +362,11 @@ export class WorldInfoRuntime {
     return '';
   }
 
+  /**
+   * 根据入参构建Prompt Text 值，仅生成数据结构，不直接执行外部请求。
+   * @param entries 条目列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private buildPromptText(entries: Array<WorldInfoEntry>): string {
     const chunks = new Array<string>();
     for (let index = 0; index < entries.length; index += 1) {
@@ -279,7 +374,6 @@ export class WorldInfoRuntime {
     }
     return chunks.join('\n');
   }
-
   private emptyMatch(): WorldInfoMatch {
     return {
       worldBookId: '',
@@ -287,7 +381,6 @@ export class WorldInfoRuntime {
       key: '',
     };
   }
-
   private async replaceIndexEntry(book: WorldBook): Promise<void> {
     const index = await this.readIndex();
     const entry = this.toIndexEntry(book);
@@ -304,6 +397,11 @@ export class WorldInfoRuntime {
     await this.writeIndex(index);
   }
 
+  /**
+   * 发布世界书事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+
+   */
   private publishWorldBookEvent(eventName: string, book: WorldBook): void {
     const payload: WorldInfoEventPayload = {
       worldBook: this.copyBook(book),
@@ -311,22 +409,36 @@ export class WorldInfoRuntime {
     this.events.publish<WorldInfoEventPayload>(eventName, payload);
   }
 
+  /**
+   * 读取Index 值，并转换为运行时使用的数据结构。
+   */
   private async readIndex(): Promise<WorldBookIndex> {
     const store = new JsonStore<WorldBookIndex>(this.files, this.indexPath());
     return store.read(this.defaultIndex());
   }
 
+  /**
+   * 写入Index 值，持久化当前运行时状态。
+   * @param index 索引数据或循环位置。
+   */
   private async writeIndex(index: WorldBookIndex): Promise<void> {
     const store = new JsonStore<WorldBookIndex>(this.files, this.indexPath());
     await store.write(index);
   }
 
+  /**
+   * 写入World Book 值，持久化当前运行时状态。
+
+   */
   private async writeWorldBook(book: WorldBook): Promise<void> {
     await this.files.ensureDirectory(this.worldBooksRoot());
     const store = new JsonStore<WorldBook>(this.files, this.worldBookPath(book.id));
     await store.write(book);
   }
 
+  /**
+   * 把世界书完整记录转换为列表索引项。
+   */
   private toIndexEntry(book: WorldBook): WorldBookIndexEntry {
     return {
       id: book.id,
@@ -336,7 +448,6 @@ export class WorldInfoRuntime {
       updatedAt: book.updatedAt,
     };
   }
-
   private defaultIndex(): WorldBookIndex {
     return {
       schemaVersion: 1,
@@ -344,7 +455,6 @@ export class WorldInfoRuntime {
       items: new Array<WorldBookIndexEntry>(),
     };
   }
-
   private defaultWorldBook(worldBookId: string): WorldBook {
     return {
       schemaVersion: 1,
@@ -356,18 +466,22 @@ export class WorldInfoRuntime {
       updatedAt: 0,
     };
   }
-
   private indexPath(): string {
     return `${this.worldBooksRoot()}/index.json`;
   }
-
   private worldBookPath(worldBookId: string): string {
     return `${this.worldBooksRoot()}/${safePathSegment(worldBookId, 'worldbook')}.json`;
   }
-
   private worldBooksRoot(): string {
     return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/worldbooks`;
   }
+  /**
+   * 更新条目Recursive状态，必要时写回存储并发布对应事件。
+   * @param worldBookIds 目标世界书标识列表。
+   * @param messages 消息列表。
+
+   * @param maxTokens token 数量或 token 内容。
+   */
   async activateEntriesRecursive(
     worldBookIds: Array<string>,
     messages: Array<string>,
@@ -395,6 +509,7 @@ export class WorldInfoRuntime {
     }
     for (let ei = 0; ei < deep.entries.length; ei += 1) { const e = deep.entries[ei];
       const match = deep.matches[ei];
+      // 键名。
       const key = this.entryActivationKey(match.worldBookId, e.id);
       if (!seen.has(key)) { seen.add(key); merged.push(this.copyEntry(e)); mergedMatches.push(this.copyMatch(match)); }
     }
@@ -404,8 +519,8 @@ export class WorldInfoRuntime {
       promptText: this.buildPromptText(merged).substring(0, maxTokens * 3),
     };
   }
-
   private nextEntryIdAfterImport(importedNextEntryId: number, entries: Array<WorldInfoEntry>): number {
+    // next Entry 标识。
     let nextEntryId = importedNextEntryId > 0 ? importedNextEntryId : 1;
     for (let index = 0; index < entries.length; index += 1) {
       nextEntryId = Math.max(nextEntryId, entries[index].uid + 1);
@@ -418,11 +533,13 @@ export class WorldInfoRuntime {
     }
     return nextEntryId;
   }
-
   private entryActivationKey(worldBookId: string, entryId: string): string {
     return `${worldBookId}:${entryId}`;
   }
 
+  /**
+   * 复制Book 值，避免外部修改内部状态。
+   */
   private copyBook(book: WorldBook): WorldBook {
     return {
       schemaVersion: book.schemaVersion,
@@ -435,6 +552,11 @@ export class WorldInfoRuntime {
     };
   }
 
+  /**
+   * 复制Entries 列表，避免外部修改内部状态。
+   * @param entries 条目列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private copyEntries(entries: Array<WorldInfoEntry>): Array<WorldInfoEntry> {
     const result = new Array<WorldInfoEntry>();
     for (let index = 0; index < entries.length; index += 1) {
@@ -443,6 +565,10 @@ export class WorldInfoRuntime {
     return result;
   }
 
+  /**
+   * 复制Entry 值，避免外部修改内部状态。
+   * @param entry 条目记录。
+   */
   private copyEntry(entry: WorldInfoEntry): WorldInfoEntry {
     return {
       id: entry.id,
@@ -462,6 +588,11 @@ export class WorldInfoRuntime {
     };
   }
 
+  /**
+   * 复制Matches 列表，避免外部修改内部状态。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private copyMatches(matches: Array<WorldInfoMatch>): Array<WorldInfoMatch> {
     const result = new Array<WorldInfoMatch>();
     for (let index = 0; index < matches.length; index += 1) {
@@ -470,6 +601,9 @@ export class WorldInfoRuntime {
     return result;
   }
 
+  /**
+   * 复制Match 值，避免外部修改内部状态。
+   */
   private copyMatch(match: WorldInfoMatch): WorldInfoMatch {
     return {
       worldBookId: match.worldBookId,
@@ -478,6 +612,11 @@ export class WorldInfoRuntime {
     };
   }
 
+  /**
+   * 复制Index Entries 列表，避免外部修改内部状态。
+   * @param entries 条目列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private copyIndexEntries(entries: Array<WorldBookIndexEntry>): Array<WorldBookIndexEntry> {
     const result = new Array<WorldBookIndexEntry>();
     for (let index = 0; index < entries.length; index += 1) {

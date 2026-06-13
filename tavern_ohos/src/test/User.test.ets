@@ -15,8 +15,8 @@ import {
 export default function userUnitTest() {
   describe('user runtime', () => {
     it('creates users, view models, and scoped directories', 0, () => {
+      // 运行时实例。
       const runtime = new UserRuntime(new EventBus());
-
       const admin: UserRecord = runtime.createUser({
         handle: 'Admin User',
         name: 'Admin',
@@ -43,7 +43,9 @@ export default function userUnitTest() {
     });
 
     it('applies admin user operations and publishes account events', 0, () => {
+      // 事件总线实例。
       const bus = new EventBus();
+      // 运行时实例。
       const runtime = new UserRuntime(bus);
       const events = new Array<string>();
       bus.subscribe<UserEventPayload>('user.updated', (event: RuntimeEvent<UserEventPayload>) => {
@@ -77,6 +79,7 @@ export default function userUnitTest() {
     });
 
     it('logs in, validates sessions, changes passwords, and logs out', 0, () => {
+      // 运行时实例。
       const runtime = new UserRuntime(new EventBus());
       runtime.createUser({
         handle: 'admin',
@@ -84,7 +87,6 @@ export default function userUnitTest() {
         password: 'root',
         admin: true,
       });
-
       const login: UserLoginResult = runtime.login('admin', 'root');
       const validated: UserViewModel = runtime.validateSession(login.session.id);
       runtime.changePassword('admin', 'admin', 'root', 'new-root');
@@ -98,6 +100,7 @@ export default function userUnitTest() {
     });
 
     it('normalizes handles for self protection deletion and passwordless login', 0, () => {
+      // 运行时实例。
       const runtime = new UserRuntime(new EventBus());
       runtime.createUser({
         handle: 'Admin User',

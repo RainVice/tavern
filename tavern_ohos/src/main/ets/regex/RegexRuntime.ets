@@ -7,14 +7,30 @@ import type {
   RegexScriptRecord,
 } from './RegexModels';
 
+/**
+ * 提供正则脚本相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class RegexRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * scripts 列表，由当前实例内部维护。
+   */
   private scripts: Array<RegexScriptRecord> = new Array<RegexScriptRecord>();
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 注册Script 值，使其可被后续运行时流程使用。
+   */
   registerScript(script: RegexScriptRecord): RegexScriptRecord {
     const existingIndex = this.findScriptIndex(script.id);
     const stored = this.copyScript(script);
@@ -26,6 +42,10 @@ export class RegexRuntime {
     return this.copyScript(stored);
   }
 
+  /**
+   * 取消注册Script 值，避免后续流程继续调用。
+   * @param scriptId 目标脚本标识。
+   */
   unregisterScript(scriptId: string): void {
     const index = this.findScriptIndex(scriptId);
     if (index >= 0) {
@@ -33,6 +53,10 @@ export class RegexRuntime {
     }
   }
 
+  /**
+   * 读取Scripts列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   listScripts(): Array<RegexScriptRecord> {
     const result = new Array<RegexScriptRecord>();
     for (let index = 0; index < this.scripts.length; index += 1) {
@@ -41,6 +65,9 @@ export class RegexRuntime {
     return result;
   }
 
+  /**
+   * 移除临时脚本列表，用于解除注册、绑定或索引关系。
+   */
   removeEphemeralScripts(): void {
     const kept = new Array<RegexScriptRecord>();
     for (let index = 0; index < this.scripts.length; index += 1) {
@@ -52,6 +79,10 @@ export class RegexRuntime {
     this.scripts = kept;
   }
 
+  /**
+   * 执行 applyScripts 的内部处理步骤，供当前模块复用。
+   * @param input 待处理的输入对象。
+   */
   applyScripts(input: RegexApplyInput): RegexApplyResult {
     let current = input.text;
     const traces = new Array<RegexApplyTrace>();
@@ -86,7 +117,6 @@ export class RegexRuntime {
       traces: traces,
     };
   }
-
   private shouldRunScript(script: RegexScriptRecord, input: RegexApplyInput): boolean {
     if (script.disabled || script.findRegex.length === 0 || input.text.length === 0) {
       return false;
@@ -114,7 +144,6 @@ export class RegexRuntime {
     }
     return !input.isMarkdown && !input.isPrompt;
   }
-
   private runScript(script: RegexScriptRecord, value: string): string {
     let regex: RegExp;
     try {
@@ -133,6 +162,10 @@ export class RegexRuntime {
     return output;
   }
 
+  /**
+   * 在当前集合中查找Script Index 值，未命中时返回空值或默认位置。
+   * @param scriptId 目标脚本标识。
+   */
   private findScriptIndex(scriptId: string): number {
     for (let index = 0; index < this.scripts.length; index += 1) {
       if (this.scripts[index].id === scriptId) {
@@ -141,7 +174,6 @@ export class RegexRuntime {
     }
     return -1;
   }
-
   private replaceMatchPlaceholder(value: string): string {
     const needle = '{{match}}';
     const lower = value.toLowerCase();
@@ -158,6 +190,9 @@ export class RegexRuntime {
     return output;
   }
 
+  /**
+   * 复制Script 值，避免外部修改内部状态。
+   */
   private copyScript(script: RegexScriptRecord): RegexScriptRecord {
     return {
       id: script.id,
@@ -179,6 +214,9 @@ export class RegexRuntime {
     };
   }
 
+  /**
+   * 复制Trace 值，避免外部修改内部状态。
+   */
   private copyTrace(trace: RegexApplyTrace): RegexApplyTrace {
     return {
       scriptId: trace.scriptId,

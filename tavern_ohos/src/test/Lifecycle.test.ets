@@ -18,12 +18,12 @@ export default function lifecycleUnitTest() {
       const files: TavernFileStore = new InMemoryFileStore();
       const events = new EventBus();
       const app = new AppRuntime(files);
+      // 运行时实例。
       const runtime = new LifecycleRuntime(files, events, app);
       const signals = new Array<string>();
       events.subscribe<RuntimeSignalPayload>('runtime.signal', (event: RuntimeEvent<RuntimeSignalPayload>) => {
         signals.push(event.payload.signal);
       });
-
       const state = await runtime.initialize(true);
       const manifest: RuntimeManifest = await app.loadManifest();
       const savedState: RuntimeStateRecord = await app.loadRuntimeState();
@@ -40,6 +40,7 @@ export default function lifecycleUnitTest() {
       const files: TavernFileStore = new InMemoryFileStore();
       const events = new EventBus();
       const app = new AppRuntime(files);
+      // 运行时实例。
       const runtime = new LifecycleRuntime(files, events, app);
 
       await runtime.initialize(false);
@@ -56,8 +57,8 @@ export default function lifecycleUnitTest() {
       const files: TavernFileStore = new InMemoryFileStore();
       const events = new EventBus();
       const app = new AppRuntime(files);
+      // 运行时实例。
       const runtime = new LifecycleRuntime(files, events, app);
-
       const result: LifecycleStartupResult = await runtime.runStartup({
         globalMode: true,
         processRestored: true,

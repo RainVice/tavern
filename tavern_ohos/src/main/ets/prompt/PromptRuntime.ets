@@ -8,13 +8,28 @@ import type {
   PromptSection,
 } from './PromptModels';
 
+/**
+ * 提供Prompt 组装相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class PromptRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 根据入参构建Prompt 值，仅生成数据结构，不直接执行外部请求。
+   * @param input 待处理的输入对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
+   */
   buildPrompt(input: PromptBuildInput): PromptBuildResult {
     const sections = new Array<PromptSection>();
     this.pushSection(sections, 'system', 'system', 'system', 'system', input.systemPrompt);
@@ -42,7 +57,6 @@ export class PromptRuntime {
       }
       this.pushSection(sections, 'chat_history', this.roleForMessage(message), 'message', message.id, `${message.name}: ${message.text}`);
     }
-
     const trimmed = this.trimToBudget(sections, input.maxEstimatedTokens);
     const debug = this.buildDebug(input.id, trimmed.sections, input.maxEstimatedTokens, trimmed.trimmedSections);
     const result: PromptBuildResult = {
@@ -57,7 +71,6 @@ export class PromptRuntime {
     this.events.publish<PromptBuiltPayload>('prompt.built', payload);
     return this.cloneResult(result);
   }
-
   private pushSection(sections: Array<PromptSection>, type: string, role: string, source: string, id: string, content: string): void {
     if (content.length === 0) {
       return;
@@ -73,6 +86,12 @@ export class PromptRuntime {
     sections.push(section);
   }
 
+  /**
+   * 按预算裁剪To Budget 值，避免超出上下文限制。
+
+   * @param maxEstimatedTokens token 数量或 token 内容。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private trimToBudget(sections: Array<PromptSection>, maxEstimatedTokens: number): PromptTrimResult {
     const kept = sections.slice();
     const trimmed = new Array<string>();
@@ -82,10 +101,9 @@ export class PromptRuntime {
         trimmedSections: trimmed,
       };
     }
-
     let total = this.totalTokens(kept);
     let index = 0;
-    while (total > maxEstimatedTokens && index < kept.length) {
+    while (total > maxEstimatedTokens && index < kept.length && this.countSectionsByType(kept, 'chat_history') > 1) {
       if (kept[index].type === 'chat_history') {
         const removed = kept.splice(index, 1)[0];
         trimmed.push(removed.id);
@@ -101,6 +119,14 @@ export class PromptRuntime {
     };
   }
 
+  /**
+   * 根据入参构建Debug 值，仅生成数据结构，不直接执行外部请求。
+   * @param promptId 目标提示词标识。
+
+   * @param maxEstimatedTokens token 数量或 token 内容。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private buildDebug(promptId: string, sections: Array<PromptSection>, maxEstimatedTokens: number, trimmedSections: Array<string>): PromptDebugSnapshot {
     return {
       promptId: promptId,
@@ -110,7 +136,6 @@ export class PromptRuntime {
       trimmedSections: trimmedSections.slice(),
     };
   }
-
   private joinSections(sections: Array<PromptSection>): string {
     const chunks = new Array<string>();
     for (let index = 0; index < sections.length; index += 1) {
@@ -118,7 +143,6 @@ export class PromptRuntime {
     }
     return chunks.join('\n\n');
   }
-
   private roleForMessage(message: ChatMessage): string {
     if (message.role.length > 0) {
       return message.role;
@@ -126,6 +150,11 @@ export class PromptRuntime {
     return message.isUser ? 'user' : 'assistant';
   }
 
+  /**
+   * 汇总各段提示词的 token 数量。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private totalTokens(sections: Array<PromptSection>): number {
     let total = 0;
     for (let index = 0; index < sections.length; index += 1) {
@@ -133,7 +162,15 @@ export class PromptRuntime {
     }
     return total;
   }
-
+  private countSectionsByType(sections: Array<PromptSection>, type: string): number {
+    let count = 0;
+    for (let index = 0; index < sections.length; index += 1) {
+      if (sections[index].type === type) {
+        count += 1;
+      }
+    }
+    return count;
+  }
   private estimateTokens(content: string): number {
     const length = content.length;
     if (length === 0) {
@@ -142,6 +179,10 @@ export class PromptRuntime {
     return Math.ceil(length / 4);
   }
 
+  /**
+   * 复制Result 值，避免外部修改内部状态。
+   * @param result 返回结果。
+   */
   private cloneResult(result: PromptBuildResult): PromptBuildResult {
     return {
       id: result.id,
@@ -151,6 +192,11 @@ export class PromptRuntime {
     };
   }
 
+  /**
+   * 复制Sections 列表，避免外部修改内部状态。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   */
   private cloneSections(sections: Array<PromptSection>): Array<PromptSection> {
     const cloned = new Array<PromptSection>();
     for (let index = 0; index < sections.length; index += 1) {
@@ -166,6 +212,9 @@ export class PromptRuntime {
     return cloned;
   }
 
+  /**
+   * 复制Debug 值，避免外部修改内部状态。
+   */
   private cloneDebug(debug: PromptDebugSnapshot): PromptDebugSnapshot {
     return {
       promptId: debug.promptId,
@@ -177,7 +226,16 @@ export class PromptRuntime {
   }
 }
 
+/**
+ * 描述Prompt 组装操作完成后返回给调用方的结果。
+ */
 interface PromptTrimResult {
+  /**
+   * sections 列表，由当前实例内部维护。
+   */
   sections: Array<PromptSection>;
+  /**
+   * trimmed Sections 列表，由当前实例内部维护。
+   */
   trimmedSections: Array<string>;
 }

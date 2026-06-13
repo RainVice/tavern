@@ -8,7 +8,7 @@
   "dependencies": {
     "router": "file:../router",
     "common": "file:../common",
-    "openai_ohos": "file:../openai_ohos"
+    "openai_ohos": "file:../openai_ohos",
+    "tavern_ohos": "file:../tavern_ohos"
   }
 }
-

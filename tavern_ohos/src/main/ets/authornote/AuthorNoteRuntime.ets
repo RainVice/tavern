@@ -7,24 +7,40 @@ import {
   type AuthorNoteInjection,
 } from './AuthorNoteModels';
 
+/**
+ * 提供作者注释相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ */
 export class AuthorNoteRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
 
+  /**
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
+   */
   constructor(events: EventBus) {
     this.events = events;
   }
 
+  /**
+   * 根据入参构建Injection 值，仅生成数据结构，不直接执行外部请求。
+   * @param input 待处理的输入对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
+   */
   buildInjection(input: AuthorNoteBuildInput): AuthorNoteInjection {
     const interval = this.valueOrDefault(input.metadata.interval, input.defaults.interval, 1);
     const depth = this.valueOrDefault(input.metadata.depth, input.defaults.depth, 4);
     const position = this.valueOrDefault(input.metadata.position, input.defaults.position, 1);
     const role = this.valueOrDefault(input.metadata.role, input.defaults.role, 0);
-    const basePrompt = this.resolvePrompt(input.metadata.prompt, input.defaults.prompt);
+    const basePrompt = input.userMessageCount <= 0
+      ? input.defaults.prompt
+      : this.resolvePrompt(input.metadata.prompt, input.defaults.prompt);
 
     if (!input.inChat) {
       return this.publish(this.makeInjection(input.chatId, '', false, false, 0, position, depth, role));
     }
-
     let userMessageCount = input.userMessageCount;
     if (interval === 1) {
       userMessageCount = 1;
@@ -33,16 +49,13 @@ export class AuthorNoteRuntime {
     if (userMessageCount <= 0 || interval <= 0) {
       return this.publish(this.makeInjection(input.chatId, '', false, false, 0, position, depth, role));
     }
-
     const messagesTillInsertion = userMessageCount >= interval ? userMessageCount % interval : interval - userMessageCount;
     if (messagesTillInsertion !== 0) {
       return this.publish(this.makeInjection(input.chatId, '', false, input.defaults.allowWorldInfoScan, messagesTillInsertion, position, depth, role));
     }
-
     const prompt = this.applyCharacterNote(basePrompt, input.characterNote);
     return this.publish(this.makeInjection(input.chatId, prompt, true, input.defaults.allowWorldInfoScan, 0, position, depth, role));
   }
-
   private valueOrDefault(value: number, fallback: number, hardDefault: number): number {
     if (Number.isNaN(value)) {
       if (Number.isNaN(fallback)) {
@@ -53,13 +66,15 @@ export class AuthorNoteRuntime {
     return value;
   }
 
+  /**
+   * 根据当前上下文解析Prompt 值，返回实际可用值。
+   */
   private resolvePrompt(prompt: string, fallback: string): string {
     if (prompt.length > 0) {
       return prompt;
     }
     return fallback;
   }
-
   private applyCharacterNote(prompt: string, characterNote: AuthorNoteCharacterNote | undefined): string {
     if (characterNote === undefined || !characterNote.enabled) {
       return prompt;
@@ -72,7 +87,6 @@ export class AuthorNoteRuntime {
     }
     return characterNote.prompt;
   }
-
   private joinNotes(first: string, second: string): string {
     if (first.length === 0) {
       return second;
@@ -82,7 +96,6 @@ export class AuthorNoteRuntime {
     }
     return `${first}\n${second}`;
   }
-
   private makeInjection(
     chatId: string,
     prompt: string,
@@ -106,6 +119,9 @@ export class AuthorNoteRuntime {
     };
   }
 
+  /**
+   * 发布作者注释事件，把状态变化通知给宿主或其他 Runtime。
+   */
   private publish(injection: AuthorNoteInjection): AuthorNoteInjection {
     const payload: AuthorNoteBuiltPayload = {
       injection: this.copyInjection(injection),
@@ -114,6 +130,9 @@ export class AuthorNoteRuntime {
     return this.copyInjection(injection);
   }
 
+  /**
+   * 复制Injection 值，避免外部修改内部状态。
+   */
   private copyInjection(injection: AuthorNoteInjection): AuthorNoteInjection {
     return {
       moduleName: injection.moduleName,
