@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   EventBus,
+  InMemoryFileStore,
   SettingsRuntime,
   type RuntimeEvent,
   type SettingChangedPayload,
@@ -56,6 +57,25 @@ export default function settingsUnitTest() {
       expect(snapshot.schemaVersion).assertEqual(2);
       expect(snapshot.entries.length).assertEqual(1);
       expect(snapshot.migrationMetadata.length).assertEqual(1);
+    });
+
+    it('persists schemas, entries, and migration metadata', 0, async () => {
+      // 文件存储实例。
+      const files = new InMemoryFileStore();
+      // 运行时实例。
+      const runtime = new SettingsRuntime(new EventBus(), files, 'tavern-data', 'default');
+      runtime.registerSchema(makeSchema('persist_mode', 'classic', 'string', 1));
+      runtime.registerSchema(makeSchema('persist_mode_v2', 'classic', 'string', 2));
+      runtime.setSetting('global', '', 'persist_mode', 'modern');
+      runtime.migrateSetting('global', '', 'persist_mode', 'persist_mode_v2', 2);
+      await runtime.saveToStore();
+
+      const restored = new SettingsRuntime(new EventBus(), files, 'tavern-data', 'default');
+      await restored.loadFromStore();
+
+      expect(await files.exists('tavern-data/users/default/settings.json')).assertTrue();
+      expect(restored.getSetting('global', '', 'persist_mode_v2')).assertEqual('modern');
+      expect(restored.snapshot().migrationMetadata.length).assertEqual(1);
     });
 
     it('does not expose internal schemas, entries, or snapshots', 0, () => {

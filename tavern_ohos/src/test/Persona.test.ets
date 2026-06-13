@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   EventBus,
+  InMemoryFileStore,
   PersonaRuntime,
   type PersonaBindingRecord,
   type PersonaChangedPayload,
@@ -80,6 +81,26 @@ export default function personaUnitTest() {
       expect(bound.userMacroValue).assertEqual('ChatUser');
       expect(bound.lorebookId).assertEqual('lore-persona-chat');
       expect(fallback.personaId).assertEqual('persona-selected');
+    });
+
+    it('persists personas, selected persona, and scoped bindings', 0, async () => {
+      // 文件存储实例。
+      const files = new InMemoryFileStore();
+      // 运行时实例。
+      const runtime = new PersonaRuntime(new EventBus(), files, 'tavern-data', 'default');
+      runtime.createPersona(makePersona('persona-persist', 'Persistent', 'Persistent persona.'));
+      runtime.createPersona(makePersona('persona-bound', 'Bound', 'Bound persona.'));
+      runtime.selectPersona('persona-persist');
+      runtime.bindPersona('chat', 'chat-persist', 'persona-bound');
+      await runtime.saveToStore();
+
+      const restored = new PersonaRuntime(new EventBus(), files, 'tavern-data', 'default');
+      await restored.loadFromStore();
+
+      expect(await files.exists('tavern-data/users/default/personas/index.json')).assertTrue();
+      expect(restored.getSelectedPersona().id).assertEqual('persona-persist');
+      expect(restored.getBoundPersona('chat', 'chat-persist').id).assertEqual('persona-bound');
+      expect(restored.listPersonas().length).assertEqual(2);
     });
 
     it('rejects import when target persona id already exists', 0, () => {

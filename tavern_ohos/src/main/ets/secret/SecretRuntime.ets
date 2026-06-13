@@ -1,4 +1,7 @@
 import { EventBus } from '../runtime/EventBus';
+import { safePathSegment } from '../shared/PathSafety';
+import { JsonStore } from '../storage/JsonStore';
+import type { TavernFileStore } from '../storage/TavernFileStore';
 import type {
   SecretAccessOptions,
   SecretCreateParams,
@@ -11,6 +14,12 @@ import type {
   SecretValueRecord,
 } from './SecretModels';
 
+interface SecretStorageSnapshot {
+  schemaVersion: number;
+  records: Array<SecretRecord>;
+  values: Array<SecretValueRecord>;
+}
+
 /**
  * 提供密钥引用相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
  */
@@ -19,6 +28,18 @@ export class SecretRuntime {
    * 事件总线。
    */
   private events: EventBus;
+  /**
+   * 文件存储适配器；未传入时仅使用内存态。
+   */
+  private files: TavernFileStore | undefined = undefined;
+  /**
+   * 数据根路径。
+   */
+  private rootPath: string = 'tavern-data';
+  /**
+   * 用户标识。
+   */
+  private userId: string = 'default';
   /**
    * 记录副本列表，由当前实例内部维护。
    */
@@ -32,8 +53,43 @@ export class SecretRuntime {
    * 初始化当前运行时实例。
    * @param events 事件总线。
    */
-  constructor(events: EventBus) {
+  constructor(events: EventBus, files?: TavernFileStore, rootPath: string = 'tavern-data', userId: string = 'default') {
     this.events = events;
+    this.files = files;
+    this.rootPath = rootPath;
+    this.userId = userId;
+  }
+
+  /**
+   * 从 SDK 内部文件存储恢复密钥记录和值。
+   */
+  async loadFromStore(): Promise<void> {
+    const store = new JsonStore<SecretStorageSnapshot>(this.requireFiles(), this.storagePath());
+    const snapshot = await store.read(this.defaultStorageSnapshot());
+    this.records.clear();
+    this.values.clear();
+    for (let index = 0; index < snapshot.records.length; index += 1) {
+      const record = this.cloneRecord(snapshot.records[index]);
+      this.records.set(record.secretRef, record);
+    }
+    for (let index = 0; index < snapshot.values.length; index += 1) {
+      const value = this.cloneValue(snapshot.values[index]);
+      this.values.set(value.secretRef, value);
+    }
+  }
+
+  /**
+   * 把当前密钥记录和值写入 SDK 内部文件存储。
+   */
+  async saveToStore(): Promise<void> {
+    const records = this.cloneRecords(Array.from(this.records.values()));
+    const values = this.cloneValues(Array.from(this.values.values()));
+    const snapshot: SecretStorageSnapshot = {
+      schemaVersion: 1,
+      records: records,
+      values: values,
+    };
+    await new JsonStore<SecretStorageSnapshot>(this.requireFiles(), this.storagePath()).write(snapshot);
   }
 
   /**
@@ -135,8 +191,9 @@ export class SecretRuntime {
       active: true,
     };
     const record = this.createSecret(params);
+    const payloadSecret = this.cloneRecord(record);
     const payload: SecretRotatedPayload = {
-      secret: this.cloneRecord(record),
+      secret: payloadSecret,
       previousSecretRef: previousSecretRef,
     };
     this.events.publish<SecretRotatedPayload>('secret.rotated', payload);
@@ -246,6 +303,25 @@ export class SecretRuntime {
     return record;
   }
 
+  private requireFiles(): TavernFileStore {
+    if (this.files === undefined) {
+      throw new Error('SecretRuntime storage is not configured.');
+    }
+    return this.files;
+  }
+
+  private storagePath(): string {
+    return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/secrets/index.json`;
+  }
+
+  private defaultStorageSnapshot(): SecretStorageSnapshot {
+    return {
+      schemaVersion: 1,
+      records: new Array<SecretRecord>(),
+      values: new Array<SecretValueRecord>(),
+    };
+  }
+
   /**
    * 检查Read是否满足当前规则。
    * @param options 控制本次调用行为的选项。
@@ -267,6 +343,7 @@ export class SecretRuntime {
   private toState(record: SecretRecord): SecretStateRecord {
     const value = this.values.get(record.secretRef);
     const rawValue = value === undefined ? '' : value.value;
+    const maskedValue = this.maskValue(rawValue);
     const state: SecretStateRecord = {
       id: record.id,
       secretRef: record.secretRef,
@@ -274,7 +351,7 @@ export class SecretRuntime {
       scope: record.scope,
       scopeId: record.scopeId,
       label: record.label,
-      maskedValue: this.maskValue(rawValue),
+      maskedValue: maskedValue,
       active: record.active,
       updatedAt: record.updatedAt,
     };
@@ -324,8 +401,9 @@ export class SecretRuntime {
 
    */
   private publishSecretEvent(eventName: string, secret: SecretRecord): void {
+    const payloadSecret = this.cloneRecord(secret);
     const payload: SecretEventPayload = {
-      secret: this.cloneRecord(secret),
+      secret: payloadSecret,
     };
     this.events.publish<SecretEventPayload>(eventName, payload);
   }
@@ -346,5 +424,28 @@ export class SecretRuntime {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };
+  }
+
+  private cloneRecords(records: Array<SecretRecord>): Array<SecretRecord> {
+    const cloned = new Array<SecretRecord>();
+    for (let index = 0; index < records.length; index += 1) {
+      cloned.push(this.cloneRecord(records[index]));
+    }
+    return cloned;
+  }
+
+  private cloneValue(value: SecretValueRecord): SecretValueRecord {
+    return {
+      secretRef: value.secretRef,
+      value: value.value,
+    };
+  }
+
+  private cloneValues(values: Array<SecretValueRecord>): Array<SecretValueRecord> {
+    const cloned = new Array<SecretValueRecord>();
+    for (let index = 0; index < values.length; index += 1) {
+      cloned.push(this.cloneValue(values[index]));
+    }
+    return cloned;
   }
 }

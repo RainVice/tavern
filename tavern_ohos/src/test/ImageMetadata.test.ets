@@ -18,24 +18,22 @@ export default function imageMetadataUnitTest() {
       v[0]=0xFF; v[1]=0xD8; v[2]=0x00; v[3]=0x00;
       expect(rt.detectFormat(jpg)).assertEqual('jpeg');
     });
-    it('检测 WebP 格式但不声明支持 metadata 写入', 0, () => {
+    it('写入并提取 WebP 角色卡 metadata', 0, () => {
       const rt = new ImageMetadataRuntime();
       const webp = makeMinimalWebp();
+      const cardJson = '{"spec":"chara_card_v2","data":{"name":"WebP"}}';
 
       expect(rt.detectFormat(webp)).assertEqual('webp');
-      let writeFailed = false;
-      try {
-        rt.writeMetadata({
-          format: 'webp',
-          characterCardJson: '{"name":"WebP"}',
-          outputPath: 'card.webp',
-          sourceData: webp,
-        });
-      } catch (error) {
-        writeFailed = true;
-      }
+      const written = rt.writeMetadata({
+        format: 'webp',
+        characterCardJson: cardJson,
+        outputPath: 'card.webp',
+        sourceData: webp,
+      });
+      const result = rt.extractCharacterCard(written);
 
-      expect(writeFailed).assertTrue();
+      expect(result.metadata.hasCharacterCard).assertTrue();
+      expect(result.characterCardJson).assertEqual(cardJson);
     });
     it('未知格式检测', 0, () => {
       const rt = new ImageMetadataRuntime();

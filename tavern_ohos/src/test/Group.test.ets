@@ -2,6 +2,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   EventBus,
   GroupRuntime,
+  InMemoryFileStore,
   type GroupCreateParams,
   type GroupEventPayload,
   type GroupExportData,
@@ -150,6 +151,31 @@ export default function groupUnitTest() {
       expect(imported.getGroup('group-6').name).assertEqual('Generation Crew');
       expect(imported.listMembers('group-6').length).assertEqual(1);
       expect(importedContinue.id).assertEqual('group-request-4');
+    });
+
+    it('persists groups, members, persona binding, and generation requests', 0, async () => {
+      // 文件存储实例。
+      const files = new InMemoryFileStore();
+      // 运行时实例。
+      const runtime = new GroupRuntime(new EventBus(), files, 'tavern-data', 'default');
+      runtime.createGroup(makeGroup('group-persist', 'Persistent Crew'));
+      runtime.addMember('group-persist', makeMember('char-a', 'Alice', 0.2, 'world-a'));
+      runtime.addMember('group-persist', makeMember('char-b', 'Bob', 0.9, 'world-b'));
+      runtime.reorderMembers('group-persist', ['char-b', 'char-a']);
+      runtime.bindPersona('group-persist', 'persona-persist');
+      runtime.queueContinue('group-persist', 'chat-persist');
+      await runtime.saveToStore();
+
+      const restored = new GroupRuntime(new EventBus(), files, 'tavern-data', 'default');
+      await restored.loadFromStore();
+
+      expect(await files.exists('tavern-data/users/default/groups/index.json')).assertTrue();
+      expect(await files.exists('tavern-data/users/default/groups/group-persist.json')).assertTrue();
+      expect(restored.getGroup('group-persist').name).assertEqual('Persistent Crew');
+      expect(restored.getGroup('group-persist').personaId).assertEqual('persona-persist');
+      expect(restored.listMembers('group-persist')[0].characterId).assertEqual('char-b');
+      expect(restored.listGenerationRequests('group-persist')[0].requestType).assertEqual('continue');
+      expect(restored.queueContinue('group-persist', 'chat-next').id).assertEqual('group-request-2');
     });
 
     it('rejects importing a group over an existing id', 0, () => {

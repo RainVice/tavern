@@ -26,8 +26,6 @@ export default class EntryAbility extends UIAbility {
     RVRouter.init(this.context)
     AppUtil.init(this.context)
     LogUtil.setShowLog(BuildProfile.DEBUG)
-    TavernRuntimeContainer.configure(this.context.filesDir).init().catch((error: Error) => {
-      LogUtil.error('TavernRuntime 初始化失败: ' + error.message)
-    })
+    TavernRuntimeContainer.configure(this.context.filesDir)
   }
 }

@@ -1,4 +1,7 @@
 import { EventBus } from '../runtime/EventBus';
+import { safePathSegment } from '../shared/PathSafety';
+import { JsonStore } from '../storage/JsonStore';
+import type { TavernFileStore } from '../storage/TavernFileStore';
 import type {
   PersonaBindingRecord,
   PersonaChangedPayload,
@@ -10,6 +13,13 @@ import type {
   PersonaUpdatedPayload,
 } from './PersonaModels';
 
+interface PersonaStorageSnapshot {
+  schemaVersion: number;
+  personas: Array<PersonaRecord>;
+  bindings: Array<PersonaBindingRecord>;
+  selectedPersonaId: string;
+}
+
 /**
  * 提供用户人格相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
  */
@@ -18,6 +28,18 @@ export class PersonaRuntime {
    * 事件总线。
    */
   private events: EventBus;
+  /**
+   * 文件存储适配器；未传入时仅使用内存态。
+   */
+  private files: TavernFileStore | undefined = undefined;
+  /**
+   * 数据根路径。
+   */
+  private rootPath: string = 'tavern-data';
+  /**
+   * 用户标识。
+   */
+  private userId: string = 'default';
   /**
    * personas 列表，由当前实例内部维护。
    */
@@ -35,8 +57,46 @@ export class PersonaRuntime {
    * 初始化当前运行时实例。
    * @param events 事件总线。
    */
-  constructor(events: EventBus) {
+  constructor(events: EventBus, files?: TavernFileStore, rootPath: string = 'tavern-data', userId: string = 'default') {
     this.events = events;
+    this.files = files;
+    this.rootPath = rootPath;
+    this.userId = userId;
+  }
+
+  /**
+   * 从 SDK 内部文件存储恢复用户人格、选中状态和绑定关系。
+   */
+  async loadFromStore(): Promise<void> {
+    const store = new JsonStore<PersonaStorageSnapshot>(this.requireFiles(), this.storagePath());
+    const snapshot = await store.read(this.defaultStorageSnapshot());
+    this.personas.clear();
+    this.bindings.clear();
+    for (let index = 0; index < snapshot.personas.length; index += 1) {
+      const persona = this.clonePersona(snapshot.personas[index]);
+      this.personas.set(persona.id, persona);
+    }
+    for (let index = 0; index < snapshot.bindings.length; index += 1) {
+      const binding = this.cloneBinding(snapshot.bindings[index]);
+      this.bindings.set(this.bindingKey(binding.scope, binding.scopeId), binding);
+    }
+    this.selectedPersonaId = snapshot.selectedPersonaId;
+  }
+
+  /**
+   * 把当前用户人格、选中状态和绑定关系写入 SDK 内部文件存储。
+   */
+  async saveToStore(): Promise<void> {
+    const personas = this.clonePersonas(Array.from(this.personas.values()));
+    const bindings = this.cloneBindings(Array.from(this.bindings.values()));
+    const selectedPersonaId = this.selectedPersonaId;
+    const snapshot: PersonaStorageSnapshot = {
+      schemaVersion: 1,
+      personas: personas,
+      bindings: bindings,
+      selectedPersonaId: selectedPersonaId,
+    };
+    await new JsonStore<PersonaStorageSnapshot>(this.requireFiles(), this.storagePath()).write(snapshot);
   }
 
   /**
@@ -113,8 +173,9 @@ export class PersonaRuntime {
     const persona = this.requirePersona(personaId);
     const previous = this.selectedPersonaId;
     this.selectedPersonaId = personaId;
+    const payloadPersona = this.clonePersona(persona);
     const payload: PersonaChangedPayload = {
-      persona: this.clonePersona(persona),
+      persona: payloadPersona,
       previousPersonaId: previous,
     };
     this.events.publish<PersonaChangedPayload>('persona.changed', payload);
@@ -204,8 +265,9 @@ export class PersonaRuntime {
    * @returns 可持久化或可传输的导出内容。
    */
   exportPersona(personaId: string): PersonaExportData {
+    const persona = this.clonePersona(this.requirePersona(personaId));
     const data: PersonaExportData = {
-      persona: this.clonePersona(this.requirePersona(personaId)),
+      persona: persona,
     };
     return data;
   }
@@ -260,6 +322,26 @@ export class PersonaRuntime {
     return persona;
   }
 
+  private requireFiles(): TavernFileStore {
+    if (this.files === undefined) {
+      throw new Error('PersonaRuntime storage is not configured.');
+    }
+    return this.files;
+  }
+
+  private storagePath(): string {
+    return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/personas/index.json`;
+  }
+
+  private defaultStorageSnapshot(): PersonaStorageSnapshot {
+    return {
+      schemaVersion: 1,
+      personas: new Array<PersonaRecord>(),
+      bindings: new Array<PersonaBindingRecord>(),
+      selectedPersonaId: '',
+    };
+  }
+
   /**
    * 复制Persona 值，避免外部修改内部状态。
    */
@@ -279,6 +361,14 @@ export class PersonaRuntime {
     return cloned;
   }
 
+  private clonePersonas(personas: Array<PersonaRecord>): Array<PersonaRecord> {
+    const cloned = new Array<PersonaRecord>();
+    for (let index = 0; index < personas.length; index += 1) {
+      cloned.push(this.clonePersona(personas[index]));
+    }
+    return cloned;
+  }
+
   /**
    * 复制Binding 值，避免外部修改内部状态。
    */
@@ -289,6 +379,14 @@ export class PersonaRuntime {
       personaId: binding.personaId,
       updatedAt: binding.updatedAt,
     };
+  }
+
+  private cloneBindings(bindings: Array<PersonaBindingRecord>): Array<PersonaBindingRecord> {
+    const cloned = new Array<PersonaBindingRecord>();
+    for (let index = 0; index < bindings.length; index += 1) {
+      cloned.push(this.cloneBinding(bindings[index]));
+    }
+    return cloned;
   }
 
   /**
@@ -320,8 +418,9 @@ export class PersonaRuntime {
 
    */
   private publishUpdated(eventName: string, persona: PersonaRecord): void {
+    const payloadPersona = this.clonePersona(persona);
     const payload: PersonaUpdatedPayload = {
-      persona: this.clonePersona(persona),
+      persona: payloadPersona,
     };
     this.events.publish<PersonaUpdatedPayload>(eventName, payload);
   }

@@ -233,14 +233,14 @@ await container.characters.deleteCharacter(copied.id);
 
 前提：
 
-1. 用户选择了 JSON、charx 或 PNG 文件。
+1. 用户选择了 JSON、charx、PNG 或 WebP 文件。
 2. 宿主已经读取文件内容。
-3. JSON 文本用字符串传入；PNG 用 `ArrayBuffer` 传入。
+3. JSON 文本用字符串传入；PNG / WebP 用 `ArrayBuffer` 传入。
 
 步骤：
 
 1. V2 JSON 可直接调用 `importCharacterJson()`。
-2. V1、charx、PNG metadata 先用 `CharacterCodecRuntime` 解析。
+2. V1、charx、PNG metadata、WebP metadata 先用 `CharacterCodecRuntime` 解析。
 3. 解析结果通过 `exportToV2()` 转成 V2 JSON。
 4. 再调用 `importCharacterJson()` 保存。
 
@@ -262,6 +262,14 @@ const normalizedV2 = codec.exportToV2(parsedFromPng);
 const saved = await container.characters.importCharacterJson(normalizedV2);
 ```
 
+WebP metadata：
+
+```ts
+const parsedFromWebp = codec.parseWebpCharacterCard(webpArrayBuffer);
+const normalizedV2 = codec.exportToV2(parsedFromWebp);
+const saved = await container.characters.importCharacterJson(normalizedV2);
+```
+
 事件：
 
 - `character.imported`：导入成功。
@@ -272,18 +280,19 @@ const saved = await container.characters.importCharacterJson(normalizedV2);
 
 1. 已有角色 ID。
 2. 需要 JSON 时直接导出。
-3. 需要 PNG 时必须提供一个有效 PNG 作为载体。
+3. 需要 PNG 或 WebP 时必须提供一个有效图片作为载体。
 
 步骤：
 
 1. 调用 `exportCharacterJson(characterId)`。
-2. 如果导出 PNG，使用 `CharacterCodecRuntime.parseCharacterJson()` 解析 JSON。
-3. 调用 `exportToPng(parsed, sourcePngArrayBuffer)` 写入 metadata。
+2. 如果导出 PNG 或 WebP，使用 `CharacterCodecRuntime.parseCharacterJson()` 解析 JSON。
+3. 调用 `exportToPng(parsed, sourcePngArrayBuffer)` 或 `exportToWebp(parsed, sourceWebpArrayBuffer)` 写入 metadata。
 
 ```ts
 const json = await container.characters.exportCharacterJson('char-1');
 const parsed = codec.parseCharacterJson(json);
 const png = codec.exportToPng(parsed, sourcePngArrayBuffer);
+const webp = codec.exportToWebp(parsed, sourceWebpArrayBuffer);
 ```
 
 ### 场景六：保存和读取头像
@@ -686,15 +695,18 @@ await container.provider.startOpenAICompatibleStream({
 前提：
 
 1. 不要把真实 API key 写入普通日志。
-2. `SecretRuntime` 当前是内存态，宿主负责安全持久化。
+2. 已准备 `TavernFileStore`；生产环境建议给 `SecretRuntime` 传入加密存储或系统安全存储适配器。
 3. `NetworkService` 只解析 headers，不发送请求。
 
 步骤：
 
-1. 用 `SecretRuntime.createSecret()` 创建密钥引用。
-2. 用 `ConnectionProfileRuntime.createProfile()` 创建连接配置。
-3. 用 `NetworkService.resolveHeadersForProfile()` 得到请求头。
-4. 用 `toProviderRequest()` 得到 provider 请求元数据。
+1. 用 `new SecretRuntime(events, files, 'tavern-data', 'default')` 和 `new ConnectionProfileRuntime(events, files, 'tavern-data', 'default')` 创建运行时。
+2. 应用启动后先调用 `await secrets.loadFromStore()` 和 `await connections.loadFromStore()`。
+3. 用 `SecretRuntime.createSecret()` 创建密钥引用。
+4. 用 `ConnectionProfileRuntime.createProfile()` 创建连接配置。
+5. 调用 `await secrets.saveToStore()` 和 `await connections.saveToStore()` 保存修改。
+6. 用 `NetworkService.resolveHeadersForProfile()` 得到请求头。
+7. 用 `toProviderRequest()` 得到 provider 请求元数据。
 
 ```ts
 import { ConnectionProfileRuntime, SecretRuntime, NetworkService } from 'tavern_ohos';
@@ -812,45 +824,52 @@ const result = rag.retrieve({
 
 ## 十、Persona、Preset 和 Quick Reply
 
-这些 Runtime 当前主要是内存态。宿主若要跨启动保存，需要调用单项导出方法或自行序列化。
+这些 Runtime 保留同步 CRUD API，跨启动持久化由 SDK 内部完成。宿主只需要传入 `TavernFileStore`，启动时调用 `loadFromStore()`，修改后调用 `saveToStore()`。
 
 ### Persona
 
 前提：
 
-1. 已创建 `PersonaRuntime`。
+1. 已创建 `new PersonaRuntime(events, files, 'tavern-data', 'default')`。
 2. 需要在聊天或全局作用域绑定 persona。
 
 步骤：
 
-1. `createPersona()` 创建。
-2. `selectPersona()` 设置当前 persona。
-3. `bindPersona(scope, scopeId, personaId)` 绑定到聊天或角色。
-4. `buildPromptDataForScope()` 生成 Prompt 所需 persona 信息。
+1. 应用启动后调用 `await personas.loadFromStore()`。
+2. `createPersona()` 创建。
+3. `selectPersona()` 设置当前 persona。
+4. `bindPersona(scope, scopeId, personaId)` 绑定到聊天或角色。
+5. 调用 `await personas.saveToStore()` 保存。
+6. `buildPromptDataForScope()` 生成 Prompt 所需 persona 信息。
 
 ### Preset
 
 步骤：
 
-1. `createPreset()` 创建预设。
-2. `bindPreset(ownerType, ownerId, presetKind, presetId)` 绑定预设。
-3. `getBinding()` 获取当前绑定。
-4. `exportPreset()` / `importPreset()` 做单项导入导出。
+1. 用 `new PresetRuntime(events, files, 'tavern-data', 'default')` 创建。
+2. 应用启动后调用 `await presets.loadFromStore()`。
+3. `createPreset()` 创建预设。
+4. `bindPreset(ownerType, ownerId, presetKind, presetId)` 绑定预设。
+5. 调用 `await presets.saveToStore()` 保存。
+6. `getBinding()` 获取当前绑定。
+7. `exportPreset()` / `importPreset()` 做单项导入导出。
 
 ### Quick Reply
 
 前提：
 
 1. 已创建 `CommandRuntime`。
-2. 用 `new QuickReplyRuntime(events, commands)` 创建。
+2. 用 `new QuickReplyRuntime(events, commands, files, 'tavern-data', 'default')` 创建。
 
 步骤：
 
-1. `createSet()` 创建集合，集合里包含 `scope` 和 `scopeId`。
-2. `addItem()` 添加按钮。
-3. `listButtons(scope, scopeId)` 给 UI 渲染按钮。
-4. 用户点击后调用 `executeItem()`。
-5. 自动触发用 `executeAutoTrigger()`。
+1. 应用启动后调用 `await quickReplies.loadFromStore()`。
+2. `createSet()` 创建集合，集合里包含 `scope` 和 `scopeId`。
+3. `addItem()` 添加按钮。
+4. 调用 `await quickReplies.saveToStore()` 保存。
+5. `listButtons(scope, scopeId)` 给 UI 渲染按钮。
+6. 用户点击后调用 `executeItem()`。
+7. 自动触发用 `executeAutoTrigger()`。
 
 ## 十一、UI 桥接
 
@@ -930,17 +949,20 @@ ui.respond(request.id, {
 
 步骤：
 
-1. `registerSchema()` 注册设置项。
-2. `setSetting()` 写入设置。
-3. `getEffectiveSetting()` 读取作用域设置，自动回退全局值或默认值。
-4. `snapshot()` 导出当前设置快照。
+1. 用 `new SettingsRuntime(events, files, 'tavern-data', 'default')` 创建。
+2. 应用启动后调用 `await settings.loadFromStore()`。
+3. `registerSchema()` 注册设置项。
+4. `setSetting()` 写入设置。
+5. 调用 `await settings.saveToStore()` 保存。
+6. `getEffectiveSetting()` 读取作用域设置，自动回退全局值或默认值。
+7. `snapshot()` 导出当前设置快照。
 
 ## 十三、功能接入检查清单
 
 接入任意功能时，按下面顺序检查：
 
 1. 这个功能是否需要 `TavernFileStore`。
-2. 这个功能是否是内存态 Runtime，是否需要宿主持久化导出结果。
+2. 这个功能是否有 `loadFromStore()` / `saveToStore()`，是否需要在启动、退后台或切换用户时调用。
 3. 当前页面需要订阅哪些事件。
 4. 页面销毁时是否调用 `unsubscribe()`。
 5. 写入 API 是否返回完整记录，列表 API 是否只是索引记录。

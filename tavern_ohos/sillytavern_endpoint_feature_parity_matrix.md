@@ -73,9 +73,9 @@ Runtime 模块
 | `src/endpoints/extensions.js` | 扩展管理 | PluginRuntime / ExtensionCompatRuntime | `plugins/` | 扩展列举、安装、启用、禁用、设置 | 已实现 |
 | `src/endpoints/files.js` | 文件操作 | FileRuntime / AttachmentRuntime | `assets/`, `chats/*/attachments/`, `databank/` | 文件上传、删除、读取、附件化、DataBank 接入 | 已测试 |
 | `src/endpoints/google.js` | Google / Gemini | ProviderRuntime | `connection-profiles/` | Gemini 请求、stream、tool、vision、secretRef | 已实现 |
-| `src/endpoints/groups.js` | 群聊 | GroupRuntime | `groups/`, `chats/` | 群聊 CRUD、成员、发言者选择、群聊 Prompt | 已测试 |
+| `src/endpoints/groups.js` | 群聊 | GroupRuntime | `groups/`, `chats/` | 群聊 CRUD、成员、发言者选择、群聊 Prompt | 已测试，已补持久化闭环 |
 | `src/endpoints/horde.js` | Horde API | ProviderRuntime | `connection-profiles/` | Horde 文本/图像能力、队列、状态 | 已实现 |
-| `src/endpoints/image-metadata.js` | 图片 metadata | ImageMetadataRuntime | PNG metadata 读写、角色卡 metadata；WebP 仅格式检测，暂不写入 metadata | 有差异 |
+| `src/endpoints/image-metadata.js` | 图片 metadata | ImageMetadataRuntime | PNG / WebP metadata 读写、角色卡 metadata | 已测试 |
 | `src/endpoints/images.js` | 图片文件服务 | ImageRuntime / AssetRuntime | `assets/images/`, `thumbnails/` | 图片保存、读取、缩略图、附件绑定 | 已测试 |
 | `src/endpoints/minimax.js` | MiniMax API | ProviderRuntime | `connection-profiles/` | MiniMax 文本/语音能力 | 已实现 |
 | `src/endpoints/moving-ui.js` | UI 布局状态 | SettingsRuntime / UIStateRuntime | `settings.json` | 保存布局状态；不复刻 DOM 行为 | 不复刻，重构实现 |
@@ -83,11 +83,11 @@ Runtime 模块
 | `src/endpoints/novelai.js` | NovelAI API | ProviderRuntime | `connection-profiles/` | NAI 请求、采样参数、模型设置 | 已实现 |
 | `src/endpoints/openai.js` | OpenAI API | ProviderRuntime | `connection-profiles/`, `secrets` | OpenAI chat/text/image/embedding 能力 | 已测试 |
 | `src/endpoints/openrouter.js` | OpenRouter API | ProviderRuntime | `connection-profiles/` | OpenRouter 模型列表、请求、stream、tool | 已实现 |
-| `src/endpoints/presets.js` | 预设 | PresetRuntime | `presets/` | generation/instruct/context/system preset CRUD | 已测试 |
-| `src/endpoints/quick-replies.js` | Quick Reply | QuickReplyRuntime | `quick-replies/` | quick reply set、命令绑定、导入导出 | 已测试 |
+| `src/endpoints/presets.js` | 预设 | PresetRuntime | `presets/` | generation/instruct/context/system preset CRUD | 已测试，已补持久化闭环 |
+| `src/endpoints/quick-replies.js` | Quick Reply | QuickReplyRuntime | `quick-replies/` | quick reply set、命令绑定、导入导出 | 已测试，已补持久化闭环 |
 | `src/endpoints/search.js` | 搜索 | SearchRuntime / IndexRuntime | `index.json`, `diagnostics/` | 角色/聊天/消息/文件/设置搜索 | 已测试 |
-| `src/endpoints/secrets.js` | 密钥 | SecretRuntime | secure store + `secretRef` | secret CRUD、rotate、脱敏、权限控制 | 已测试 |
-| `src/endpoints/settings.js` | 设置 | SettingsRuntime | `settings.json` | 全局/用户/聊天/插件设置读写与迁移 | 已测试 |
+| `src/endpoints/secrets.js` | 密钥 | SecretRuntime | secure store + `secretRef` | secret CRUD、rotate、脱敏、权限控制 | 已测试，已补持久化闭环；生产建议加密存储 |
+| `src/endpoints/settings.js` | 设置 | SettingsRuntime | `settings.json` | 全局/用户/聊天/插件设置读写与迁移 | 已测试，已补持久化闭环 |
 | `src/endpoints/speech.js` | 语音 | TTSRuntime / ASRRuntime / AudioRuntime | `assets/audio/`, `tasks/` | TTS、ASR、voice list、音频缓存 | 已实现 |
 | `src/endpoints/sprites.js` | 角色表情 / sprites | SpriteRuntime / ExpressionRuntime | `characters/*/sprites/` | sprite 上传、绑定、表情状态 | 已测试 |
 | `src/endpoints/stable-diffusion.js` | 图片生成 | ImageGenerationRuntime | `assets/images/`, `tasks/` | SD/ComfyUI/图像参数、取消、结果附件 | 已实现 |
@@ -274,24 +274,24 @@ Runtime 模块
 | Character Card V1 | CharacterCodec | 必须 | 已实现 |
 | Character Card V2 | CharacterCodec | 必须 | 必须 | 必须 | 是 | 已实现 |
 | PNG metadata card | CharacterCodec | 必须 | 已实现 |
-| WebP metadata card | CharacterCodec | 建议 | 暂未实现 |
+| WebP metadata card | CharacterCodec | 建议 | 已实现 |
 | charx | CharacterCodec | 必须 | 已实现 |
 | WorldBook | WorldInfoRuntime | 必须 | 必须 | 必须 | 是 | 已实现 |
 | CharacterBook | CharacterCodec | 必须 | 已实现 |
 | Chat JSONL | ChatRuntime | 必须 | 必须 | 必须 | 是 | 已实现 |
-| Group Chat | GroupRuntime | 必须 | 必须 | 必须 | 是 | 已实现 |
-| Preset | PresetRuntime | 必须 | 必须 | 必须 | 是 | 已实现 |
+| Group Chat | GroupRuntime | 必须 | 必须 | 必须 | 是 | 已实现，已补持久化闭环 |
+| Preset | PresetRuntime | 必须 | 必须 | 必须 | 是 | 已实现，已补持久化闭环 |
 | Context Template | PromptTemplateRuntime | 必须 | 必须 | 必须 | 是 | 已测试 |
 | Instruct Template | InstructRuntime | 必须 | 必须 | 必须 | 是 | 已测试 |
 | System Prompt | SystemPromptRuntime | 必须 | 必须 | 必须 | 是 | 已测试 |
-| Connection Profile | ConnectionProfileRuntime | 必须 | 必须 | 必须 | 是 | 已实现 |
-| Quick Reply | QuickReplyRuntime | 必须 | 必须 | 必须 | 是 | 已实现 |
+| Connection Profile | ConnectionProfileRuntime | 必须 | 必须 | 必须 | 是 | 已实现，已补持久化闭环 |
+| Quick Reply | QuickReplyRuntime | 必须 | 必须 | 必须 | 是 | 已实现，已补持久化闭环 |
 | Regex Script | RegexRuntime | 必须 | 必须 | 必须 | 是 | 已实现 |
 | Plugin manifest | PluginRuntime | 已实现 | 已实现 |
 | Data Bank document | DataBankRuntime | 必须 | 必须 | 必须 | 是 | 已测试 |
 | Vector collection metadata | VectorRuntime | 必须 | 必须 | 可选 | 是 | 已测试 |
 | Backup archive | BackupRuntime | 必须 | 必须 | 必须 | 是 | 已测试 |
-| Settings snapshot | SettingsRuntime | 必须 | 必须 | 必须 | 是 | 已测试 |
+| Settings snapshot | SettingsRuntime | 必须 | 必须 | 必须 | 是 | 已测试，已补持久化闭环 |
 
 ---
 

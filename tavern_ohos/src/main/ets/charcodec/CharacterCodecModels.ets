@@ -1,7 +1,7 @@
 /**
  * 限定角色卡编解码模块可接受的字符串取值范围。
  */
-export type CharacterCardFormat = 'v1' | 'v2' | 'charx' | 'png_metadata' | 'unknown';
+export type CharacterCardFormat = 'v1' | 'v2' | 'charx' | 'png_metadata' | 'webp_metadata' | 'unknown';
 /**
  * 描述角色卡编解码操作完成后返回给调用方的结果。
  */

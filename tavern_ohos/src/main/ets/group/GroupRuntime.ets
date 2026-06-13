@@ -1,10 +1,15 @@
 import { EventBus } from '../runtime/EventBus';
+import { safePathSegment } from '../shared/PathSafety';
+import { JsonStore } from '../storage/JsonStore';
+import type { TavernFileStore } from '../storage/TavernFileStore';
 import type {
   GroupCreateParams,
   GroupDeletedPayload,
   GroupEventPayload,
   GroupExportData,
   GroupGenerationRequest,
+  GroupStorageIndex,
+  GroupStorageSnapshot,
   GroupMemberAddedPayload,
   GroupMemberCreateParams,
   GroupMemberRecord,
@@ -22,6 +27,18 @@ export class GroupRuntime {
    * 事件总线。
    */
   private events: EventBus;
+  /**
+   * 文件存储适配器；未传入时仅使用内存态。
+   */
+  private files: TavernFileStore | undefined = undefined;
+  /**
+   * 数据根路径。
+   */
+  private rootPath: string = 'tavern-data';
+  /**
+   * 用户标识。
+   */
+  private userId: string = 'default';
   /**
    * groups 列表，由当前实例内部维护。
    */
@@ -42,9 +59,64 @@ export class GroupRuntime {
   /**
    * 初始化当前运行时实例。
    * @param events 事件总线。
+   * @param files 文件存储适配器。
+   * @param rootPath 数据根路径。
+   * @param userId 用户标识。
    */
-  constructor(events: EventBus) {
+  constructor(events: EventBus, files?: TavernFileStore, rootPath: string = 'tavern-data', userId: string = 'default') {
     this.events = events;
+    this.files = files;
+    this.rootPath = rootPath;
+    this.userId = userId;
+  }
+
+  /**
+   * 从 SDK 内部文件存储恢复群聊索引和群聊明细。
+   */
+  async loadFromStore(): Promise<void> {
+    const files = this.requireFiles();
+    const indexStore = new JsonStore<GroupStorageIndex>(files, this.groupIndexPath());
+    const index = await indexStore.read(this.defaultStorageIndex());
+    this.groups.clear();
+    this.members.clear();
+    this.requests.clear();
+    this.requestCounter = index.requestCounter;
+    for (let itemIndex = 0; itemIndex < index.groupIds.length; itemIndex += 1) {
+      const groupId = index.groupIds[itemIndex];
+      const path = this.groupSnapshotPath(groupId);
+      if (!(await files.exists(path))) {
+        continue;
+      }
+      const store = new JsonStore<GroupStorageSnapshot>(files, path);
+      const snapshot = await store.read(this.defaultStorageSnapshot(groupId));
+      this.groups.set(snapshot.group.id, this.cloneGroup(snapshot.group));
+      this.members.set(snapshot.group.id, this.cloneMembers(snapshot.members));
+      this.requests.set(snapshot.group.id, this.cloneRequests(snapshot.requests));
+      this.requestCounter = Math.max(this.requestCounter, this.maxRequestCounter(snapshot.requests));
+    }
+  }
+
+  /**
+   * 把当前群聊、成员、Persona 绑定和生成请求写入 SDK 内部文件存储。
+   */
+  async saveToStore(): Promise<void> {
+    const files = this.requireFiles();
+    const previousIndex = await new JsonStore<GroupStorageIndex>(files, this.groupIndexPath()).read(this.defaultStorageIndex());
+    const groupIds = Array.from(this.groups.keys()).sort();
+    for (let index = 0; index < groupIds.length; index += 1) {
+      const groupId = groupIds[index];
+      const snapshot = this.buildStorageSnapshot(groupId);
+      const store = new JsonStore<GroupStorageSnapshot>(files, this.groupSnapshotPath(groupId));
+      await store.write(snapshot);
+    }
+    await this.deleteRemovedGroupSnapshots(files, previousIndex.groupIds, groupIds);
+    const requestCounter = this.requestCounter;
+    const storageIndex: GroupStorageIndex = {
+      schemaVersion: 1,
+      groupIds: groupIds,
+      requestCounter: requestCounter,
+    };
+    await new JsonStore<GroupStorageIndex>(files, this.groupIndexPath()).write(storageIndex);
   }
 
   /**
@@ -153,10 +225,11 @@ export class GroupRuntime {
       updatedAt: now,
     };
     members.push(member);
+    const payloadMember = this.cloneMember(member);
     const payload: GroupMemberAddedPayload = {
       groupId: groupId,
       characterId: member.characterId,
-      member: this.cloneMember(member),
+      member: payloadMember,
     };
     this.events.publish<GroupMemberAddedPayload>('group.member.added', payload);
     return this.cloneMember(member);
@@ -246,10 +319,11 @@ export class GroupRuntime {
     } else {
       selected = this.selectMostTalkative(members);
     }
+    const payloadMember = this.cloneMember(selected);
     const payload: GroupSpeakerSelectedPayload = {
       groupId: groupId,
       characterId: selected.characterId,
-      member: this.cloneMember(selected),
+      member: payloadMember,
     };
     this.events.publish<GroupSpeakerSelectedPayload>('group.speaker.selected', payload);
     return this.cloneMember(selected);
@@ -322,10 +396,13 @@ export class GroupRuntime {
    * @returns 可持久化或可传输的导出内容。
    */
   exportGroup(groupId: string): GroupExportData {
+    const group = this.cloneGroup(this.requireGroup(groupId));
+    const members = this.cloneMembers(this.requireMembers(groupId));
+    const requests = this.cloneRequests(this.requireRequests(groupId));
     const data: GroupExportData = {
-      group: this.cloneGroup(this.requireGroup(groupId)),
-      members: this.cloneMembers(this.requireMembers(groupId)),
-      requests: this.cloneRequests(this.requireRequests(groupId)),
+      group: group,
+      members: members,
+      requests: requests,
     };
     return data;
   }
@@ -579,6 +656,93 @@ export class GroupRuntime {
     return value;
   }
 
+  private requireFiles(): TavernFileStore {
+    if (this.files === undefined) {
+      throw new Error('GroupRuntime storage is not configured.');
+    }
+    return this.files;
+  }
+
+  private groupDirectoryPath(): string {
+    return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/groups`;
+  }
+
+  private groupIndexPath(): string {
+    return `${this.groupDirectoryPath()}/index.json`;
+  }
+
+  private groupSnapshotPath(groupId: string): string {
+    return `${this.groupDirectoryPath()}/${safePathSegment(groupId, 'group')}.json`;
+  }
+
+  private defaultStorageIndex(): GroupStorageIndex {
+    return {
+      schemaVersion: 1,
+      groupIds: new Array<string>(),
+      requestCounter: 0,
+    };
+  }
+
+  private defaultStorageSnapshot(groupId: string): GroupStorageSnapshot {
+    const now = Date.now();
+    const group: GroupRecord = {
+      schemaVersion: 1,
+      id: groupId,
+      name: '',
+      description: '',
+      chatId: '',
+      personaId: '',
+      enabled: false,
+      activationStrategy: '',
+      createdAt: now,
+      updatedAt: now,
+    };
+    return {
+      schemaVersion: 1,
+      group: group,
+      members: new Array<GroupMemberRecord>(),
+      requests: new Array<GroupGenerationRequest>(),
+    };
+  }
+
+  private buildStorageSnapshot(groupId: string): GroupStorageSnapshot {
+    const group = this.cloneGroup(this.requireGroup(groupId));
+    const members = this.cloneMembers(this.requireMembers(groupId));
+    const requests = this.cloneRequests(this.requireRequests(groupId));
+    const snapshot: GroupStorageSnapshot = {
+      schemaVersion: 1,
+      group: group,
+      members: members,
+      requests: requests,
+    };
+    return snapshot;
+  }
+
+  private async deleteRemovedGroupSnapshots(
+    files: TavernFileStore,
+    previousGroupIds: Array<string>,
+    currentGroupIds: Array<string>,
+  ): Promise<void> {
+    const current = new Set<string>();
+    for (let index = 0; index < currentGroupIds.length; index += 1) {
+      current.add(currentGroupIds[index]);
+    }
+    for (let index = 0; index < previousGroupIds.length; index += 1) {
+      const groupId = previousGroupIds[index];
+      if (!current.has(groupId)) {
+        await files.delete(this.groupSnapshotPath(groupId));
+      }
+    }
+  }
+
+  private maxRequestCounter(requests: Array<GroupGenerationRequest>): number {
+    let max = 0;
+    for (let index = 0; index < requests.length; index += 1) {
+      max = Math.max(max, this.parseRequestCounter(requests[index].id));
+    }
+    return max;
+  }
+
   /**
    * 复制Binding 值，避免外部修改内部状态。
    */
@@ -596,8 +760,9 @@ export class GroupRuntime {
 
    */
   private publishGroupEvent(eventName: string, group: GroupRecord): void {
+    const payloadGroup = this.cloneGroup(group);
     const payload: GroupEventPayload = {
-      group: this.cloneGroup(group),
+      group: payloadGroup,
     };
     this.events.publish<GroupEventPayload>(eventName, payload);
   }

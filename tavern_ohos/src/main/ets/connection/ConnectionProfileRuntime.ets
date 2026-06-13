@@ -1,4 +1,7 @@
 import { EventBus } from '../runtime/EventBus';
+import { safePathSegment } from '../shared/PathSafety';
+import { JsonStore } from '../storage/JsonStore';
+import type { TavernFileStore } from '../storage/TavernFileStore';
 import type {
   ConnectionActiveProfilePayload,
   ConnectionActiveProfileRecord,
@@ -12,6 +15,12 @@ import type {
   ConnectionResolvedProfile,
 } from './ConnectionProfileModels';
 
+interface ConnectionProfileStorageSnapshot {
+  schemaVersion: number;
+  profiles: Array<ConnectionProfileRecord>;
+  activeProfiles: Array<ConnectionActiveProfileRecord>;
+}
+
 /**
  * 提供连接配置相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
  */
@@ -20,6 +29,18 @@ export class ConnectionProfileRuntime {
    * 事件总线。
    */
   private events: EventBus;
+  /**
+   * 文件存储适配器；未传入时仅使用内存态。
+   */
+  private files: TavernFileStore | undefined = undefined;
+  /**
+   * 数据根路径。
+   */
+  private rootPath: string = 'tavern-data';
+  /**
+   * 用户标识。
+   */
+  private userId: string = 'default';
   /**
    * profiles 列表，由当前实例内部维护。
    */
@@ -33,8 +54,43 @@ export class ConnectionProfileRuntime {
    * 初始化当前运行时实例。
    * @param events 事件总线。
    */
-  constructor(events: EventBus) {
+  constructor(events: EventBus, files?: TavernFileStore, rootPath: string = 'tavern-data', userId: string = 'default') {
     this.events = events;
+    this.files = files;
+    this.rootPath = rootPath;
+    this.userId = userId;
+  }
+
+  /**
+   * 从 SDK 内部文件存储恢复连接配置和激活绑定。
+   */
+  async loadFromStore(): Promise<void> {
+    const store = new JsonStore<ConnectionProfileStorageSnapshot>(this.requireFiles(), this.storagePath());
+    const snapshot = await store.read(this.defaultStorageSnapshot());
+    this.profiles.clear();
+    this.activeProfiles.clear();
+    for (let index = 0; index < snapshot.profiles.length; index += 1) {
+      const profile = this.cloneProfile(snapshot.profiles[index]);
+      this.profiles.set(profile.id, profile);
+    }
+    for (let index = 0; index < snapshot.activeProfiles.length; index += 1) {
+      const binding = this.cloneBinding(snapshot.activeProfiles[index]);
+      this.activeProfiles.set(this.bindingKey(binding.scope, binding.scopeId), binding);
+    }
+  }
+
+  /**
+   * 把当前连接配置和激活绑定写入 SDK 内部文件存储。
+   */
+  async saveToStore(): Promise<void> {
+    const profiles = this.cloneProfiles(Array.from(this.profiles.values()));
+    const activeProfiles = this.cloneBindings(Array.from(this.activeProfiles.values()));
+    const snapshot: ConnectionProfileStorageSnapshot = {
+      schemaVersion: 1,
+      profiles: profiles,
+      activeProfiles: activeProfiles,
+    };
+    await new JsonStore<ConnectionProfileStorageSnapshot>(this.requireFiles(), this.storagePath()).write(snapshot);
   }
 
   /**
@@ -48,8 +104,9 @@ export class ConnectionProfileRuntime {
     }
     const record = this.toRecord(params, Date.now());
     this.profiles.set(record.id, this.cloneProfile(record));
+    const payloadProfile = this.cloneProfile(record);
     const payload: ConnectionProfileEventPayload = {
-      profile: this.cloneProfile(record),
+      profile: payloadProfile,
     };
     this.events.publish<ConnectionProfileEventPayload>('connectionProfile.created', payload);
     return this.cloneProfile(record);
@@ -66,8 +123,9 @@ export class ConnectionProfileRuntime {
     const record = this.toRecord(params, Date.now());
     record.id = existing.id;
     this.profiles.set(record.id, this.cloneProfile(record));
+    const payloadProfile = this.cloneProfile(record);
     const payload: ConnectionProfileUpdatedPayload = {
-      profile: this.cloneProfile(record),
+      profile: payloadProfile,
     };
     this.events.publish<ConnectionProfileUpdatedPayload>('connectionProfile.updated', payload);
     return this.cloneProfile(record);
@@ -130,8 +188,9 @@ export class ConnectionProfileRuntime {
       updatedAt: Date.now(),
     };
     this.activeProfiles.set(this.bindingKey(scope, scopeId), this.cloneBinding(binding));
+    const payloadBinding = this.cloneBinding(binding);
     const payload: ConnectionActiveProfilePayload = {
-      binding: this.cloneBinding(binding),
+      binding: payloadBinding,
     };
     this.events.publish<ConnectionActiveProfilePayload>('connectionProfile.activeChanged', payload);
     return this.cloneBinding(binding);
@@ -148,9 +207,11 @@ export class ConnectionProfileRuntime {
       throw new Error(`Active connection profile not found: ${scope}/${scopeId}`);
     }
     const profile = this.requireProfile(binding.profileId);
+    const resolvedBinding = this.cloneBinding(binding);
+    const resolvedProfile = this.cloneProfile(profile);
     const resolved: ConnectionResolvedProfile = {
-      binding: this.cloneBinding(binding),
-      profile: this.cloneProfile(profile),
+      binding: resolvedBinding,
+      profile: resolvedProfile,
       secretRef: profile.secretRef,
     };
     return resolved;
@@ -162,6 +223,7 @@ export class ConnectionProfileRuntime {
    */
   toProviderRequest(profileId: string): ConnectionProviderRequest {
     const profile = this.requireProfile(profileId);
+    const additionalHeaders = this.cloneHeadersMasked(profile.additionalHeaders);
     const request: ConnectionProviderRequest = {
       apiType: profile.apiType,
       model: profile.model,
@@ -176,7 +238,7 @@ export class ConnectionProfileRuntime {
       reasoningFormat: profile.reasoningFormat,
       toolCallingEnabled: profile.toolCallingEnabled,
       proxyUrl: profile.proxyUrl,
-      additionalHeaders: this.cloneHeadersMasked(profile.additionalHeaders),
+      additionalHeaders: additionalHeaders,
     };
     return request;
   }
@@ -186,6 +248,7 @@ export class ConnectionProfileRuntime {
    * @param params 创建、更新或执行操作所需的参数对象。
    */
   private toRecord(params: ConnectionProfileCreateParams, updatedAt: number): ConnectionProfileRecord {
+    const additionalHeaders = this.cloneHeaders(params.additionalHeaders);
     const record: ConnectionProfileRecord = {
       id: params.id,
       name: params.name,
@@ -202,7 +265,7 @@ export class ConnectionProfileRuntime {
       reasoningFormat: params.reasoningFormat,
       toolCallingEnabled: params.toolCallingEnabled,
       proxyUrl: params.proxyUrl,
-      additionalHeaders: this.cloneHeaders(params.additionalHeaders),
+      additionalHeaders: additionalHeaders,
       enabled: params.enabled,
       updatedAt: updatedAt,
     };
@@ -221,10 +284,31 @@ export class ConnectionProfileRuntime {
     return profile;
   }
 
+  private requireFiles(): TavernFileStore {
+    if (this.files === undefined) {
+      throw new Error('ConnectionProfileRuntime storage is not configured.');
+    }
+    return this.files;
+  }
+
+  private storagePath(): string {
+    return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/connection-profiles/index.json`;
+  }
+
+  private defaultStorageSnapshot(): ConnectionProfileStorageSnapshot {
+    return {
+      schemaVersion: 1,
+      profiles: new Array<ConnectionProfileRecord>(),
+      activeProfiles: new Array<ConnectionActiveProfileRecord>(),
+    };
+  }
+
   /**
    * 复制Profile 值，避免外部修改内部状态。
    */
   private cloneProfile(profile: ConnectionProfileRecord): ConnectionProfileRecord {
+    const stopStrings = profile.stopStrings.slice();
+    const additionalHeaders = this.cloneHeaders(profile.additionalHeaders);
     return {
       id: profile.id,
       name: profile.name,
@@ -237,11 +321,11 @@ export class ConnectionProfileRuntime {
       contextTemplateId: profile.contextTemplateId,
       instructTemplateId: profile.instructTemplateId,
       tokenizer: profile.tokenizer,
-      stopStrings: profile.stopStrings.slice(),
+      stopStrings: stopStrings,
       reasoningFormat: profile.reasoningFormat,
       toolCallingEnabled: profile.toolCallingEnabled,
       proxyUrl: profile.proxyUrl,
-      additionalHeaders: this.cloneHeaders(profile.additionalHeaders),
+      additionalHeaders: additionalHeaders,
       enabled: profile.enabled,
       updatedAt: profile.updatedAt,
     };
@@ -270,6 +354,14 @@ export class ConnectionProfileRuntime {
       profileId: binding.profileId,
       updatedAt: binding.updatedAt,
     };
+  }
+
+  private cloneBindings(bindings: Array<ConnectionActiveProfileRecord>): Array<ConnectionActiveProfileRecord> {
+    const result = new Array<ConnectionActiveProfileRecord>();
+    for (let index = 0; index < bindings.length; index += 1) {
+      result.push(this.cloneBinding(bindings[index]));
+    }
+    return result;
   }
 
   /**

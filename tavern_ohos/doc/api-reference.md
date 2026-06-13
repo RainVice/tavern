@@ -164,8 +164,10 @@ new CharacterRuntime(files: TavernFileStore, events: EventBus, rootPath: string,
 |---|---|
 | `parseCharacterJson(json)` | 解析 V1、V2、charx JSON |
 | `parsePngCharacterCard(data)` | 从 PNG metadata 中解析角色卡 |
+| `parseWebpCharacterCard(data)` | 从 WebP metadata 中解析角色卡 |
 | `exportToV2(result)` | 把解析结果导出为 V2 JSON |
 | `exportToPng(result, sourcePng)` | 把 V2 JSON 写入 PNG metadata |
+| `exportToWebp(result, sourceWebp)` | 把 V2 JSON 写入 WebP metadata |
 | `detectFormat(data)` | 判断 JSON 格式 |
 | `detectBinaryFormat(data)` | 判断二进制角色卡格式 |
 | `parseCharacterBook(json)` | 解析 CharacterBook |
@@ -366,6 +368,8 @@ interface ProviderStreamSource {
 
 | 方法 | 说明 | 事件 |
 |---|---|---|
+| `loadFromStore()` | 从 `users/<userId>/connection-profiles/index.json` 恢复连接配置和激活绑定 | 无 |
+| `saveToStore()` | 把当前连接配置和激活绑定写入文件存储 | 无 |
 | `createProfile(params)` | 创建连接配置 | `connectionProfile.created` |
 | `updateProfile(profileId, params)` | 更新连接配置 | `connectionProfile.updated` |
 | `getProfile(profileId)` | 读取配置 | 无 |
@@ -379,6 +383,8 @@ interface ProviderStreamSource {
 
 | 方法 | 说明 | 事件 |
 |---|---|---|
+| `loadFromStore()` | 从 `users/<userId>/secrets/index.json` 恢复密钥记录和值 | 无 |
+| `saveToStore()` | 把当前密钥记录和值写入文件存储 | 无 |
 | `createSecret(params)` | 创建密钥引用和值 | `secret.created` |
 | `updateSecret(secretRef, label, active)` | 更新标签和启用状态 | `secret.updated` |
 | `deleteSecret(secretRef)` | 删除密钥 | `secret.deleted` |
@@ -535,6 +541,8 @@ interface ProviderStreamSource {
 
 | 方法 | 说明 |
 |---|---|
+| `loadFromStore()` | 从 `users/<userId>/personas/index.json` 恢复用户人格、选中人格和作用域绑定 |
+| `saveToStore()` | 把当前用户人格、选中人格和作用域绑定写入文件存储 |
 | `createPersona(params)` | 创建用户人格 |
 | `updatePersona(personaId, params)` | 更新 |
 | `getPersona(personaId)` | 读取 |
@@ -560,6 +568,8 @@ interface ProviderStreamSource {
 
 | 方法 | 说明 |
 |---|---|
+| `loadFromStore()` | 从 `users/<userId>/presets/index.json` 恢复预设和绑定关系 |
+| `saveToStore()` | 把当前预设和绑定关系写入文件存储 |
 | `createPreset(params)` | 创建预设 |
 | `updatePreset(presetId, params)` | 更新 |
 | `getPreset(presetId)` | 读取 |
@@ -584,6 +594,8 @@ interface ProviderStreamSource {
 
 | 方法 | 说明 |
 |---|---|
+| `loadFromStore()` | 从 `users/<userId>/quick-replies/sets/index.json` 恢复快捷回复集合 |
+| `saveToStore()` | 把当前快捷回复集合写入文件存储 |
 | `createSet(params)` | 创建快捷回复集合 |
 | `getSet(setId)` | 读取集合 |
 | `listSets()` | 列出集合 |
@@ -696,6 +708,8 @@ interface ProviderStreamSource {
 
 ### SettingsRuntime
 
+- `loadFromStore()`
+- `saveToStore()`
 - `registerSchema(params)`
 - `setSetting(scope, scopeId, key, value)`
 - `getSetting(scope, scopeId, key)`
@@ -708,6 +722,8 @@ interface ProviderStreamSource {
 事件：
 
 - `settings.changed`
+
+`SettingsRuntime.loadFromStore()` / `saveToStore()` 使用 `users/<userId>/settings.json`，保存 schema、条目和迁移记录。密钥值不要放入普通 settings，应使用 `SecretRuntime`。
 
 ## 十五、其他公开 Runtime 速查
 
@@ -745,7 +761,7 @@ interface ProviderStreamSource {
 | `BookmarkRuntime` | `createCheckpoint(messages, messageIndex, nameInput, mainChatName)`、`createBranch(messages, messageIndex, nameInput, mainChatName, swipeIndex?)`、`suggestCheckpointName(input)`、`suggestBranchName(input)` | 从聊天历史生成检查点或分支名称 |
 | `BranchRuntime` | `createBranch(params)`、`createCheckpoint(params)`、`activateBranch(branchId)`、`getActiveBranch(parentChatId)`、`listBranches(parentChatId)`、`getLineage(chatId)`、`exportBranch(branchId)`、`restoreBranch(data, newBranchId, newChildChatId)` | 管理聊天分支和检查点 |
 | `AttachmentRuntime` | `createAttachment(params)`、`getAttachment(attachmentId)`、`listAttachments()`、`bindAttachment(attachmentId, targetType, targetId)`、`listBindings(attachmentId)`、`listAttachmentsForTarget(targetType, targetId)`、`markCaptionResult(...)`、`markTranslationResult(...)`、`listPromptAttachments()`、`listRagDocuments()`、`exportAttachment(...)`、`importAttachment(...)`、`deleteAttachment(...)` | 管理消息附件、Prompt 附件和 RAG 文档附件 |
-| `GroupRuntime` | `createGroup(params)`、`updateGroup(groupId, params)`、`deleteGroup(groupId)`、`getGroup(groupId)`、`listGroups()`、`addMember(...)`、`removeMember(...)`、`reorderMembers(...)`、`listMembers(groupId)`、`bindPersona(...)`、`selectSpeaker(...)`、`buildPromptData(...)`、`queueRegenerate(...)`、`queueContinue(...)`、`queueToolCall(...)`、`listGenerationRequests(...)`、`exportGroup(...)`、`importGroup(...)` | 管理群聊、成员、发言者和群聊生成队列 |
+| `GroupRuntime` | `loadFromStore()`、`saveToStore()`、`createGroup(params)`、`updateGroup(groupId, params)`、`deleteGroup(groupId)`、`getGroup(groupId)`、`listGroups()`、`addMember(...)`、`removeMember(...)`、`reorderMembers(...)`、`listMembers(groupId)`、`bindPersona(...)`、`selectSpeaker(...)`、`buildPromptData(...)`、`queueRegenerate(...)`、`queueContinue(...)`、`queueToolCall(...)`、`listGenerationRequests(...)`、`exportGroup(...)`、`importGroup(...)` | 管理群聊、成员、发言者、群聊生成队列和群聊持久化 |
 | `CommandRuntime` | `registerCommand(params)`、`unregisterCommand(name)`、`parseText(text)`、`executeText(text, options)`、`executePipeline(text, options)`、`autocomplete(prefix)`、`getHelp(name)`、`listCommands()` | 注册、解析和执行 slash command |
 | `ToolCallingRuntime` | `registerTool(params)`、`unregisterTool(name)`、`listTools()`、`listOpenAITools()`、`invokeToolCalls(calls, reasoningText)`、`executeCallLoop(params)`、`formatInvocationMessage(invocation)` | 管理 OpenAI tool calling 兼容工具 |
 | `PluginRuntime` | `installPlugin(manifest)`、`uninstallPlugin(pluginId)`、`enablePlugin(pluginId)`、`disablePlugin(pluginId)`、`getPlugin(pluginId)`、`listPlugins()`、`registerHook(...)`、`unregisterHook(...)`、`dispatchHook(...)`、`setPluginSetting(...)`、`getPluginSetting(...)`、`listPluginSettings(...)`、`addPromptInjection(...)`、`removePluginPromptInjections(pluginId)`、`getPromptInjections(hookPoint)`、`listHooks(pluginId)`、`exportPlugin(...)`、`importPlugin(...)` | 管理插件兼容子集、hook、设置和 Prompt 注入 |
@@ -755,7 +771,7 @@ interface ProviderStreamSource {
 | Runtime | 方法 | 用途 |
 |---|---|---|
 | `ImageRuntime` | `uploadImage(params)`、`readImageContent(imageId)`、`listImages(folderName, sortOrder)`、`listFolders()`、`deleteImage(imageId)` | 管理图片资源 |
-| `ImageMetadataRuntime` | `detectFormat(data)`、`extractMetadata(data)`、`extractCharacterCard(data)`、`writeMetadata(params)`、`writePngCharacterCard(data, cardJson)`、`isValidImage(data)` | 读取和写入图片 metadata，支持 PNG 角色卡 |
+| `ImageMetadataRuntime` | `detectFormat(data)`、`extractMetadata(data)`、`extractCharacterCard(data)`、`writeMetadata(params)`、`writePngCharacterCard(data, cardJson)`、`writeWebpCharacterCard(data, cardJson)`、`isValidImage(data)` | 读取和写入图片 metadata，支持 PNG / WebP 角色卡 |
 | `ImageCaptionRuntime` | `startCaption(params)`、`updateProgress(taskId, progress)`、`completeCaption(taskId, result)`、`failCaption(taskId, error)`、`cancelCaption(taskId)`、`getTask(taskId)`、`listTasks(status?)`、`buildVisionRequest(model, imageUrl, prompt)`、`exportData()`、`importData(data)` | 管理图片描述任务和视觉模型请求体 |
 | `GalleryRuntime` | `addImage(characterId, fileName, mimeType, path)`、`removeImage(imageId)`、`getImage(imageId)`、`listImages(characterId?)`、`setCaption(imageId, caption)`、`exportData()`、`importData(data)` | 管理角色图库 |
 | `BackgroundRuntime` | `importBackground(params)`、`listBackgrounds()`、`listFolders()`、`activateBackground(fileName)`、`renameBackground(backgroundId, newFileName)`、`deleteBackground(backgroundId)` | 管理聊天背景图 |

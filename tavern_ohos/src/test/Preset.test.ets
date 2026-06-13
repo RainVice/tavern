@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   EventBus,
+  InMemoryFileStore,
   PresetRuntime,
   type PresetBindingRecord,
   type PresetCreateParams,
@@ -87,6 +88,24 @@ export default function presetUnitTest() {
       expect(migrated.fields[0].name).assertEqual('system_prompt');
       expect(migratedIds.length).assertEqual(1);
       expect(migratedIds[0]).assertEqual('preset-5');
+    });
+
+    it('persists presets and owner bindings', 0, async () => {
+      // 文件存储实例。
+      const files = new InMemoryFileStore();
+      // 运行时实例。
+      const runtime = new PresetRuntime(new EventBus(), files, 'tavern-data', 'default');
+      runtime.createPreset(makePreset('preset-persist', 'Persistent Preset', 'generation'));
+      runtime.bindPreset('chat', 'chat-persist', 'generation', 'preset-persist');
+      await runtime.saveToStore();
+
+      const restored = new PresetRuntime(new EventBus(), files, 'tavern-data', 'default');
+      await restored.loadFromStore();
+
+      expect(await files.exists('tavern-data/users/default/presets/index.json')).assertTrue();
+      expect(restored.getPreset('preset-persist').name).assertEqual('Persistent Preset');
+      expect(restored.getBinding('chat', 'chat-persist', 'generation').presetId).assertEqual('preset-persist');
+      expect(restored.listPresets('generation').length).assertEqual(1);
     });
 
     it('does not expose internal preset fields or bindings', 0, () => {

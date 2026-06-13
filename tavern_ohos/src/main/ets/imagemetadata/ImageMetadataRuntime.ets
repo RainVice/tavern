@@ -27,6 +27,32 @@ interface PngChunkInfo {
 }
 
 /**
+ * 描述 WebP RIFF chunk 在文件中的位置。
+ */
+interface WebpChunkInfo {
+  /**
+   * offset 值，由当前实例内部维护。
+   */
+  offset: number;
+  /**
+   * length 值，由当前实例内部维护。
+   */
+  length: number;
+  /**
+   * type 值，由当前实例内部维护。
+   */
+  type: string;
+  /**
+   * data Offset 值，由当前实例内部维护。
+   */
+  dataOffset: number;
+  /**
+   * total Length 值，由当前实例内部维护。
+   */
+  totalLength: number;
+}
+
+/**
  * 提供图片元数据相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
  */
 export class ImageMetadataRuntime {
@@ -64,6 +90,17 @@ export class ImageMetadataRuntime {
           hasCard = true;
         }
       }
+    } else if (format === 'webp') {
+      const bytes = new Uint8Array(data);
+      const parsedChunks = this.scanWebpChunks(bytes);
+      for (let index = 0; index < parsedChunks.length; index += 1) {
+        const chunkInfo = parsedChunks[index];
+        const chunk: ImageMetadataChunk = { type: chunkInfo.type, size: chunkInfo.length };
+        chunks.push(chunk);
+        if (this.isCharacterCardWebpChunk(bytes, chunkInfo)) {
+          hasCard = true;
+        }
+      }
     }
     // 简单尺寸估计
     return { format, width: 0, height: 0, hasCharacterCard: hasCard, rawChunks: chunks };
@@ -81,6 +118,8 @@ export class ImageMetadataRuntime {
     };
     if (metadata.format === 'png') {
       result.characterCardJson = this.extractPngCharacterCardJson(new Uint8Array(data));
+    } else if (metadata.format === 'webp') {
+      result.characterCardJson = this.extractWebpCharacterCardJson(new Uint8Array(data));
     }
     return result;
   }
@@ -92,6 +131,9 @@ export class ImageMetadataRuntime {
   writeMetadata(params: MetadataWriteParams): ArrayBuffer {
     if (params.sourceData === undefined) {
       throw new Error('缺少源图片数据');
+    }
+    if (params.format === 'webp') {
+      return this.writeWebpCharacterCard(params.sourceData, params.characterCardJson);
     }
     if (params.format !== 'png') {
       throw new Error(`暂不支持写入该图片元数据格式: ${params.format}`);
@@ -139,6 +181,40 @@ export class ImageMetadataRuntime {
   }
 
   /**
+   * 写入 WebP 角色卡 metadata。
+   * @param data 导入或恢复使用的序列化数据。
+   * @param characterCardJson character Card JSON 字符串。
+   */
+  writeWebpCharacterCard(data: ArrayBuffer, characterCardJson: string): ArrayBuffer {
+    const bytes = new Uint8Array(data);
+    if (this.detectFormat(data) !== 'webp') {
+      throw new Error('不是有效 WebP 图片');
+    }
+    const chunks = this.scanWebpChunks(bytes);
+    const cardChunk = this.createWebpMetadataChunk(characterCardJson);
+    const parts = new Array<Uint8Array>();
+    parts.push(this.copyBytes(bytes, 0, 12));
+    let copiedOffset = 12;
+    for (let index = 0; index < chunks.length; index += 1) {
+      const chunk = chunks[index];
+      if (chunk.offset > copiedOffset) {
+        parts.push(this.copyBytes(bytes, copiedOffset, chunk.offset - copiedOffset));
+      }
+      if (!this.isCharacterCardWebpChunk(bytes, chunk)) {
+        parts.push(this.copyBytes(bytes, chunk.offset, chunk.totalLength));
+      }
+      copiedOffset = chunk.offset + chunk.totalLength;
+    }
+    if (copiedOffset < bytes.length) {
+      parts.push(this.copyBytes(bytes, copiedOffset, bytes.length - copiedOffset));
+    }
+    parts.push(cardChunk);
+    const result = this.concatBytes(parts);
+    this.writeUint32LittleEndian(result, 4, result.length - 8);
+    return result.buffer;
+  }
+
+  /**
    * 判断Valid Image 值是否满足条件。
    * @param data 导入或恢复使用的序列化数据。
    * @returns 条件命中时返回 true，否则返回 false。
@@ -168,6 +244,30 @@ export class ImageMetadataRuntime {
       if (type === 'IEND') {
         break;
       }
+    }
+    return chunks;
+  }
+
+  private scanWebpChunks(bytes: Uint8Array): Array<WebpChunkInfo> {
+    const chunks = new Array<WebpChunkInfo>();
+    let offset = 12;
+    while (offset <= bytes.length - 8) {
+      const type = this.bytesToAscii(bytes, offset, 4);
+      const length = this.readUint32LittleEndian(bytes, offset + 4);
+      const paddedLength = length + (length % 2);
+      const totalLength = paddedLength + 8;
+      if (offset + totalLength > bytes.length) {
+        break;
+      }
+      const chunkInfo: WebpChunkInfo = {
+        offset: offset,
+        length: length,
+        type: type,
+        dataOffset: offset + 8,
+        totalLength: totalLength,
+      };
+      chunks.push(chunkInfo);
+      offset += totalLength;
     }
     return chunks;
   }
@@ -220,6 +320,45 @@ export class ImageMetadataRuntime {
     return '';
   }
 
+  private isCharacterCardWebpChunk(bytes: Uint8Array, chunk: WebpChunkInfo): boolean {
+    if (chunk.type !== 'EXIF') {
+      return false;
+    }
+    const separator = this.findNullByte(bytes, chunk.dataOffset, chunk.length);
+    if (separator < 0) {
+      return false;
+    }
+    const keyword = this.bytesToAscii(bytes, chunk.dataOffset, separator - chunk.dataOffset);
+    return keyword === 'chara' || keyword === 'ccv3';
+  }
+
+  private extractWebpCharacterCardJson(bytes: Uint8Array): string {
+    const chunks = this.scanWebpChunks(bytes);
+    for (let index = 0; index < chunks.length; index += 1) {
+      const chunk = chunks[index];
+      if (!this.isCharacterCardWebpChunk(bytes, chunk)) {
+        continue;
+      }
+      const separator = this.findNullByte(bytes, chunk.dataOffset, chunk.length);
+      if (separator < 0) {
+        continue;
+      }
+      const keyword = this.bytesToAscii(bytes, chunk.dataOffset, separator - chunk.dataOffset);
+      const textStart = separator + 1;
+      const textLength = chunk.dataOffset + chunk.length - textStart;
+      const text = this.bytesToAscii(bytes, textStart, textLength);
+      if (keyword === 'ccv3' && text.startsWith('{')) {
+        return text;
+      }
+      try {
+        return this.utf8BytesToString(this.base64Decode(text));
+      } catch (error) {
+        return text;
+      }
+    }
+    return '';
+  }
+
   /**
    * 创建新的文本Chunk记录，写入存储并返回副本。
 
@@ -249,6 +388,30 @@ export class ImageMetadataRuntime {
     return chunk;
   }
 
+  private createWebpMetadataChunk(characterCardJson: string): Uint8Array {
+    const keywordBytes = this.asciiStringToBytes('chara');
+    const textBytes = this.asciiStringToBytes(this.base64Encode(this.stringToUtf8Bytes(characterCardJson)));
+    const dataLength = keywordBytes.length + 1 + textBytes.length;
+    const paddedLength = dataLength + (dataLength % 2);
+    const chunk = new Uint8Array(8 + paddedLength);
+    chunk[0] = 0x45;
+    chunk[1] = 0x58;
+    chunk[2] = 0x49;
+    chunk[3] = 0x46;
+    this.writeUint32LittleEndian(chunk, 4, dataLength);
+    for (let index = 0; index < keywordBytes.length; index += 1) {
+      chunk[8 + index] = keywordBytes[index];
+    }
+    chunk[8 + keywordBytes.length] = 0;
+    for (let index = 0; index < textBytes.length; index += 1) {
+      chunk[9 + keywordBytes.length + index] = textBytes[index];
+    }
+    if (paddedLength > dataLength) {
+      chunk[8 + paddedLength - 1] = 0;
+    }
+    return chunk;
+  }
+
   /**
    * 读取Uint32 值，并转换为运行时使用的数据结构。
 
@@ -256,6 +419,9 @@ export class ImageMetadataRuntime {
    */
   private readUint32(bytes: Uint8Array, offset: number): number {
     return bytes[offset] * 16777216 + bytes[offset + 1] * 65536 + bytes[offset + 2] * 256 + bytes[offset + 3];
+  }
+  private readUint32LittleEndian(bytes: Uint8Array, offset: number): number {
+    return bytes[offset] + bytes[offset + 1] * 256 + bytes[offset + 2] * 65536 + bytes[offset + 3] * 16777216;
   }
 
   /**
@@ -269,6 +435,12 @@ export class ImageMetadataRuntime {
     bytes[offset + 1] = Math.floor(value / 65536) & 0xff;
     bytes[offset + 2] = Math.floor(value / 256) & 0xff;
     bytes[offset + 3] = value & 0xff;
+  }
+  private writeUint32LittleEndian(bytes: Uint8Array, offset: number, value: number): void {
+    bytes[offset] = value & 0xff;
+    bytes[offset + 1] = Math.floor(value / 256) & 0xff;
+    bytes[offset + 2] = Math.floor(value / 65536) & 0xff;
+    bytes[offset + 3] = Math.floor(value / 16777216) & 0xff;
   }
 
   /**

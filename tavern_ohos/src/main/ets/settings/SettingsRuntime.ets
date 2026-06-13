@@ -1,4 +1,7 @@
 import { EventBus } from '../runtime/EventBus';
+import { safePathSegment } from '../shared/PathSafety';
+import { JsonStore } from '../storage/JsonStore';
+import type { TavernFileStore } from '../storage/TavernFileStore';
 import type {
   SettingChangedPayload,
   SettingEntry,
@@ -8,6 +11,13 @@ import type {
   SettingSnapshot,
 } from './SettingsModels';
 
+interface SettingsStorageSnapshot {
+  schemaVersion: number;
+  schemas: Array<SettingSchemaRecord>;
+  entries: Array<SettingEntry>;
+  migrationMetadata: Array<SettingMigrationRecord>;
+}
+
 /**
  * 提供设置相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
  */
@@ -16,6 +26,18 @@ export class SettingsRuntime {
    * 事件总线。
    */
   private events: EventBus;
+  /**
+   * 文件存储适配器；未传入时仅使用内存态。
+   */
+  private files: TavernFileStore | undefined = undefined;
+  /**
+   * 数据根路径。
+   */
+  private rootPath: string = 'tavern-data';
+  /**
+   * 用户标识。
+   */
+  private userId: string = 'default';
   /**
    * schemas 列表，由当前实例内部维护。
    */
@@ -33,8 +55,47 @@ export class SettingsRuntime {
    * 初始化当前运行时实例。
    * @param events 事件总线。
    */
-  constructor(events: EventBus) {
+  constructor(events: EventBus, files?: TavernFileStore, rootPath: string = 'tavern-data', userId: string = 'default') {
     this.events = events;
+    this.files = files;
+    this.rootPath = rootPath;
+    this.userId = userId;
+  }
+
+  /**
+   * 从 SDK 内部文件存储恢复设置 schema、条目和迁移记录。
+   */
+  async loadFromStore(): Promise<void> {
+    const store = new JsonStore<SettingsStorageSnapshot>(this.requireFiles(), this.storagePath());
+    const snapshot = await store.read(this.defaultStorageSnapshot());
+    this.schemas.clear();
+    this.entries.clear();
+    this.migrations = this.cloneMigrations(snapshot.migrationMetadata);
+    for (let index = 0; index < snapshot.schemas.length; index += 1) {
+      const schema = this.cloneSchema(snapshot.schemas[index]);
+      this.schemas.set(schema.key, schema);
+    }
+    for (let index = 0; index < snapshot.entries.length; index += 1) {
+      const entry = this.cloneEntry(snapshot.entries[index]);
+      this.entries.set(this.entryKey(entry.scope, entry.scopeId, entry.key), entry);
+    }
+  }
+
+  /**
+   * 把当前设置 schema、条目和迁移记录写入 SDK 内部文件存储。
+   */
+  async saveToStore(): Promise<void> {
+    const schemas = this.cloneSchemas(Array.from(this.schemas.values()));
+    const entries = this.cloneEntries(Array.from(this.entries.values()));
+    const migrations = this.cloneMigrations(this.migrations);
+    const schemaVersion = this.maxSchemaVersion(entries);
+    const snapshot: SettingsStorageSnapshot = {
+      schemaVersion: schemaVersion,
+      schemas: schemas,
+      entries: entries,
+      migrationMetadata: migrations,
+    };
+    await new JsonStore<SettingsStorageSnapshot>(this.requireFiles(), this.storagePath()).write(snapshot);
   }
 
   /**
@@ -167,10 +228,12 @@ export class SettingsRuntime {
   snapshot(): SettingSnapshot {
     const entries = this.cloneEntries(Array.from(this.entries.values()));
     const maxVersion = this.maxSchemaVersion(entries);
+    const snapshotEntries = this.cloneEntries(entries);
+    const migrationMetadata = this.cloneMigrations(this.migrations);
     const snapshot: SettingSnapshot = {
       schemaVersion: maxVersion,
-      entries: this.cloneEntries(entries),
-      migrationMetadata: this.cloneMigrations(this.migrations),
+      entries: snapshotEntries,
+      migrationMetadata: migrationMetadata,
     };
     return snapshot;
   }
@@ -217,6 +280,26 @@ export class SettingsRuntime {
     }
     return schema;
   }
+
+  private requireFiles(): TavernFileStore {
+    if (this.files === undefined) {
+      throw new Error('SettingsRuntime storage is not configured.');
+    }
+    return this.files;
+  }
+
+  private storagePath(): string {
+    return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/settings.json`;
+  }
+
+  private defaultStorageSnapshot(): SettingsStorageSnapshot {
+    return {
+      schemaVersion: 1,
+      schemas: new Array<SettingSchemaRecord>(),
+      entries: new Array<SettingEntry>(),
+      migrationMetadata: new Array<SettingMigrationRecord>(),
+    };
+  }
   private maxSchemaVersion(entries: Array<SettingEntry>): number {
     let version = 0;
     const schemas = Array.from(this.schemas.values());
@@ -247,6 +330,14 @@ export class SettingsRuntime {
       schemaVersion: schema.schemaVersion,
       description: schema.description,
     };
+  }
+
+  private cloneSchemas(schemas: Array<SettingSchemaRecord>): Array<SettingSchemaRecord> {
+    const result = new Array<SettingSchemaRecord>();
+    for (let index = 0; index < schemas.length; index += 1) {
+      result.push(this.cloneSchema(schemas[index]));
+    }
+    return result;
   }
 
   /**

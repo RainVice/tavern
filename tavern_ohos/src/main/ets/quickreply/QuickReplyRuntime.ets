@@ -5,6 +5,9 @@ import type {
   CommandPipelineResult,
 } from '../command/CommandModels';
 import { EventBus } from '../runtime/EventBus';
+import { safePathSegment } from '../shared/PathSafety';
+import { JsonStore } from '../storage/JsonStore';
+import type { TavernFileStore } from '../storage/TavernFileStore';
 import type {
   QuickReplyButtonData,
   QuickReplyExecutedPayload,
@@ -16,6 +19,11 @@ import type {
   QuickReplySetRecord,
   QuickReplySetUpdatedPayload,
 } from './QuickReplyModels';
+
+interface QuickReplyStorageSnapshot {
+  schemaVersion: number;
+  sets: Array<QuickReplySetRecord>;
+}
 
 /**
  * 提供快捷回复相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
@@ -30,6 +38,18 @@ export class QuickReplyRuntime {
    */
   private commands: CommandRuntime;
   /**
+   * 文件存储适配器；未传入时仅使用内存态。
+   */
+  private files: TavernFileStore | undefined = undefined;
+  /**
+   * 数据根路径。
+   */
+  private rootPath: string = 'tavern-data';
+  /**
+   * 用户标识。
+   */
+  private userId: string = 'default';
+  /**
    * sets 列表，由当前实例内部维护。
    */
   private sets: Map<string, QuickReplySetRecord> = new Map<string, QuickReplySetRecord>();
@@ -38,9 +58,43 @@ export class QuickReplyRuntime {
    * 注入快捷回复运行时依赖并初始化实例状态。
    * @param events 事件总线。
    */
-  constructor(events: EventBus, commands: CommandRuntime) {
+  constructor(
+    events: EventBus,
+    commands: CommandRuntime,
+    files?: TavernFileStore,
+    rootPath: string = 'tavern-data',
+    userId: string = 'default',
+  ) {
     this.events = events;
     this.commands = commands;
+    this.files = files;
+    this.rootPath = rootPath;
+    this.userId = userId;
+  }
+
+  /**
+   * 从 SDK 内部文件存储恢复快捷回复集合。
+   */
+  async loadFromStore(): Promise<void> {
+    const store = new JsonStore<QuickReplyStorageSnapshot>(this.requireFiles(), this.storagePath());
+    const snapshot = await store.read(this.defaultStorageSnapshot());
+    this.sets.clear();
+    for (let index = 0; index < snapshot.sets.length; index += 1) {
+      const set = this.cloneSet(snapshot.sets[index]);
+      this.sets.set(set.id, set);
+    }
+  }
+
+  /**
+   * 把当前快捷回复集合写入 SDK 内部文件存储。
+   */
+  async saveToStore(): Promise<void> {
+    const sets = this.cloneSets(Array.from(this.sets.values()));
+    const snapshot: QuickReplyStorageSnapshot = {
+      schemaVersion: 1,
+      sets: sets,
+    };
+    await new JsonStore<QuickReplyStorageSnapshot>(this.requireFiles(), this.storagePath()).write(snapshot);
   }
 
   /**
@@ -193,25 +247,34 @@ export class QuickReplyRuntime {
     const item = this.requireItem(set, itemId);
     if (!set.enabled || !this.isRunnableItem(item)) {
       const skipped = this.makeSkippedResult(item);
+      const skippedSet = this.cloneSet(set);
+      const skippedItem = this.cloneItem(item);
+      const skippedResult = this.cloneCommandResult(skipped);
       return {
-        set: this.cloneSet(set),
-        item: this.cloneItem(item),
+        set: skippedSet,
+        item: skippedItem,
         executed: false,
-        commandResult: this.cloneCommandResult(skipped),
+        commandResult: skippedResult,
       };
     }
     const commandResult = await this.executeCommand(item.command, options);
+    const payloadSet = this.cloneSet(set);
+    const payloadItem = this.cloneItem(item);
+    const payloadCommandResult = this.cloneCommandResult(commandResult);
     const payload: QuickReplyExecutedPayload = {
-      set: this.cloneSet(set),
-      item: this.cloneItem(item),
-      commandResult: this.cloneCommandResult(commandResult),
+      set: payloadSet,
+      item: payloadItem,
+      commandResult: payloadCommandResult,
     };
     this.events.publish<QuickReplyExecutedPayload>('quickReply.executed', payload);
+    const resultSet = this.cloneSet(set);
+    const resultItem = this.cloneItem(item);
+    const resultCommandResult = this.cloneCommandResult(commandResult);
     return {
-      set: this.cloneSet(set),
-      item: this.cloneItem(item),
+      set: resultSet,
+      item: resultItem,
       executed: commandResult.ok,
-      commandResult: this.cloneCommandResult(commandResult),
+      commandResult: resultCommandResult,
     };
   }
 
@@ -252,8 +315,9 @@ export class QuickReplyRuntime {
    * @returns 可持久化或可传输的导出内容。
    */
   exportSet(setId: string): QuickReplyExportData {
+    const set = this.cloneSet(this.requireSet(setId));
     const data: QuickReplyExportData = {
-      set: this.cloneSet(this.requireSet(setId)),
+      set: set,
     };
     return data;
   }
@@ -374,6 +438,24 @@ export class QuickReplyRuntime {
     return set;
   }
 
+  private requireFiles(): TavernFileStore {
+    if (this.files === undefined) {
+      throw new Error('QuickReplyRuntime storage is not configured.');
+    }
+    return this.files;
+  }
+
+  private storagePath(): string {
+    return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/quick-replies/sets/index.json`;
+  }
+
+  private defaultStorageSnapshot(): QuickReplyStorageSnapshot {
+    return {
+      schemaVersion: 1,
+      sets: new Array<QuickReplySetRecord>(),
+    };
+  }
+
   /**
    * 读取必须存在的Item 值，缺失时抛出错误。
 
@@ -420,6 +502,14 @@ export class QuickReplyRuntime {
     return cloned;
   }
 
+  private cloneSets(sets: Array<QuickReplySetRecord>): Array<QuickReplySetRecord> {
+    const cloned = new Array<QuickReplySetRecord>();
+    for (let index = 0; index < sets.length; index += 1) {
+      cloned.push(this.cloneSet(sets[index]));
+    }
+    return cloned;
+  }
+
   /**
    * 复制Item 值，避免外部修改内部状态。
    * @param item 项目记录。
@@ -458,8 +548,9 @@ export class QuickReplyRuntime {
 
    */
   private publishSetUpdated(set: QuickReplySetRecord): void {
+    const payloadSet = this.cloneSet(set);
     const payload: QuickReplySetUpdatedPayload = {
-      set: this.cloneSet(set),
+      set: payloadSet,
     };
     this.events.publish<QuickReplySetUpdatedPayload>('quickReply.setUpdated', payload);
   }

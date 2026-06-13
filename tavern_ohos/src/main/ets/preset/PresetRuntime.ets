@@ -1,4 +1,7 @@
 import { EventBus } from '../runtime/EventBus';
+import { safePathSegment } from '../shared/PathSafety';
+import { JsonStore } from '../storage/JsonStore';
+import type { TavernFileStore } from '../storage/TavernFileStore';
 import type {
   PresetBindingRecord,
   PresetBoundPayload,
@@ -12,6 +15,12 @@ import type {
   PresetUpdateParams,
 } from './PresetModels';
 
+interface PresetStorageSnapshot {
+  schemaVersion: number;
+  presets: Array<PresetRecord>;
+  bindings: Array<PresetBindingRecord>;
+}
+
 /**
  * 提供预设相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
  */
@@ -20,6 +29,18 @@ export class PresetRuntime {
    * 事件总线。
    */
   private events: EventBus;
+  /**
+   * 文件存储适配器；未传入时仅使用内存态。
+   */
+  private files: TavernFileStore | undefined = undefined;
+  /**
+   * 数据根路径。
+   */
+  private rootPath: string = 'tavern-data';
+  /**
+   * 用户标识。
+   */
+  private userId: string = 'default';
   /**
    * presets 列表，由当前实例内部维护。
    */
@@ -33,8 +54,43 @@ export class PresetRuntime {
    * 初始化当前运行时实例。
    * @param events 事件总线。
    */
-  constructor(events: EventBus) {
+  constructor(events: EventBus, files?: TavernFileStore, rootPath: string = 'tavern-data', userId: string = 'default') {
     this.events = events;
+    this.files = files;
+    this.rootPath = rootPath;
+    this.userId = userId;
+  }
+
+  /**
+   * 从 SDK 内部文件存储恢复预设和绑定关系。
+   */
+  async loadFromStore(): Promise<void> {
+    const store = new JsonStore<PresetStorageSnapshot>(this.requireFiles(), this.storagePath());
+    const snapshot = await store.read(this.defaultStorageSnapshot());
+    this.presets.clear();
+    this.bindings.clear();
+    for (let index = 0; index < snapshot.presets.length; index += 1) {
+      const preset = this.clonePreset(snapshot.presets[index]);
+      this.presets.set(preset.id, preset);
+    }
+    for (let index = 0; index < snapshot.bindings.length; index += 1) {
+      const binding = this.cloneBinding(snapshot.bindings[index]);
+      this.bindings.set(this.bindingKey(binding.ownerType, binding.ownerId, binding.presetKind), binding);
+    }
+  }
+
+  /**
+   * 把当前预设和绑定关系写入 SDK 内部文件存储。
+   */
+  async saveToStore(): Promise<void> {
+    const presets = this.clonePresets(Array.from(this.presets.values()));
+    const bindings = this.cloneBindings(Array.from(this.bindings.values()));
+    const snapshot: PresetStorageSnapshot = {
+      schemaVersion: 1,
+      presets: presets,
+      bindings: bindings,
+    };
+    await new JsonStore<PresetStorageSnapshot>(this.requireFiles(), this.storagePath()).write(snapshot);
   }
 
   /**
@@ -46,13 +102,14 @@ export class PresetRuntime {
     if (this.presets.has(params.id)) {
       throw new Error(`Preset already exists: ${params.id}`);
     }
+    const fields = this.cloneFields(params.fields);
     const record: PresetRecord = {
       id: params.id,
       name: params.name,
       kind: params.kind,
       enabled: params.enabled,
       version: params.version,
-      fields: this.cloneFields(params.fields),
+      fields: fields,
       migratedFrom: params.migratedFrom,
     };
     this.presets.set(record.id, this.clonePreset(record));
@@ -139,8 +196,9 @@ export class PresetRuntime {
       presetId: presetId,
     };
     this.bindings.set(this.bindingKey(ownerType, ownerId, presetKind), this.cloneBinding(binding));
+    const payloadBinding = this.cloneBinding(binding);
     const payload: PresetBoundPayload = {
-      binding: this.cloneBinding(binding),
+      binding: payloadBinding,
     };
     this.events.publish<PresetBoundPayload>('preset.bound', payload);
     return this.cloneBinding(binding);
@@ -185,8 +243,9 @@ export class PresetRuntime {
    * @returns 可持久化或可传输的导出内容。
    */
   exportPreset(presetId: string): PresetExportData {
+    const preset = this.clonePreset(this.requirePreset(presetId));
     const data: PresetExportData = {
-      preset: this.clonePreset(this.requirePreset(presetId)),
+      preset: preset,
     };
     return data;
   }
@@ -221,8 +280,9 @@ export class PresetRuntime {
     record.version = targetVersion;
     record.fields = this.cloneFields(fields);
     record.migratedFrom = `${fromVersion}`;
+    const payloadPreset = this.clonePreset(record);
     const payload: PresetMigratedPayload = {
-      preset: this.clonePreset(record),
+      preset: payloadPreset,
       fromVersion: fromVersion,
       toVersion: targetVersion,
     };
@@ -243,18 +303,38 @@ export class PresetRuntime {
     return record;
   }
 
+  private requireFiles(): TavernFileStore {
+    if (this.files === undefined) {
+      throw new Error('PresetRuntime storage is not configured.');
+    }
+    return this.files;
+  }
+
+  private storagePath(): string {
+    return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/presets/index.json`;
+  }
+
+  private defaultStorageSnapshot(): PresetStorageSnapshot {
+    return {
+      schemaVersion: 1,
+      presets: new Array<PresetRecord>(),
+      bindings: new Array<PresetBindingRecord>(),
+    };
+  }
+
   /**
    * 复制Preset 值，避免外部修改内部状态。
    * @param record 记录副本。
    */
   private clonePreset(record: PresetRecord): PresetRecord {
+    const fields = this.cloneFields(record.fields);
     const cloned: PresetRecord = {
       id: record.id,
       name: record.name,
       kind: record.kind,
       enabled: record.enabled,
       version: record.version,
-      fields: this.cloneFields(record.fields),
+      fields: fields,
       migratedFrom: record.migratedFrom,
     };
     return cloned;
@@ -283,6 +363,14 @@ export class PresetRuntime {
       presetKind: binding.presetKind,
       presetId: binding.presetId,
     };
+  }
+
+  private cloneBindings(bindings: Array<PresetBindingRecord>): Array<PresetBindingRecord> {
+    const cloned = new Array<PresetBindingRecord>();
+    for (let index = 0; index < bindings.length; index += 1) {
+      cloned.push(this.cloneBinding(bindings[index]));
+    }
+    return cloned;
   }
 
   /**
@@ -332,8 +420,9 @@ export class PresetRuntime {
 
    */
   private publishPresetEvent(eventName: string, preset: PresetRecord): void {
+    const payloadPreset = this.clonePreset(preset);
     const payload: PresetEventPayload = {
-      preset: this.clonePreset(preset),
+      preset: payloadPreset,
     };
     this.events.publish<PresetEventPayload>(eventName, payload);
   }

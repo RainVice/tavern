@@ -2,6 +2,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   ConnectionProfileRuntime,
   EventBus,
+  InMemoryFileStore,
   type ConnectionHeaderRecord,
   type ConnectionProfileCreateParams,
   type ConnectionProfileRecord,
@@ -83,6 +84,24 @@ export default function connectionProfileUnitTest() {
 
       expect(updatedIds.length).assertEqual(1);
       expect(updatedIds[0]).assertEqual('profile-4');
+    });
+
+    it('persists connection profiles and active bindings', 0, async () => {
+      // 文件存储实例。
+      const files = new InMemoryFileStore();
+      // 运行时实例。
+      const runtime = new ConnectionProfileRuntime(new EventBus(), files, 'tavern-data', 'default');
+      runtime.createProfile(makeProfile('profile-persist', 'Persistent OpenAI', 'openai', 'gpt-4.1'));
+      runtime.setActiveProfile('chat', 'chat-persist', 'profile-persist');
+      await runtime.saveToStore();
+
+      const restored = new ConnectionProfileRuntime(new EventBus(), files, 'tavern-data', 'default');
+      await restored.loadFromStore();
+      const request = restored.toProviderRequest('profile-persist');
+
+      expect(await files.exists('tavern-data/users/default/connection-profiles/index.json')).assertTrue();
+      expect(restored.resolveActiveProfile('chat', 'chat-persist').profile.name).assertEqual('Persistent OpenAI');
+      expect(request.additionalHeaders[0].value).assertEqual('redacted');
     });
 
     it('does not expose internal profiles or active bindings', 0, () => {

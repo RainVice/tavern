@@ -75,6 +75,19 @@ export default function characterCodecUnitTest() {
       expect(parsed.name).assertEqual('PNG角色');
       expect(parsed.tags[0]).assertEqual('png');
     });
+
+    it('导出并解析 WebP metadata 角色卡', 0, () => {
+      // 运行时实例。
+      const runtime = new CharacterCodecRuntime();
+      const src: CharacterCodecResult = { format: 'v2', raw: '', name: 'WebP角色', description: 'D', personality: 'P', scenario: 'S', firstMessage: 'F', exampleDialogue: 'E', creatorNotes: '', systemPrompt: '', postHistoryInstructions: '', creator: '', characterVersion: '', tags: ['webp'], alternateGreetings: [], extensions: {} };
+      const webp = runtime.exportToWebp(src, makeMinimalWebp());
+      const parsed = runtime.parseWebpCharacterCard(webp);
+
+      expect(runtime.detectBinaryFormat(webp)).assertEqual('webp_metadata');
+      expect(parsed.format).assertEqual('webp_metadata');
+      expect(parsed.name).assertEqual('WebP角色');
+      expect(parsed.tags[0]).assertEqual('webp');
+    });
   });
 }
 
@@ -88,5 +101,16 @@ function makeMinimalPng(): ArrayBuffer {
   bytes[8]=0x00; bytes[9]=0x00; bytes[10]=0x00; bytes[11]=0x00;
   bytes[12]=0x49; bytes[13]=0x45; bytes[14]=0x4E; bytes[15]=0x44;
   bytes[16]=0xAE; bytes[17]=0x42; bytes[18]=0x60; bytes[19]=0x82;
+  return bytes.buffer;
+}
+
+/**
+ * 封装单元测试中的 makeMinimalWebp 步骤，供公开方法复用。
+ */
+function makeMinimalWebp(): ArrayBuffer {
+  const bytes = new Uint8Array(12);
+  bytes[0]=0x52; bytes[1]=0x49; bytes[2]=0x46; bytes[3]=0x46;
+  bytes[4]=0x04; bytes[5]=0x00; bytes[6]=0x00; bytes[7]=0x00;
+  bytes[8]=0x57; bytes[9]=0x45; bytes[10]=0x42; bytes[11]=0x50;
   return bytes.buffer;
 }

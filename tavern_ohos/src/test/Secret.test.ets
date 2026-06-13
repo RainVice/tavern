@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   EventBus,
+  InMemoryFileStore,
   SecretRuntime,
   type RuntimeEvent,
   type SecretAccessOptions,
@@ -63,6 +64,23 @@ export default function secretUnitTest() {
       expect(updated.label).assertEqual('Claude Key');
       expect(runtime.readSecret(created.secretRef, makeAccess(true))).assertEqual('');
       expect(runtime.listSecretStates('claude').length).assertEqual(0);
+    });
+
+    it('persists secret records and values behind read permission', 0, async () => {
+      // 文件存储实例。
+      const files = new InMemoryFileStore();
+      // 运行时实例。
+      const runtime = new SecretRuntime(new EventBus(), files, 'tavern-data', 'default');
+      const created = runtime.createSecret(makeSecret('secret-persist', 'openai', 'profile-persist', 'persist-value'));
+      await runtime.saveToStore();
+
+      const restored = new SecretRuntime(new EventBus(), files, 'tavern-data', 'default');
+      await restored.loadFromStore();
+
+      expect(await files.exists('tavern-data/users/default/secrets/index.json')).assertTrue();
+      expect(restored.readSecret(created.secretRef, makeAccess(true))).assertEqual('persist-value');
+      expect(restored.readSecret(created.secretRef, makeAccess(false))).assertEqual('');
+      expect(restored.listSecretStates('openai')[0].maskedValue).assertEqual('*******lue');
     });
 
     it('throws when deleting a missing secret', 0, () => {

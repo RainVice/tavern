@@ -2,6 +2,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   CommandRuntime,
   EventBus,
+  InMemoryFileStore,
   QuickReplyRuntime,
   type CommandAction,
   type CommandExecuteOptions,
@@ -78,6 +79,25 @@ export default function quickReplyUnitTest() {
       expect(imported.id).assertEqual('set-5');
       expect(quickReplies.getSet('set-5').items.length).assertEqual(1);
       expect(quickReplies.getSet('set-5').items[0].label).assertEqual('Export item');
+    });
+
+    it('persists quick reply sets and items', 0, async () => {
+      // 文件存储实例。
+      const files = new InMemoryFileStore();
+      // 事件总线实例。
+      const bus = new EventBus();
+      const commands = new CommandRuntime(bus);
+      const quickReplies = new QuickReplyRuntime(bus, commands, files, 'tavern-data', 'default');
+      const set = quickReplies.createSet(makeSet('set-persist', 'Persistent Set', 'chat', 'chat-persist'));
+      quickReplies.addItem(set.id, makeItem('qr-persist', 'Persist item', '/echo persisted', true, 'user'));
+      await quickReplies.saveToStore();
+
+      const restored = new QuickReplyRuntime(new EventBus(), new CommandRuntime(new EventBus()), files, 'tavern-data', 'default');
+      await restored.loadFromStore();
+
+      expect(await files.exists('tavern-data/users/default/quick-replies/sets/index.json')).assertTrue();
+      expect(restored.getSet('set-persist').items[0].label).assertEqual('Persist item');
+      expect(restored.listButtons('chat', 'chat-persist').length).assertEqual(1);
     });
 
     it('rejects creating a quick reply set over an existing id', 0, () => {

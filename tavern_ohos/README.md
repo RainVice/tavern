@@ -797,9 +797,9 @@ const recursive = await worldInfo.activateEntriesRecursive(
 
 | 数据域 | Runtime | 新建或保存 | 读取或列表 | 更新 | 删除 | 导入导出 |
 |---|---|---|---|---|---|---|
-| 用户人格 | `PersonaRuntime` | `createPersona()`、`selectPersona()`、`bindPersona()` | `getPersona()`、`listPersonas()`、`getSelectedPersona()`、`getBoundPersona()`、`buildPromptData()` | `updatePersona()` | `deletePersona()` | `exportPersona()`、`importPersona()` |
-| 生成预设 | `PresetRuntime` | `createPreset()`、`bindPreset()` | `getPreset()`、`listPresets()`、`getBinding()`、`listBindings()` | `updatePreset()`、`migratePreset()` | `deletePreset()` | `exportPreset()`、`importPreset()` |
-| 快捷回复 | `QuickReplyRuntime` | `createSet()`、`addItem()` | `getSet()`、`listSets()`、`listButtons()` | `addItem()` 覆盖同 ID 项、`setItemVisible()` | `deleteSet()`、`removeItem()` | `exportSet()`、`importSet()` |
+| 用户人格 | `PersonaRuntime` | `loadFromStore()`、`createPersona()`、`selectPersona()`、`bindPersona()`、`saveToStore()` | `getPersona()`、`listPersonas()`、`getSelectedPersona()`、`getBoundPersona()`、`buildPromptData()` | `updatePersona()` | `deletePersona()` | `exportPersona()`、`importPersona()` |
+| 生成预设 | `PresetRuntime` | `loadFromStore()`、`createPreset()`、`bindPreset()`、`saveToStore()` | `getPreset()`、`listPresets()`、`getBinding()`、`listBindings()` | `updatePreset()`、`migratePreset()` | `deletePreset()` | `exportPreset()`、`importPreset()` |
+| 快捷回复 | `QuickReplyRuntime` | `loadFromStore()`、`createSet()`、`addItem()`、`saveToStore()` | `getSet()`、`listSets()`、`listButtons()` | `addItem()` 覆盖同 ID 项、`setItemVisible()` | `deleteSet()`、`removeItem()` | `exportSet()`、`importSet()` |
 | Data Bank | `DataBankRuntime` | `createDocument()` | `getDocument()`、`readDocumentContent()`、`listDocuments()`、`listByScope()`、`listByTag()` | `setDocumentEnabled()`、`updateMetadata()` | `deleteDocument()` | `exportData()`、`importData()` |
 | 向量库 | `VectorRuntime` | `createCollection()`、`upsertVector()` | `listVectors()`、`query()` | `upsertVector()` | `deleteByDocument()`、`deleteByScope()` | 当前以集合目录和 JSONL 持久化，没有独立 `exportData()` |
 | 头像 | `AvatarRuntime` | `uploadAvatar()` | `getAvatar()`、`readAvatarContent()`、`listByTargetType()` | 再次 `uploadAvatar()` 覆盖同一目标 | `deleteAvatar()` | 当前没有独立 `exportData()` |
@@ -807,14 +807,22 @@ const recursive = await worldInfo.activateEntriesRecursive(
 | 上传文件 | `FileRuntime` | `uploadFile()` | `readFileContent()`、`listFiles()` | 当前没有通用更新方法 | `deleteFile()` | 当前没有独立 `exportData()` |
 | 表情图 | `SpriteRuntime` | `uploadSprite()`、`importRisuSprites()`、`setExpression()` | `listSprites()`、`getExpression()` | 再次 `uploadSprite()` 覆盖同一表情 | `deleteSprite()` | 当前没有独立 `exportData()` |
 | 主题 | `ThemeRuntime` | `saveTheme()`、`activateTheme()`、`setActiveBackground()` | `listThemes()`、`getActiveThemeName()`、`getActiveBackground()` | 再次 `saveTheme()` 覆盖同名主题 | `deleteTheme()` | `exportThemes()`、`importThemes()` |
-| 设置 | `SettingsRuntime` | `registerSchema()`、`setSetting()` | `getSetting()`、`getEffectiveSetting()`、`listSchemas()`、`listEntries()`、`snapshot()` | `setSetting()`、`migrateSetting()` | 当前没有通用删除方法 | `snapshot()` 可作为导出快照，当前没有 `importData()` |
-| 密钥 | `SecretRuntime` | `createSecret()`、`rotateSecret()` | `readSecret()`、`readActiveSecret()`、`listSecretStates()` | `updateSecret()` | `deleteSecret()` | `exportIndex()` 只导出脱敏索引，不导出明文 |
-| 连接配置 | `ConnectionProfileRuntime` | `createProfile()`、`setActiveProfile()` | `getProfile()`、`listProfiles()`、`resolveActiveProfile()`、`toProviderRequest()` | `updateProfile()` | `deleteProfile()` | 当前没有独立 `exportData()` |
+| 设置 | `SettingsRuntime` | `loadFromStore()`、`registerSchema()`、`setSetting()`、`saveToStore()` | `getSetting()`、`getEffectiveSetting()`、`listSchemas()`、`listEntries()`、`snapshot()` | `setSetting()`、`migrateSetting()` | 当前没有通用删除方法 | `snapshot()` 可作为导出快照 |
+| 密钥 | `SecretRuntime` | `loadFromStore()`、`createSecret()`、`rotateSecret()`、`saveToStore()` | `readSecret()`、`readActiveSecret()`、`listSecretStates()` | `updateSecret()` | `deleteSecret()` | `exportIndex()` 只导出脱敏索引，不导出明文 |
+| 连接配置 | `ConnectionProfileRuntime` | `loadFromStore()`、`createProfile()`、`setActiveProfile()`、`saveToStore()` | `getProfile()`、`listProfiles()`、`resolveActiveProfile()`、`toProviderRequest()` | `updateProfile()` | `deleteProfile()` | 当前没有独立 `exportData()` |
 
 使用这些 Runtime 时要注意两类差异：
 
-- 有些 Runtime 直接使用 `TavernFileStore` 持久化，例如 `DataBankRuntime`、`VectorRuntime`、`AssetRuntime`、`FileRuntime`、`SpriteRuntime`、`ThemeRuntime`。
-- 有些 Runtime 当前主要是内存态管理，例如 `PersonaRuntime`、`PresetRuntime`、`QuickReplyRuntime`、`SettingsRuntime`、`SecretRuntime`、`ConnectionProfileRuntime`，宿主如果需要跨启动保存，应调用对应单项导出方法或自行序列化状态。
+- 文件型 Runtime 会在每个公开写入方法里直接落盘，例如 `DataBankRuntime`、`VectorRuntime`、`AssetRuntime`、`FileRuntime`、`SpriteRuntime`、`ThemeRuntime`。
+- 配置型 Runtime 保留同步 CRUD API，跨启动保存使用显式 `loadFromStore()` / `saveToStore()`。已支持该模式的模块包括 `GroupRuntime`、`PersonaRuntime`、`PresetRuntime`、`QuickReplyRuntime`、`SettingsRuntime`、`SecretRuntime`、`ConnectionProfileRuntime`。宿主只需要传入 `TavernFileStore`，不需要了解内部目录结构。
+
+配置型 Runtime 的通用步骤：
+
+1. 用 `SandboxTavernFileStore(context.filesDir)` 或自定义加密存储创建文件存储。
+2. 构造 Runtime 时传入 `events, files, 'tavern-data', 'default'`。
+3. 应用启动或切换用户后先调用 `await runtime.loadFromStore()`。
+4. 调用 `create...()`、`update...()`、`delete...()` 等同步 API 修改内存态。
+5. 在修改完成、页面退后台或应用退出前调用 `await runtime.saveToStore()`。
 
 ## 连接配置、密钥与请求头
 
@@ -825,13 +833,18 @@ import {
   ConnectionProfileRuntime,
   EventBus,
   NetworkService,
+  SandboxTavernFileStore,
   SecretRuntime,
 } from 'tavern_ohos';
 
 const events = new EventBus();
-const connections = new ConnectionProfileRuntime(events);
-const secrets = new SecretRuntime(events);
+const files = new SandboxTavernFileStore(context.filesDir);
+const connections = new ConnectionProfileRuntime(events, files, 'tavern-data', 'default');
+const secrets = new SecretRuntime(events, files, 'tavern-data', 'default');
 const network = new NetworkService(connections, secrets);
+
+await secrets.loadFromStore();
+await connections.loadFromStore();
 
 const secret = secrets.createSecret({
   id: 'openai-secret',
@@ -1117,7 +1130,12 @@ const result = rag.retrieve({
   scope: 'global',
   promptTemplate: '参考资料：\n${text}',
 });
+
+await secrets.saveToStore();
+await connections.saveToStore();
 ```
+
+`SecretRuntime.saveToStore()` 会把密钥明文交给传入的 `TavernFileStore`。生产环境建议传入加密存储或系统安全存储适配器；如果直接使用 `SandboxTavernFileStore`，请把应用沙箱备份和日志策略纳入安全设计。
 
 ## 导入导出与备份
 
@@ -1219,4 +1237,4 @@ OpenHarmony 网络、权限、证书、代理、后台任务和系统 API 通常
 
 ### 可以直接导入 SillyTavern 的角色卡和世界书吗？
 
-角色卡、PNG metadata、charx、世界书、聊天 JSONL 等能力已由对应 Runtime 覆盖一部分。具体状态以 `sillytavern_endpoint_feature_parity_matrix.md` 为准；WebP metadata card 当前标记为暂未实现。
+角色卡、PNG metadata、WebP metadata、charx、世界书、聊天 JSONL 等能力已由对应 Runtime 覆盖。具体状态以 `sillytavern_endpoint_feature_parity_matrix.md` 为准。

@@ -38,6 +38,20 @@ export class CharacterCodecRuntime {
   }
 
   /**
+   * 解析 WebP Character Card，非法输入会返回失败标记或空结果。
+   * @param data 导入或恢复使用的序列化数据。
+   */
+  parseWebpCharacterCard(data: ArrayBuffer): CharacterCodecResult {
+    const metadata = new ImageMetadataRuntime();
+    const extracted = metadata.extractCharacterCard(data);
+    if (extracted.characterCardJson.length === 0) {
+      throw new Error('WebP 中未找到角色卡 metadata');
+    }
+    const parsed = this.parseCharacterJson(extracted.characterCardJson);
+    return this.withFormat(parsed, 'webp_metadata', extracted.characterCardJson);
+  }
+
+  /**
    * 导出为角色卡 V2 结构，用于备份、迁移或与 SillyTavern 数据互通。
    * @param result 返回结果。
    * @returns 可持久化或可传输的导出内容。
@@ -71,6 +85,16 @@ export class CharacterCodecRuntime {
   }
 
   /**
+   * 导出为 WebP 角色卡，用于备份、迁移或与 SillyTavern 数据互通。
+   * @param result 返回结果。
+   * @param sourceWebp 源 WebP 图片数据。
+   */
+  exportToWebp(result: CharacterCodecResult, sourceWebp: ArrayBuffer): ArrayBuffer {
+    const metadata = new ImageMetadataRuntime();
+    return metadata.writeWebpCharacterCard(sourceWebp, this.exportToV2(result));
+  }
+
+  /**
    * 识别输入数据的Format 值，供导入流程选择后续解析方式。
    * @param data 导入或恢复使用的序列化数据。
    */
@@ -92,6 +116,9 @@ export class CharacterCodecRuntime {
     const metadata = new ImageMetadataRuntime();
     const extracted = metadata.extractCharacterCard(data);
     if (extracted.characterCardJson.length > 0) {
+      if (extracted.metadata.format === 'webp') {
+        return 'webp_metadata';
+      }
       return 'png_metadata';
     }
     return 'unknown';
@@ -180,6 +207,9 @@ export class CharacterCodecRuntime {
       tags: new Array<string>(), alternateGreetings: new Array<string>(), extensions: {} };
   }
   private withFormat(result: CharacterCodecResult, format: CharacterCardFormat, raw: string): CharacterCodecResult {
+    const tags = result.tags.slice();
+    const alternateGreetings = result.alternateGreetings.slice();
+    const extensions = this.copyExtensions(result.extensions);
     return {
       format: format,
       raw: raw,
@@ -194,9 +224,9 @@ export class CharacterCodecRuntime {
       postHistoryInstructions: result.postHistoryInstructions,
       creator: result.creator,
       characterVersion: result.characterVersion,
-      tags: result.tags.slice(),
-      alternateGreetings: result.alternateGreetings.slice(),
-      extensions: this.copyExtensions(result.extensions),
+      tags: tags,
+      alternateGreetings: alternateGreetings,
+      extensions: extensions,
     };
   }
 

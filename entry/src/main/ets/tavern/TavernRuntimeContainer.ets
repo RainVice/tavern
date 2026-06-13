@@ -4,12 +4,12 @@ import {
   EventBus,
   PromptRuntime,
   ProviderRuntime,
+  SandboxTavernFileStore,
   StreamingRuntime,
   WorldInfoRuntime,
   type MessageRuntime,
   type TavernFileStore,
 } from 'tavern_ohos';
-import { HarmonyTavernFileStore } from './HarmonyTavernFileStore';
 
 export class TavernRuntimeContainer {
   static readonly ROOT_PATH: string = 'tavern-data';
@@ -28,11 +28,9 @@ export class TavernRuntimeContainer {
   readonly streaming: StreamingRuntime;
   readonly provider: ProviderRuntime;
 
-  private initPromise: Promise<void> | undefined = undefined;
-
-  private constructor(files: TavernFileStore) {
+  private constructor(appFilesDir: string, files?: TavernFileStore) {
     this.events = new EventBus();
-    this.files = files;
+    this.files = files ?? new SandboxTavernFileStore(appFilesDir);
     this.rootPath = TavernRuntimeContainer.ROOT_PATH;
     this.userId = TavernRuntimeContainer.USER_ID;
     this.characters = new CharacterRuntime(this.files, this.events, this.rootPath, this.userId);
@@ -43,9 +41,9 @@ export class TavernRuntimeContainer {
     this.provider = new ProviderRuntime(this.events, this.streaming);
   }
 
-  static configure(filesBasePath: string): TavernRuntimeContainer {
+  static configure(appFilesDir: string, files?: TavernFileStore): TavernRuntimeContainer {
     if (TavernRuntimeContainer.instance === undefined) {
-      TavernRuntimeContainer.instance = new TavernRuntimeContainer(new HarmonyTavernFileStore(filesBasePath));
+      TavernRuntimeContainer.instance = new TavernRuntimeContainer(appFilesDir, files);
     }
     return TavernRuntimeContainer.instance;
   }
@@ -55,15 +53,6 @@ export class TavernRuntimeContainer {
       throw new Error('TavernRuntimeContainer 尚未初始化');
     }
     return TavernRuntimeContainer.instance;
-  }
-
-  init(): Promise<void> {
-    let promise = this.initPromise;
-    if (promise === undefined) {
-      promise = this.files.ensureTavernDataLayout(this.rootPath);
-      this.initPromise = promise;
-    }
-    return promise;
   }
 
   messages(chatId: string): MessageRuntime {

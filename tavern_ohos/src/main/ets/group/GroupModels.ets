@@ -255,6 +255,46 @@ export interface GroupExportData {
 }
 
 /**
+ * 描述群聊索引文件中的持久化元数据。
+ */
+export interface GroupStorageIndex {
+  /**
+   * schema Version 值，由当前实例内部维护。
+   */
+  schemaVersion: number;
+  /**
+   * group 标识列表。
+   */
+  groupIds: Array<string>;
+  /**
+   * 下一次生成请求编号之前已经使用过的最大编号。
+   */
+  requestCounter: number;
+}
+
+/**
+ * 描述单个群聊文件中的完整持久化快照。
+ */
+export interface GroupStorageSnapshot {
+  /**
+   * schema Version 值，由当前实例内部维护。
+   */
+  schemaVersion: number;
+  /**
+   * group 值，由当前实例内部维护。
+   */
+  group: GroupRecord;
+  /**
+   * members 列表，由当前实例内部维护。
+   */
+  members: Array<GroupMemberRecord>;
+  /**
+   * requests 列表，由当前实例内部维护。
+   */
+  requests: Array<GroupGenerationRequest>;
+}
+
+/**
  * 描述群聊事件发布时携带的数据结构。
  */
 export interface GroupEventPayload {
