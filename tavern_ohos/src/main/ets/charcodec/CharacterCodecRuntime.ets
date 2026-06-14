@@ -7,12 +7,15 @@ import type {
 import { ImageMetadataRuntime } from '../imagemetadata/ImageMetadataRuntime';
 
 /**
- * 提供角色卡编解码相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供角色卡编解码相关的无 UI 运行时能力，支持 V1、V2、charx、PNG metadata、WebP metadata 多种格式的解析与导出，
+ * 供角色导入/导出流程和角色卡分享功能调用。
  */
 export class CharacterCodecRuntime {
   /**
-   * 解析输入内容并转换为Character JSON 字符串结构。
-   * @param json 外部传入的 JSON 字符串。
+   * 解析 JSON 字符串并自动识别角色卡格式（V1 / V2 / charx），在用户选择角色卡文件导入时调用。
+   * 格式识别优先级：V2 > charx > V1，识别失败时抛出"无法识别的角色卡格式"错误。
+   * @param json 外部传入的角色卡 JSON 字符串，由用户选择文件或拖拽导入提供。
+   * @returns 包含所有角色字段的统一解码结果，供导入流程确认角色信息后继续。
    */
   parseCharacterJson(json: string): CharacterCodecResult {
     const obj = JSON.parse(json) as CharacterCardV2Input;
@@ -24,8 +27,10 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 解析PngCharacterCard，非法输入会返回失败标记或空结果。
-   * @param data 导入或恢复使用的序列化数据。
+   * 从 PNG 图片的 metadata 中提取并解析角色卡数据，在用户选择 PNG 格式角色卡文件导入时调用。
+   * 流程：读取 PNG EXIF/ICC/Text chunks -> 提取角色卡 JSON -> 调用 parseCharacterJson 解析。
+   * @param data PNG 图片的二进制数据，由图片文件读取提供。
+   * @returns 包含格式标记 png_metadata 的解码结果，供导入流程确认角色信息。
    */
   parsePngCharacterCard(data: ArrayBuffer): CharacterCodecResult {
     const metadata = new ImageMetadataRuntime();
@@ -38,8 +43,10 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 解析 WebP Character Card，非法输入会返回失败标记或空结果。
-   * @param data 导入或恢复使用的序列化数据。
+   * 从 WebP 图片的 metadata 中提取并解析角色卡数据，在用户选择 WebP 格式角色卡文件导入时调用。
+   * 流程：读取 WebP EXIF chunks -> 提取角色卡 JSON -> 调用 parseCharacterJson 解析。
+   * @param data WebP 图片的二进制数据，由图片文件读取提供。
+   * @returns 包含格式标记 webp_metadata 的解码结果，供导入流程确认角色信息。
    */
   parseWebpCharacterCard(data: ArrayBuffer): CharacterCodecResult {
     const metadata = new ImageMetadataRuntime();
@@ -52,9 +59,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 导出为角色卡 V2 结构，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param result 返回结果。
-   * @returns 可持久化或可传输的导出内容。
+   * 将解码结果导出为 SillyTavern 角色卡 V2 JSON 字符串，在用户导出角色卡时调用。
+   * @param result 解码后的角色卡结果，通常来自 parseCharacterJson 等解析方法的输出。
+   * @returns 符合角色卡 V2 格式的 JSON 字符串，可用于保存为 .json 文件或嵌入到图片 metadata 中。
    */
   exportToV2(result: CharacterCodecResult): string {
     const data: CharacterCardV2ExportData = {
@@ -74,10 +81,11 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 导出为 PNG 角色卡，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param result 返回结果。
-
-   * @returns 可持久化或可传输的导出内容。
+   * 将角色卡写入 PNG 图片的 metadata 中，在用户导出含角色卡的 PNG 图片时调用。
+   * 流程：导出为 V2 JSON -> 将 JSON 写入 PNG 图片的文本 chunk metadata 中。
+   * @param result 解码后的角色卡结果，包含要导出的角色数据。
+   * @param sourcePng 源 PNG 图片数据，作为角色卡头像载体。
+   * @returns 嵌入了角色卡 V2 JSON 的 PNG 数据，可用于分享或保存。
    */
   exportToPng(result: CharacterCodecResult, sourcePng: ArrayBuffer): ArrayBuffer {
     const metadata = new ImageMetadataRuntime();
@@ -85,9 +93,11 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 导出为 WebP 角色卡，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param result 返回结果。
-   * @param sourceWebp 源 WebP 图片数据。
+   * 将角色卡写入 WebP 图片的 metadata 中，在用户导出含角色卡的 WebP 图片时调用。
+   * 流程：导出为 V2 JSON -> 将 JSON 写入 WebP 图片的 EXIF metadata 中。
+   * @param result 解码后的角色卡结果，包含要导出的角色数据。
+   * @param sourceWebp 源 WebP 图片数据，作为角色卡头像载体。
+   * @returns 嵌入了角色卡 V2 JSON 的 WebP 数据，可用于分享或保存。
    */
   exportToWebp(result: CharacterCodecResult, sourceWebp: ArrayBuffer): ArrayBuffer {
     const metadata = new ImageMetadataRuntime();
@@ -95,8 +105,10 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 识别输入数据的Format 值，供导入流程选择后续解析方式。
-   * @param data 导入或恢复使用的序列化数据。
+   * 识别文本格式的角色卡格式类型，在导入流程中自动选择解析方式。
+   * 不抛出异常，未知格式返回 'unknown'，调用方根据返回值决定是否允许导入。
+   * @param data 角色卡 JSON 字符串，由外部文件读取提供。
+   * @returns 检测到的格式：'v1'、'v2'、'charx' 或 'unknown'。
    */
   detectFormat(data: string): CharacterCardFormat {
     try { const obj = JSON.parse(data) as CharacterCardV2Input;
@@ -109,8 +121,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 识别输入数据的Binary Format 值，供导入流程选择后续解析方式。
-   * @param data 导入或恢复使用的序列化数据。
+   * 识别图片二进制数据中嵌入的角色卡格式类型（PNG 或 WebP），在导入流程中自动选择解析方式。
+   * @param data 图片二进制数据，由文件读取提供。
+   * @returns 检测到的格式：'png_metadata'、'webp_metadata' 或 'unknown'。
    */
   detectBinaryFormat(data: ArrayBuffer): CharacterCardFormat {
     const metadata = new ImageMetadataRuntime();
@@ -125,8 +138,10 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 解析CharacterBook，非法输入会返回失败标记或空结果。
-   * @param json 外部传入的 JSON 字符串。
+   * 解析角色世界书（Lorebook）JSON 字符串，在用户选择或拖入世界书 JSON 文件时调用。
+   * 将外部结构转换为运行时结构，填充缺失字段的默认值为空字符串或空数组。
+   * @param json 外部传入的世界书 JSON 字符串，由文件读取提供。
+   * @returns 包含条目列表的运行时世界书结构，供世界书编辑和对话上下文注入使用。
    */
   parseCharacterBook(json: string): CharacterBook {
     const obj = JSON.parse(json) as CharacterBookInput;
@@ -141,14 +156,14 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 导出角色Book，用于备份、迁移或与 SillyTavern 数据互通。
-
-   * @returns 可持久化或可传输的导出内容。
+   * 将运行时世界书结构导出为 JSON 字符串，在用户导出世界书时调用。
+   * @param book 运行时世界书结构，由世界书编辑器提供。
+   * @returns 可持久化或分享的世界书 JSON 字符串。
    */
   exportCharacterBook(book: CharacterBook): string { return JSON.stringify(book); }
 
   /**
-   * 解析V1，非法输入会返回失败标记或空结果。
+   * 解析角色卡 V1 格式，提取基础字段。
    */
   private parseV1(card: CharacterCardV1): CharacterCodecResult {
     return { format: 'v1', raw: JSON.stringify(card), name: card.name||'', description: card.description||'',
@@ -159,7 +174,7 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 解析V2，非法输入会返回失败标记或空结果。
+   * 解析角色卡 V2 格式，提取所有字段包括扩展字段。
    */
   private parseV2(obj: CharacterCardV2Input): CharacterCodecResult {
     const data: CharacterCardV2InputData = obj.data !== undefined ? obj.data : {};
@@ -176,8 +191,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 读取Extensions 列表，并转换为运行时使用的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
+   * 读取角色卡 V2 的扩展字段，将所有值转为字符串类型存储。
+   * @param data 角色卡 V2 的 data 字段。
+   * @returns 扁平化后的扩展字段键值对。
    */
   private readExtensions(data: CharacterCardV2InputData): Record<string, string> {
     const extensions: Record<string, string> = {};
@@ -186,7 +202,6 @@ export class CharacterCodecRuntime {
     }
     const keys = Object.keys(data.extensions);
     for (let index = 0; index < keys.length; index += 1) {
-      // 键名。
       const key = keys[index];
       extensions[key] = String(data.extensions[key]);
     }
@@ -194,7 +209,7 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 解析Charx，非法输入会返回失败标记或空结果。
+   * 解析 charx 归档格式，提取首个角色的字段数据。
    */
   private parseCharx(archive: CharxArchive): CharacterCodecResult {
     if (archive.characters.length===0) throw new Error('charx 归档中无角色');
@@ -231,7 +246,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 复制Extensions 列表，避免外部修改内部状态。
+   * 复制扩展字段键值对，避免外部修改内部状态。
+   * @param extensions 原始扩展字段。
+   * @returns 扩展字段的副本。
    */
   private copyExtensions(extensions: Record<string, string>): Record<string, string> {
     const result: Record<string, string> = {};

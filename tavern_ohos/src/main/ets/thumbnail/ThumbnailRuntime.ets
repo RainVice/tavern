@@ -12,29 +12,30 @@ import type {
 
 /**
  * 提供缩略图相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 在图片资源管理流程中，负责生成和管理源图片的缩略图缓存，加速 UI 列表加载性能。
  */
 export class ThumbnailRuntime {
   /**
-   * 文件存储适配器。
+   * 文件存储适配器实例，用于缩略图文件的读写操作。
    */
   private files: TavernFileStore;
   /**
-   * 事件总线。
+   * 事件总线实例，用于发布缩略图生成和失效事件。
    */
   private events: EventBus;
   /**
-   * 记录副本列表，由当前实例内部维护。
+   * 按 "type:fileName" 键保存的缩略图记录映射表，用于快速查询和去重。
    */
   private records: Map<string, ThumbnailRecord> = new Map<string, ThumbnailRecord>();
   /**
-   * 数据根路径。
+   * 缩略图数据文件的存储根路径。
    */
   private rootPath: string = 'tavern-data/users/default/assets/thumbnails';
 
   /**
-   * 初始化当前运行时实例。
+   * 初始化 ThumbnailRuntime 实例。
    * @param files 文件存储适配器。
-   * @param events 事件总线。
+   * @param events 事件总线实例。
    */
   constructor(files: TavernFileStore, events: EventBus) {
     this.files = files;
@@ -42,14 +43,14 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 执行 generateThumbnail 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 生成缩略图：计算尺寸信息，写入文件，持久化索引并发布事件。
+   * 在 UI 需要展示图片资源的缩略预览时由图片加载流程调用。
+   * @param params 缩略图创建参数。
+   * @returns 生成的缩略图记录。
    */
   async generateThumbnail(params: ThumbnailCreateParams): Promise<ThumbnailRecord> {
     const type = params.type;
-    // file 名称。
     const fileName = safeFileName(params.fileName);
-    // 键名。
     const key = this.key(type, fileName);
     const now = Date.now();
     const existing = this.records.get(key);
@@ -79,10 +80,11 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取指定Thumbnail，不存在时抛出错误。
-
-   * @param fileName 文件名称。
-   * @returns 更新或读取后的记录副本。
+   * 获取指定类型和文件名的缩略图记录。
+   * 在 UI 组件初始化时调用，判断是否需要生成新的缩略图。
+   * @param type 缩略图类型。
+   * @param fileName 源文件名称。
+   * @returns 缩略图记录副本，不存在时返回 undefined。
    */
   async getThumbnail(type: string, fileName: string): Promise<ThumbnailRecord | undefined> {
     const record = this.records.get(this.key(type, safeFileName(fileName)));
@@ -93,9 +95,11 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取Thumbnail Content 值，并转换为运行时使用的数据结构。
-
-   * @param fileName 文件名称。
+   * 读取指定缩略图的文件内容。
+   * 在 UI 展示缩略图时调用，从文件读取 base64 数据或文本内容用于 Image 组件。
+   * @param type 缩略图类型。
+   * @param fileName 源文件名称。
+   * @returns 缩略图文件的文本内容。
    */
   async readThumbnailContent(type: string, fileName: string): Promise<string> {
     const record = this.requireRecord(type, safeFileName(fileName));
@@ -103,9 +107,10 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取ByType列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按类型列出所有缩略图记录。
+   * 在 UI 按分类展示缩略图列表（如角色头像缩略图列表、背景缩略图列表）时调用。
+   * @param type 缩略图类型。
+   * @returns 匹配类型的缩略图记录副本数组。
    */
   async listByType(type: string): Promise<Array<ThumbnailRecord>> {
     const result = new Array<ThumbnailRecord>();
@@ -119,8 +124,9 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取Thumbnails列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有缩略图记录，按 "type:fileName" 排序。
+   * 用于索引持久化或全量数据导出。
+   * @returns 所有缩略图记录副本数组。
    */
   async listThumbnails(): Promise<Array<ThumbnailRecord>> {
     const result = new Array<ThumbnailRecord>();
@@ -132,14 +138,13 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 删除或清理Thumbnail，并同步维护相关索引或状态。
-
-   * @param fileName 文件名称。
+   * 使指定缩略图失效：从内存和文件系统中删除，更新索引。
+   * 在源图片发生变更或用户手动清除缓存时由宿主调用。
+   * @param type 缩略图类型。
+   * @param fileName 源文件名称。
    */
   async invalidateThumbnail(type: string, fileName: string): Promise<void> {
-    // safe 名称。
     const safeName = safeFileName(fileName);
-    // 键名。
     const key = this.key(type, safeName);
     const record = this.requireRecord(type, safeName);
     this.records.delete(key);
@@ -154,9 +159,10 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取Configured Dimensions 列表，不存在时通常抛出错误或返回空值。
-
-   * @returns 更新或读取后的记录副本。
+   * 获取指定类型的默认缩略图尺寸配置。
+   * 在生成缩略图时由调用方决定缩放尺寸。
+   * @param type 缩略图类型（bg / avatar / persona / 其他）。
+   * @returns 配置的宽度和高度。
    */
   getConfiguredDimensions(type: string): ThumbnailDimensions {
     if (type === 'bg') {
@@ -172,9 +178,9 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取必须存在的Record 值，缺失时抛出错误。
-
-   * @param fileName 文件名称。
+   * 确保指定缩略图记录存在，缺失时抛出错误。
+   * @param type 缩略图类型。
+   * @param fileName 源文件名称。
    */
   private requireRecord(type: string, fileName: string): ThumbnailRecord {
     const record = this.records.get(this.key(type, fileName));
@@ -210,8 +216,8 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 复制Record 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深度复制 ThumbnailRecord，防止外部代码修改内部状态。
+   * @param record 要复制的缩略图记录。
    */
   private copyRecord(record: ThumbnailRecord): ThumbnailRecord {
     return {

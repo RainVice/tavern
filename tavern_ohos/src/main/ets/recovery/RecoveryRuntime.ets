@@ -6,20 +6,20 @@ import type { RecoveryAttemptedPayload, RecoveryMetadata, RecoveryResult, Recove
  */
 export class RecoveryRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于发布恢复尝试事件。
    */
   private events: EventBus; private snapshots: Array<RecoverySnapshot>=[];
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化当前运行时实例，清空快照列表。
+   * @param events 事件总线，用于发布 recovery.attempted 事件。
    */
   constructor(events: EventBus) { this.events=events; }
 
   /**
-   * 创建新的快照记录，写入存储并返回副本。
-
-
-   * @returns 更新或读取后的记录副本。
+   * 创建恢复快照并写入内存存储。在关键操作前由外部模块调用，记录当前状态以便后续恢复。
+   * @param type 快照类型（如 user_password、data_corruption、session_restore），标识恢复场景类别。
+   * @param metadata 与快照关联的元数据（来源、聊天标识、消息标识、原因等），提供恢复时所需的上下文信息。
+   * @returns 新创建的快照记录副本。
    */
   createSnapshot(type: RecoveryType, metadata: RecoveryMetadata): RecoverySnapshot {
     const snap: RecoverySnapshot = { type: type, metadata: this.copyMetadata(metadata), timestamp: Date.now() };
@@ -27,9 +27,9 @@ export class RecoveryRuntime {
   }
 
   /**
-   * 读取指定快照，不存在时抛出错误。
-
-   * @returns 更新或读取后的记录副本。
+   * 查询指定类型的最新一条恢复快照。在尝试恢复时调用，按类型从快照列表中逆序查找。
+   * @param type 快照类型，限定搜索范围。
+   * @returns 匹配的最新快照记录副本，不存在时返回 undefined。
    */
   getLatestSnapshot(type: RecoveryType): RecoverySnapshot|undefined {
     for (let i=this.snapshots.length-1;i>=0;i--) { if (this.snapshots[i].type===type) return this.copySnapshot(this.snapshots[i]); }
@@ -37,7 +37,7 @@ export class RecoveryRuntime {
   }
 
   /**
-   * 执行 attemptRecovery 的内部处理步骤，供当前模块复用。
+   * 尝试从最新快照恢复指定类型的状态，并发布恢复尝试事件。在需要恢复的场景下由外部模块调用。
    */
   attemptRecovery(type: RecoveryType): RecoveryResult {
     const snap = this.getLatestSnapshot(type);
@@ -50,8 +50,8 @@ export class RecoveryRuntime {
   }
 
   /**
-   * 读取Snapshots列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有已存储的快照记录列表的深拷贝。用于 UI 展示快照历史或批量查询。
+   * @returns 快照记录副本数组。
    */
   listSnapshots(): Array<RecoverySnapshot> {
     const result = new Array<RecoverySnapshot>();
@@ -85,8 +85,8 @@ export class RecoveryRuntime {
   }
 
   /**
-   * 复制Result 值，避免外部修改内部状态。
-   * @param result 返回结果。
+   * 深拷贝恢复结果对象。
+   * @param result 待拷贝的恢复结果。
    */
   private copyResult(result: RecoveryResult): RecoveryResult {
     return {

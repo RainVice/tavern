@@ -8,23 +8,30 @@ import type { NetworkHeaderOverrideRule } from './NetworkModels';
 
 /**
  * 提供网络请求头服务，封装跨 Runtime 的协作逻辑。
+ * 调用方（如 API 客户端）在发起网络请求前通过此服务解析目标连接所需的完整请求头，
+ * 包含 provider 特有的头、附加头、覆盖规则头，以及密钥注入和预览掩盖。
  */
 export class NetworkService {
   /**
-   * connections 列表，由当前实例内部维护。
+   * 连接配置运行时，用于读取 profile 的连接信息和 API 类型。
+   * 在 resolveHeadersForProfile 中根据 profileId 获取连接配置，决定附加哪些 provider 特定头。
    */
   private connections: ConnectionProfileRuntime;
   /**
-   * secrets 列表，由当前实例内部维护。
+   * 密钥管理运行时，用于读取密钥值注入到请求头中。
+   * 在 resolveHeadersForProfile 中根据 profile 的 secretRef 读取密钥值，用于 Bearer Token 等认证场景。
    */
   private secrets: SecretRuntime;
   /**
-   * override Rules 列表，由当前实例内部维护。
+   * 按 host 匹配的请求头覆盖规则列表，由 setOverrideHeaders 设置。
+   * 在 resolveHeadersForProfile 中根据服务器 URL 的 host 匹配规则，追加自定义请求头。
    */
   private overrideRules: Array<NetworkHeaderOverrideRule> = new Array<NetworkHeaderOverrideRule>();
 
   /**
    * 注入网络请求头运行时依赖并初始化实例状态。
+   * 调用方在创建 NetworkService 时需传入已初始化的 ConnectionProfileRuntime 和 SecretRuntime，
+   * 这两个运行时分别负责读取连接配置和密钥存储。
    */
   constructor(connections: ConnectionProfileRuntime, secrets: SecretRuntime) {
     this.connections = connections;
@@ -32,18 +39,20 @@ export class NetworkService {
   }
 
   /**
-   * 设置请求头覆盖规则列表，用于切换运行时状态或保存配置。
-
+   * 设置请求头覆盖规则列表，用于按 host 自动追加自定义请求头。
+   * 调用方（如配置页面）在管理网络规则时使用此方法更新覆盖规则，后续 resolveHeaders 会应用新规则。
+   * @param rules 请求头覆盖规则列表。
    */
   setOverrideHeaders(rules: Array<NetworkHeaderOverrideRule>): void {
     this.overrideRules = this.cloneRules(rules);
   }
 
   /**
-   * 根据当前上下文解析Headers For Profile 值，返回实际可用值。
-   * @param profileId 目标连接或预设配置标识。
-   * @param serverUrl 服务地址。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 根据 profileId 和可选的 serverUrl 解析出该连接的实际请求头列表，包含 provider 特定头、附加头和覆盖规则头。
+   * 调用方（如 API 客户端）在发起网络请求前调用此方法组装最终的请求头。
+   * @param profileId 目标连接配置标识，用于从 ConnectionProfileRuntime 读取 profile 信息。
+   * @param serverUrl 可选的服务地址，用于匹配覆盖规则。未传入时使用 profile 中的 serverUrl。
+   * @returns 解析后的请求头列表副本。
    */
   resolveHeadersForProfile(profileId: string, serverUrl?: string): Array<ConnectionHeaderRecord> {
     const profile = this.connections.getProfile(profileId);
@@ -56,10 +65,11 @@ export class NetworkService {
   }
 
   /**
-   * 执行 previewHeadersForProfile 的内部处理步骤，供当前模块复用。
-   * @param profileId 目标连接或预设配置标识。
-   * @param serverUrl 服务地址。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 预览指定连接的请求头，与 resolveHeadersForProfile 的区别在于密钥值会被掩盖。
+   * 调用方（如配置界面）在用户查看连接详情时使用此方法展示请求头预览，防止密钥明文泄露。
+   * @param profileId 目标连接配置标识。
+   * @param serverUrl 可选的服务地址，用于匹配覆盖规则。
+   * @returns 预览用请求头列表副本（密钥值已掩盖）。
    */
   previewHeadersForProfile(profileId: string, serverUrl?: string): Array<ConnectionHeaderRecord> {
     const resolved = this.resolveHeadersForProfile(profileId, serverUrl);
@@ -67,10 +77,11 @@ export class NetworkService {
   }
 
   /**
-   * 追加Provider Headers 列表，保留既有内容并写入新增片段。
-   * @param result 返回结果。
-
-
+   * 根据 API 类型追加 provider 特定的请求头（如 OpenRouter 的 HTTP-Referer、Mancer 的 X-API-KEY 等）。
+   * 在 resolveHeadersForProfile 中根据 profile.apiType 自动调用，为不同 provider 注入必要的认证和标识头。
+   * @param result 待填充的请求头列表。
+   * @param apiType API 类型标识（如 openrouter、mancer 等），决定追加哪些特定请求头。
+   * @param secretValue 从密钥存储读取的密钥值，用于各 provider 的认证头填充。
    */
   private appendProviderHeaders(result: Array<ConnectionHeaderRecord>, apiType: string, secretValue: string): void {
     const normalized = apiType.toLowerCase();
@@ -116,9 +127,10 @@ export class NetworkService {
   }
 
   /**
-   * 追加Bearer Auth 值，保留既有内容并写入新增片段。
-   * @param result 返回结果。
-
+   * 向请求头列表中追加 Bearer Authentication 头（Authorization: Bearer <secretValue>）。
+   * 在 appendProviderHeaders 中根据 API 类型自动调用，用于通用的 Bearer Token 认证方式。
+   * @param result 待填充的请求头列表。
+   * @param secretValue 密钥值，为空时不追加。
    */
   private appendBearerAuth(result: Array<ConnectionHeaderRecord>, secretValue: string): void {
     if (secretValue.length === 0) {
@@ -128,9 +140,11 @@ export class NetworkService {
   }
 
   /**
-   * 追加Headers 列表，保留既有内容并写入新增片段。
-   * @param result 返回结果。
-   * @param headers 请求头列表。
+   * 将指定的请求头列表追加到 result 中，如果 masked 为 true 则掩盖 secret 头的值。
+   * 在 resolveHeadersForProfile 和 appendOverrideHeaders 中分别用于合并用户附加头和覆盖规则头。
+   * @param result 待填充的请求头列表。
+   * @param headers 要追加的请求头列表。
+   * @param masked 是否掩盖密钥值（用于预览模式）。
    */
   private appendHeaders(
     result: Array<ConnectionHeaderRecord>,
@@ -144,9 +158,10 @@ export class NetworkService {
   }
 
   /**
-   * 追加Override Headers 列表，保留既有内容并写入新增片段。
-   * @param result 返回结果。
-   * @param serverUrl 服务地址。
+   * 从服务器 URL 中提取 host，并在覆盖规则列表中查找匹配项，追加命中规则的请求头。
+   * 在 resolveHeadersForProfile 中调用，用于实现基于 host 的自定义请求头覆盖功能。
+   * @param result 待填充的请求头列表。
+   * @param serverUrl 服务地址，用于提取 host 进行规则匹��。
    */
   private appendOverrideHeaders(result: Array<ConnectionHeaderRecord>, serverUrl: string): void {
     const host = this.extractHost(serverUrl);
@@ -161,10 +176,11 @@ export class NetworkService {
   }
 
   /**
-   * 检查主机是否满足当前规则。
-   * @param rule 待匹配的策略规则。
-   * @param host 目标主机名。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断 host 是否命中指定规则中的任意条目（支持精确匹配和无端口比对）。
+   * 在 appendOverrideHeaders 中遍历规则时调用。
+   * @param rule 请求头覆盖规则。
+   * @param host 待匹配的 host 字符串。
+   * @returns 命中任一规则条目时返回 true。
    */
   private matchesHost(rule: NetworkHeaderOverrideRule, host: string): boolean {
     const normalizedHost = host.toLowerCase();
@@ -179,8 +195,10 @@ export class NetworkService {
   }
 
   /**
-   * 解析或导入Hostname数据，转换为当前 SDK 可使用的结构。
-   * @param host 目标主机名。
+   * 从 host 字符串中提取主机名部分（去除端口号）。
+   * 在 matchesHost 中用于去除端口后与规则 host 进行无端口比对。
+   * @param host 带端口或不带端口的主机名。
+   * @returns 纯主机名字符串。
    */
   private extractHostname(host: string): string {
     const colonIndex = host.indexOf(':');
@@ -191,8 +209,10 @@ export class NetworkService {
   }
 
   /**
-   * 解析或导入主机数据，转换为当前 SDK 可使用的结构。
-   * @param serverUrl 服务地址。
+   * 从 serverUrl 中提取 host（域名/IP），去除协议、路径、查询参数和锚点。
+   * 在 appendOverrideHeaders 中从服务器 URL 提取 host，用于覆盖规则的匹配判断。
+   * @param serverUrl 完整的服务 URL。
+   * @returns 提取后的 host，提取失败返回空字符串。
    */
   private extractHost(serverUrl: string): string {
     const schemeIndex = serverUrl.indexOf('://');
@@ -220,11 +240,12 @@ export class NetworkService {
   }
 
   /**
-   * 创建或写入Header，完成持久化后返回可供调用方使用的结果。
-   * @param result 返回结果。
-   * @param name 显示名称或注册名称。
-   * @param value 要保存或比较的字段值。
-
+   * 创建或更新请求头。如果同名（忽略大小写）头已存在则替换，否则追加。
+   * 在 appendProviderHeaders、appendHeaders、appendBearerAuth 中用于向结果列表写入单条请求头。
+   * @param result 待操作的请求头列表。
+   * @param name 请求头名称。
+   * @param value 请求头值。
+   * @param secret 是否为密钥字段，true 时在预览模式下会被掩盖。
    */
   private upsertHeader(result: Array<ConnectionHeaderRecord>, name: string, value: string, secret: boolean): void {
     for (let index = 0; index < result.length; index += 1) {
@@ -245,8 +266,10 @@ export class NetworkService {
   }
 
   /**
-   * 读取Secret Value 值，并转换为运行时使用的数据结构。
-   * @param secretRef 密钥引用。
+   * 根据 secretRef 从密钥运行时中读取密钥值。
+   * 在 resolveHeadersForProfile 中调用，用于获取认证所需的密钥值注入到请求头中。
+   * @param secretRef 密钥引用标识。
+   * @returns 解密后的密钥字符串，secretRef 为空时返回空字符串。
    */
   private readSecretValue(secretRef: string): string {
     if (secretRef.length === 0) {
@@ -260,9 +283,9 @@ export class NetworkService {
   }
 
   /**
-   * 复制Rules 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深拷贝请求头覆盖规则列表，防止外部修改影响内部状态。
+   * 在 setOverrideHeaders 中调用，确保外部传入的规则数组变更不会波及运行时的内部规则状态。
+   * @returns 规则列表的深拷贝副本。
    */
   private cloneRules(rules: Array<NetworkHeaderOverrideRule>): Array<NetworkHeaderOverrideRule> {
     const result = new Array<NetworkHeaderOverrideRule>();
@@ -276,10 +299,11 @@ export class NetworkService {
   }
 
   /**
-   * 复制Headers 列表，避免外部修改内部状态。
-   * @param headers 请求头列表。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 深拷贝请求头列表，masked 为 true 时掩盖 secret 头的值（用于预览）。
+   * 在 resolveHeadersForProfile、previewHeadersForProfile 以及 cloneRules 中调用。
+   * @param headers 待拷贝的请求头列表。
+   * @param masked 是否掩盖密钥值。
+   * @returns 请求头列表的深拷贝副本。
    */
   private cloneHeaders(headers: Array<ConnectionHeaderRecord>, masked: boolean): Array<ConnectionHeaderRecord> {
     const result = new Array<ConnectionHeaderRecord>();

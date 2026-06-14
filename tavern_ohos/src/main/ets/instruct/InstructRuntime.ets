@@ -18,6 +18,8 @@ import {
 
 /**
  * 提供指令模板相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 管理指令模板预设的加载、选择和应用，为对话消息格式化提供序列标记和角色名渲染支持。
+ * 外部调用方（如聊天消息构建器、模型配置页、备份导入导出）通过此类完成指令模板操作。
  */
 export class InstructRuntime {
   /**
@@ -25,19 +27,19 @@ export class InstructRuntime {
    */
   private events: EventBus;
   /**
-   * presets 列表，由当前实例内部维护。
+   * 已加载的指令模板预设缓存，以预设名称为键。
    */
   private presets: Map<string, InstructPreset> = new Map<string, InstructPreset>();
   /**
-   * mappings 列表，由当前实例内部维护。
+   * 模型 ID 到模板映射的缓存。
    */
   private mappings: Map<string, InstructTemplateMapping> = new Map<string, InstructTemplateMapping>();
   /**
-   * selected Context Preset 值，由当前实例内部维护。
+   * 当前选中的上下文预设名称。
    */
   private selectedContextPreset: string = '';
   /**
-   * state 值，由当前实例内部维护。
+   * 当前指令模板运行时状态。
    */
   private state: InstructState = this.defaultState();
   private context: InstructContextState = {
@@ -49,15 +51,17 @@ export class InstructRuntime {
 
   /**
    * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 在应用启动时由更高层运行时容器调用，为指令模板功能注入事件基础设施。
+   * @param events 事件总线，用于发布指令模板选择('instruct.selected')/状态变更('instruct.state.changed')事件，通知 UI 层和消息格式化模块模板已切换。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 读取或解析Presets，调用方应处理不存在或不匹配的情况。
-
+   * 加载预设列表，替换当前所有已加载的预设。
+   * 在应用启动或用户重新加载预设文件时调用，将预定义的指令模板导入运行时内存。
+   * @param presets 要加载的指令模板预设数组，每个预设包含完整的序列标记和配置。
    */
   loadPresets(presets: Array<InstructPreset>): void {
     this.presets.clear();
@@ -68,8 +72,9 @@ export class InstructRuntime {
   }
 
   /**
-   * 读取Presets列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有已加载的预设，按名称字母序排序后返回副本。
+   * 由 UI 层的指令模板选择器或预设管理面板调用，展示所有可用的模板供用户选择。
+   * @returns 预设对象的深拷贝列表。
    */
   listPresets(): Array<InstructPreset> {
     const values = Array.from(this.presets.values());
@@ -82,9 +87,10 @@ export class InstructRuntime {
   }
 
   /**
-   * 更新指定状态，写回存储并按需发布变更事件。
-
-   * @returns 更新或读取后的记录副本。
+   * 合并部分更新到当前状态，并发布状态变更事件。
+   * 由 UI 层（如用户手动编辑指令模板参数）调用，可部分更新序列标记、行为配置等字段。
+   * @param patch 包含要更新字段的部分状态对象，未提供的字段保持不变。
+   * @returns 更新后的完整状态副本。
    */
   updateState(patch: InstructStatePatch): InstructState {
     this.state = this.mergeState(this.state, patch);
@@ -93,9 +99,10 @@ export class InstructRuntime {
   }
 
   /**
-   * 更新指定Context，写回存储并按需发布变更事件。
-
-   * @returns 更新或读取后的记录副本。
+   * 合并部分更新到当前上下文配置。
+   * 由 UI 层（如用户编辑上下文配置）调用，更新对话起始标记、示例分隔符等上下文设置。
+   * @param patch 包含要更新字段的部分上下文对象，未提供的字段保持不变。
+   * @returns 更新后的完整上下文配置副本。
    */
   updateContext(patch: InstructContextStatePatch): InstructContextState {
     this.context = this.mergeContext(this.context, patch);
@@ -103,44 +110,49 @@ export class InstructRuntime {
   }
 
   /**
-   * 读取指定状态，不存在时抛出错误。
-   * @returns 更新或读取后的记录副本。
+   * 获取当前指令模板状态的深拷贝副本。
+   * 由消息格式化方法（如 formatChatMessage、getStoppingSequences）和 UI 层在需要读取当前模板配置时调用。
+   * @returns 当前状态的完整副本。
    */
   getState(): InstructState {
     return this.cloneState(this.state);
   }
 
   /**
-   * 读取指定Context，不存在时抛出错误。
-   * @returns 更新或读取后的记录副本。
+   * 获取当前上下文配置的深拷贝副本。
+   * 由对话构造流程在构建完整上下文时调用，读取 chat_start、example_separator 等配置。
+   * @returns 当前上下文配置的完整副本。
    */
   getContext(): InstructContextState {
     return this.cloneContext(this.context);
   }
 
   /**
-   * 读取指定预设，不存在时抛出错误。
-   * @returns 更新或读取后的记录副本。
+   * 获取当前选中的上下文预设名称。
+   * 由 autoSelectPreset() 和 UI 层在需要知道当前上下文预设时调用。
+   * @returns 上下文预设名称字符串。
    */
   getContextPreset(): string {
     return this.selectedContextPreset;
   }
 
   /**
-   * 设置模型模板映射，用于切换运行时状态或保存配置。
-   * @param modelId 目标模型标识。
-
-
+   * 设置模型 ID 到指令模板和上下文模板的映射关系。
+   * 由 UI 层（用户配置模型映射）或初始化流程调用，用于 autoSelectPreset() 精确匹配模型到模板。
+   * @param modelId 要设置映射的模型标识，作为映射 Map 的键。
+   * @param instruct 指令模板名称，当 modelId 匹配时自动选择此模板。
+   * @param context 上下文模板名称，当 modelId 匹配时自动选择此上下文模板。
    */
   setModelTemplateMapping(modelId: string, instruct: string, context: string): void {
     this.mappings.set(modelId, { instruct: instruct, context: context });
   }
 
   /**
-   * 读取或解析预设，调用方应处理不存在或不匹配的情况。
-   * @param name 显示名称或注册名称。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 按名称选择并应用指令模板预设。若 forceGet 为 true，即使未启用也会返回当前状态转换的预设。
+   * 由 UI 层（如用户从模板下拉列表中选择）调用，将选中模板应用到运行时状态。
+   * @param name 预设名称，空字符串时使用当前状态返回预设。支持大小写不敏感的子串匹配。
+   * @param forceGet 是否强制获取预设（忽略 enabled 状态），用于只需要读取预设配置而不实际启用的场景。
+   * @returns 应用后的预设对象副本。
    */
   selectPreset(name: string, forceGet: boolean): InstructPreset {
     if (name.length === 0) {
@@ -158,10 +170,11 @@ export class InstructRuntime {
   }
 
   /**
-   * 执行 autoSelectPreset 的内部处理步骤，供当前模块复用。
-   * @param modelId 目标模型标识。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 根据模型 ID 自动匹配并选择预设。优先使用已保存的模板映射，其次通过激活正则匹配。
+   * 由模型切换或聊天启动流程调用，当用户切换聊天模型时自动选择合适的模板。
+   * @param modelId 模型标识，用于匹配 mapppings 中的模板映射和预设的 activation_regex。
+   * @param contextPreset 上下文预设名称，当 bind_to_context 为 true 时作为后备匹配的上下文预设。
+   * @returns 成功匹配并应用预设时返回 true，否则返回 false（表示未找到匹配且未启用）。
    */
   autoSelectPreset(modelId: string, contextPreset: string): boolean {
     const mapped = this.mappings.get(modelId);
@@ -193,11 +206,12 @@ export class InstructRuntime {
   }
 
   /**
-   * 读取Stopping Sequences 列表，不存在时通常抛出错误或返回空值。
-   * @param userName user名称。
-   * @param characterName 角色名称。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 根据当前模板状态生成停止序列列表，包括 stop_sequence 和可选的序列标记。
+   * 由聊天发送流程在构建 API 请求时调用，将停止序列传递给 Provider 层以控制模型生成终止。
+   * @param userName 用户名，用于替换 {{name}} 宏并排除用户名的序列标记。
+   * @param characterName 角色名，用于替换 {{name}} 宏。
+   * @param useStopStrings 是否启用上下文停止字符串，控制是否将 chat_start 和 example_separator 加入停止序列。
+   * @returns 停止序列字符串数组，将与序列标记名替换后的结果一同发送给模型 API。
    */
   getStoppingSequences(userName: string, characterName: string, useStopStrings: boolean): Array<string> {
     const result = new Array<string>();
@@ -227,19 +241,20 @@ export class InstructRuntime {
   }
 
   /**
-   * 生成消息输出，供请求发送、导出或界面展示使用。
-   * @param name 显示名称或注册名称。
-   * @param message 消息记录。
-
-
-
-   * @param userName user名称。
-   * @param characterName 角色名称。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 格式化单条聊天消息，添加前缀/后缀序列标记和角色名，生成适合发送给模型的文本。
+   * 由对话构造流程（如 ChatRuntime 构建完整上下文时）对每条消息逐个调用，输出格式化后的消息文本。
+   * @param name 发送者名称，为空时使用 "System"。
+   * @param message 消息文本内容。
+   * @param isUser 是否为用户消息，影响选择 input_sequence 还是 output_sequence。
+   * @param isNarrator 是否为旁白消息，为 true 时使用 system_sequence 且不包含角色名。
+   * @param forceAvatar 强制使用的头像名称，用于 names_behavior=force 时判断是否显示角色名。
+   * @param userName 用户名，用于宏替换 {{name}}、{{name1}} 等模板变量。
+   * @param characterName 角色名，用于宏替换 {{name2}} 模板变量。
+   * @param forceOutputSequence 强制输出序列类型（none/first/last），用于覆盖特定位置的序列标记。
+   * @returns 格式化后的消息文本，包含前缀序列、消息体和后缀序列。
    */
   formatChatMessage(name: string, message: string, isUser: boolean, isNarrator: boolean, forceAvatar: string, userName: string, characterName: string, forceOutputSequence: number): string {
-    // include 名称。
+    // 判断是否需要在消息前包含角色名
     const includeName = this.shouldIncludeMessageName(name, isUser, isNarrator, forceAvatar, userName);
     let prefix = this.getMessagePrefix(isUser, isNarrator, forceOutputSequence);
     let suffix = this.getMessageSuffix(isUser, isNarrator);
@@ -256,10 +271,11 @@ export class InstructRuntime {
   }
 
   /**
-   * 生成StoryString输出，供请求发送、导出或界面展示使用。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 格式化故事文本，根据位置参数决定是否添加前缀/后缀序列标记。
+   * 由对话构造流程在构建世界信息/故事文本时调用，输出带序列标记的世界书或故事文本。
+   * @param storyString 故事文本内容，来自 worldinfo 模块或故事书系统。
+   * @param inChatPosition 故事文本是否嵌入在聊天上下文中，为 true 时不添加任何序列标记。
+   * @returns 格式化后的故事文本，如果 storyString 为空则返回空字符串。
    */
   formatStoryString(storyString: string, inChatPosition: boolean): string {
     if (storyString.length === 0) {
@@ -280,19 +296,20 @@ export class InstructRuntime {
   }
 
   /**
-   * 生成提示词Line输出，供请求发送、导出或界面展示使用。
-   * @param name 显示名称或注册名称。
-
-
-   * @param userName user名称。
-   * @param characterName 角色名称。
-
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 格式化提示词中的一行内容，根据角色名行为和强制输出序列生成适当的序列标记。
+   * 由提示词构造流程（如 impersonate/continue 场景）调用，生成适合提示词编辑器的格式化行。
+   * @param name 发送者名称。
+   * @param isImpersonate 是否为 impersonate 模式（扮演角色），影响选择 last_input_sequence 作为前缀。
+   * @param promptBias 提示偏向文本，用于在非 impersonate 模式下追加额外引导文本。
+   * @param userName 用户名，用于宏替换。
+   * @param characterName 角色名，用于宏替换。
+   * @param isQuiet 是否为静默消息，为 true 且非 isQuietToLoud 时使用 last_system_sequence。
+   * @param isQuietToLoud 是否从静默转为非静默，用于决定是否跳过静默序列。
+   * @param forceOutputSequence 强制输出序列类型（none/first/last）。
+   * @returns 格式化后的提示词行文本。
    */
   formatPromptLine(name: string, isImpersonate: boolean, promptBias: string, userName: string, characterName: string, isQuiet: boolean, isQuietToLoud: boolean, forceOutputSequence: number): string {
-    // include 名称。
+    // 根据 names_behavior 判断是否包含角色名
     const includeName = name.length > 0 && (this.state.names_behavior === INSTRUCT_NAMES_BEHAVIOR_ALWAYS || this.state.names_behavior === INSTRUCT_NAMES_BEHAVIOR_FORCE) && !(isQuiet && !isQuietToLoud);
     let sequence = this.getPromptSequence(isImpersonate, isQuiet, isQuietToLoud, forceOutputSequence);
     if (this.state.macro) {
@@ -310,8 +327,9 @@ export class InstructRuntime {
   }
 
   /**
-   * 规范化Preset 值，保证后续比较和存储使用一致格式。
-   * @param input 待处理的输入对象。
+   * 规范化预设，将旧格式字段（separator_sequence、names）转换为当前状态结构。
+   * @param input 待规范化的原始预设。
+   * @returns 规范化后的预设对象。
    */
   private normalizePreset(input: InstructPreset): InstructPreset {
     const state = this.mergeState(this.defaultState(), this.presetToPatch(input));
@@ -340,9 +358,9 @@ export class InstructRuntime {
   }
 
   /**
-   * 创建或写入StopSequences，完成持久化后返回可供调用方使用的结果。
-   * @param result 返回结果。
-
+   * 将停止序列字符串拆分为单独条目，过滤空值和重复值。
+   * @param result 停止序列输出列表（引用）。
+   * @param combined 用换行符分隔的停止序列组合字符串。
    */
   private addStopSequences(result: Array<string>, combined: string): void {
     const seen: Map<string, boolean> = new Map<string, boolean>();
@@ -356,6 +374,15 @@ export class InstructRuntime {
       result.push(this.state.wrap ? `\n${sequence}` : sequence);
     }
   }
+  /**
+   * 根据当前 names_behavior 和消息角色判断是否应在消息前包含角色名。
+   * @param name 发送者名称。
+   * @param isUser 是否为用户消息。
+   * @param isNarrator 是否为旁白消息。
+   * @param forceAvatar 强制头像名称。
+   * @param userName 用户名。
+   * @returns 应包含角色名时返回 true。
+   */
   private shouldIncludeMessageName(name: string, isUser: boolean, isNarrator: boolean, forceAvatar: string, userName: string): boolean {
     if (isNarrator) {
       return false;
@@ -367,11 +394,11 @@ export class InstructRuntime {
   }
 
   /**
-   * 读取指定前缀长度，不存在时抛出错误。
-
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 根据消息角色和强制输出序列类型获取合适的前缀序列标记。
+   * @param isUser 是否为用户消息。
+   * @param isNarrator 是否为旁白消息。
+   * @param forceOutputSequence 强制输出序列类型。
+   * @returns 匹配的前缀序列标记字符串。
    */
   private getMessagePrefix(isUser: boolean, isNarrator: boolean, forceOutputSequence: number): string {
     if (isNarrator) {
@@ -396,10 +423,10 @@ export class InstructRuntime {
   }
 
   /**
-   * 读取指定消息Suffix，不存在时抛出错误。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 根据消息角色获取合适的后缀序列标记。
+   * @param isUser 是否为用户消息。
+   * @param isNarrator 是否为旁白消息。
+   * @returns 匹配的后缀序列标记字符串。
    */
   private getMessageSuffix(isUser: boolean, isNarrator: boolean): string {
     if (isNarrator) {
@@ -409,12 +436,12 @@ export class InstructRuntime {
   }
 
   /**
-   * 读取指定提示词Sequence，不存在时抛出错误。
-
-
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 根据提示词上下文获取合适的序列标记。
+   * @param isImpersonate 是否为 impersonate 模式。
+   * @param isQuiet 是否为静默消息。
+   * @param isQuietToLoud 是否从静默转为非静默。
+   * @param forceOutputSequence 强制输出序列类型。
+   * @returns 匹配的提示词序列标记字符串。
    */
   private getPromptSequence(isImpersonate: boolean, isQuiet: boolean, isQuietToLoud: boolean, forceOutputSequence: number): string {
     if (isImpersonate) {
@@ -430,8 +457,9 @@ export class InstructRuntime {
   }
 
   /**
-   * 在当前集合中查找Preset 值，未命中时返回空值或默认位置。
-   * @param name 显示名称或注册名称。
+   * 按名称查找预设，支持精确匹配和大小写不敏感的子串匹配。
+   * @param name 预设名称或子串。
+   * @returns 匹配的预设对象，未找到时返回 undefined。
    */
   private findPreset(name: string): InstructPreset | undefined {
     const exact = this.presets.get(name);
@@ -449,10 +477,10 @@ export class InstructRuntime {
   }
 
   /**
-   * 检查正则脚本是否满足当前规则。
-   * @param source 来源类型。
-   * @param value 要保存或比较的字段值。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 检查模型 ID 是否匹配预设的激活正则表达式。
+   * @param source 正则表达式字符串（支持 /pattern/flags 格式）。
+   * @param value 要匹配的模型 ID 字符串。
+   * @returns 匹配成功时返回 true。
    */
   private matchesActivationRegex(source: string, value: string): boolean {
     try {
@@ -486,8 +514,9 @@ export class InstructRuntime {
   }
 
   /**
-   * 按预算裁剪End 值，避免超出上下文限制。
-   * @param value 要保存或比较的字段值。
+   * 裁剪字符串末尾的空白字符（空格、换行、制表符）。
+   * @param value 要裁剪的原始字符串。
+   * @returns 裁剪末尾空白后的字符串。
    */
   private trimEnd(value: string): string {
     let end = value.length;
@@ -668,29 +697,35 @@ export class InstructRuntime {
   }
 
   /**
-   * 复制Preset 值，避免外部修改内部状态。
+   * 深拷贝预设对象，确保字段值完全独立。
+   * @param preset 原始预设对象。
+   * @returns 预设对象的深拷贝副本。
    */
   private clonePreset(preset: InstructPreset): InstructPreset {
     return this.stateToPreset(this.mergeState(this.defaultState(), this.presetToPatch(preset)), preset.name);
   }
 
   /**
-   * 复制State 值，避免外部修改内部状态。
+   * 深拷贝状态对象。
+   * @param state 原始状态对象。
+   * @returns 状态的深拷贝副本。
    */
   private cloneState(state: InstructState): InstructState {
     return this.mergeState(this.defaultState(), this.stateToPatch(state));
   }
 
   /**
-   * 复制Context 值，避免外部修改内部状态。
+   * 深拷贝上下文配置对象。
+   * @param context 原始上下文配置对象。
+   * @returns 上下文配置的深拷贝副本。
    */
   private cloneContext(context: InstructContextState): InstructContextState {
     return this.mergeContext(this.defaultContext(), this.contextToPatch(context));
   }
 
   /**
-   * 发布指令模板事件，把状态变化通知给宿主或其他 Runtime。
-   * @param eventName 要订阅或发布的事件名。
+   * 通过事件总线发布指令模板状态变更事件。
+   * @param eventName 要发布的事件名称。
    */
   private publishState(eventName: string): void {
     const payload: InstructStatePayload = {

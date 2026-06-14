@@ -1,494 +1,307 @@
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * 声明一个 Provider 后端所支持的能力特性集合。
  */
 export interface ProviderCapability {
-  /**
-   * provider 值，由当前实例内部维护。
-   */
+  /** 后端名称标识，如 "openai-compatible"、"anthropic" 等。 */
   provider: string;
-  /**
-   * 模型名称，由当前实例内部维护。
-   */
+  /** 后端对应的默认模型名称。 */
   model: string;
-  /**
-   * supports Streaming 值，由当前实例内部维护。
-   */
+  /** 是否支持流式输出。 */
   supportsStreaming: boolean;
-  /**
-   * supports System Prompt 值，由当前实例内部维护。
-   */
+  /** 是否支持系统提示词（System Prompt）。 */
   supportsSystemPrompt: boolean;
-  /**
-   * supports Tools 列表，由当前实例内部维护。
-   */
+  /** 是否支持工具/函数调用。 */
   supportsTools: boolean;
-  /**
-   * supports Reasoning 值，由当前实例内部维护。
-   */
+  /** 是否支持推理过程输出（如思维链）。 */
   supportsReasoning: boolean;
-  /**
-   * supports Vision Input 值，由当前实例内部维护。
-   */
+  /** 是否支持视觉输入（图片理解）。 */
   supportsVisionInput: boolean;
-  /**
-   * supports Image Output 值，由当前实例内部维护。
-   */
+  /** 是否支持图片输出（图片生成）。 */
   supportsImageOutput: boolean;
-  /**
-   * supports Json Schema 值，由当前实例内部维护。
-   */
+  /** 是否支持 JSON Schema 约束的输出格式。 */
   supportsJsonSchema: boolean;
-  /**
-   * supports Logprobs 列表，由当前实例内部维护。
-   */
+  /** 是否支持返回对数概率（logprobs）。 */
   supportsLogprobs: boolean;
-  /**
-   * supports Seed 值，由当前实例内部维护。
-   */
+  /** 是否支持随机种子设定。 */
   supportsSeed: boolean;
-  /**
-   * supports Stop Strings 列表，由当前实例内部维护。
-   */
+  /** 是否支持停止字符串列表。 */
   supportsStopStrings: boolean;
-  /**
-   * supports Assistant Prefill 值，由当前实例内部维护。
-   */
+  /** 是否支持助理预填充（Assistant Prefill）。 */
   supportsAssistantPrefill: boolean;
-  /**
-   * supports Text Completion 值，由当前实例内部维护。
-   */
+  /** 是否支持文本补全（非聊天形式的 Completion 接口）。 */
   supportsTextCompletion: boolean;
-  /**
-   * supports Chat Completion 值，由当前实例内部维护。
-   */
+  /** 是否支持聊天补全（Chat Completion 接口）。 */
   supportsChatCompletion: boolean;
-  /**
-   * max Context 值，由当前实例内部维护。
-   */
+  /** 后端的最大上下文窗口大小（token 数）。 */
   maxContext: number;
-  /**
-   * tokenizer 值，由当前实例内部维护。
-   */
+  /** 后端使用的 tokenizer 名称，用于 token 计数。 */
   tokenizer: string;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * 聊天消息结构，包含角色和文本内容。
  */
 export interface ProviderChatMessage {
-  /**
-   * role 值，由当前实例内部维护。
-   */
+  /** 消息角色：如 "user"、"assistant"、"system"。 */
   role: string;
-  /**
-   * 内容。
-   */
+  /** 消息文本内容。 */
   content: string;
 }
 
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * 流式聊天补全请求的结构，用于发送给外部 API 或网络层。
  */
 export interface ProviderStreamRequest {
-  /**
-   * provider 值，由当前实例内部维护。
-   */
+  /** 后端名称标识。 */
   provider: string;
-  /**
-   * 模型名称，由当前实例内部维护。
-   */
+  /** 请求使用的模型名称。 */
   model: string;
-  /**
-   * 消息列表。
-   */
+  /** 对话历史消息列表。 */
   messages: Array<ProviderChatMessage>;
-  /**
-   * temperature 值，由当前实例内部维护。
-   */
+  /** 采样温度参数（0~2），控制输出随机性。 */
   temperature: number;
-  /**
-   * max Tokens 列表，由当前实例内部维护。
-   */
+  /** 生成的最大 token 数上限。 */
   maxTokens: number;
-  /**
-   * stop 值，由当前实例内部维护。
-   */
+  /** 停止字符串列表，命中任意一个即停止生成。 */
   stop: Array<string>;
-  /**
-   * stream 值，由当前实例内部维护。
-   */
+  /** 是否启用流式输出。 */
   stream: boolean;
 }
 
 /**
- * 描述调用Provider 请求能力时需要传入的参数。
+ * 文本补全（非聊天）接口的构建参数。
  */
 export interface ProviderTextCompletionBuildParams {
-  /**
-   * api Type 值，由当前实例内部维护。
-   */
+  /** API 类型标识，如 "ollama"、"generic"、"dreamgen" 等，用于路由到不同的请求构建逻辑。 */
   apiType: string;
-  /**
-   * 模型名称，由当前实例内部维护。
-   */
+  /** 模型名称。 */
   model: string;
-  /**
-   * prompt 值，由当前实例内部维护。
-   */
+  /** 输入提示词文本。 */
   prompt: string;
-  /**
-   * temperature 值，由当前实例内部维护。
-   */
+  /** 采样温度参数。 */
   temperature: number;
-  /**
-   * max Tokens 列表，由当前实例内部维护。
-   */
+  /** 生成的最大 token 数。 */
   maxTokens: number;
-  /**
-   * stop 值，由当前实例内部维护。
-   */
+  /** 停止字符串列表。 */
   stop: Array<string>;
-  /**
-   * stream 值，由当前实例内部维护。
-   */
+  /** 是否启用流式输出。 */
   stream: boolean;
-  /**
-   * top P 值，由当前实例内部维护。
-   */
+  /** Top-P 采样参数，控制累积概率阈值。 */
   topP?: number;
-  /**
-   * presence Penalty 值，由当前实例内部维护。
-   */
+  /** 存在惩罚系数，降低已出现 token 的重复概率。 */
   presencePenalty?: number;
-  /**
-   * frequency Penalty 值，由当前实例内部维护。
-   */
+  /** 频率惩罚系数，降低高频 token 的重复概率。 */
   frequencyPenalty?: number;
-  /**
-   * seed 值，由当前实例内部维护。
-   */
+  /** 随机种子，用于可复现的生成结果。 */
   seed?: number;
 }
 
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * 文本补全请求的最终结构，包含 API 路由和请求体，准备发送给网络层。
  */
 export interface ProviderTextCompletionRequest {
-  /**
-   * api Type 值，由当前实例内部维护。
-   */
+  /** API 类型标识。 */
   apiType: string;
-  /**
-   * 路径。
-   */
+  /** 请求路径。 */
   path: string;
-  /**
-   * body 值，由当前实例内部维护。
-   */
+  /** 请求体数据。 */
   body: ProviderTextCompletionBody;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * 文本补全的请求体（Body），包含多后端兼容的采样参数字段。
  */
 export interface ProviderTextCompletionBody {
-  /**
-   * 模型名称，由当前实例内部维护。
-   */
+  /** 模型名称。 */
   model: string;
-  /**
-   * prompt 值，由当前实例内部维护。
-   */
+  /** 提示词文本。 */
   prompt: string;
-  /**
-   * temperature 值，由当前实例内部维护。
-   */
+  /** 温度参数。 */
   temperature: number;
-  /**
-   * max tokens 列表，由当前实例内部维护。
-   */
+  /** OpenAI 风格的最大 token 数。 */
   max_tokens?: number;
-  /**
-   * max new tokens 列表，由当前实例内部维护。
-   */
+  /** Text Generation Inference 风格的最大 token 数。 */
   max_new_tokens?: number;
-  /**
-   * num predict 值，由当前实例内部维护。
-   */
+  /** Ollama 风格的预测 token 数。 */
   num_predict?: number;
-  /**
-   * stop 值，由当前实例内部维护。
-   */
+  /** 停止字符串。 */
   stop: Array<string>;
-  /**
-   * stream 值，由当前实例内部维护。
-   */
+  /** 是否流式输出。 */
   stream: boolean;
-  /**
-   * top p 值，由当前实例内部维护。
-   */
+  /** Top-P 采样参数。 */
   top_p?: number;
-  /**
-   * presence penalty 值，由当前实例内部维护。
-   */
+  /** 存在惩罚系数。 */
   presence_penalty?: number;
-  /**
-   * frequency penalty 值，由当前实例内部维护。
-   */
+  /** 频率惩罚系数。 */
   frequency_penalty?: number;
-  /**
-   * seed 值，由当前实例内部维护。
-   */
+  /** 随机种子。 */
   seed?: number;
-  /**
-   * raw 值，由当前实例内部维护。
-   */
+  /** Ollama 原始模式开关。 */
   raw?: boolean;
-  /**
-   * 配置选项。
-   */
+  /** Ollama 风格的采样选项对象。 */
   options?: ProviderTextCompletionOptions;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * Ollama 文本补全的采样选项子对象。
  */
 export interface ProviderTextCompletionOptions {
-  /**
-   * temperature 值，由当前实例内部维护。
-   */
+  /** 温度参数。 */
   temperature: number;
-  /**
-   * num predict 值，由当前实例内部维护。
-   */
+  /** 预测 token 数。 */
   num_predict: number;
-  /**
-   * stop 值，由当前实例内部维护。
-   */
+  /** 停止字符串。 */
   stop: Array<string>;
-  /**
-   * top p 值，由当前实例内部维护。
-   */
+  /** Top-P 采样参数。 */
   top_p?: number;
-  /**
-   * presence penalty 值，由当前实例内部维护。
-   */
+  /** 存在惩罚系数。 */
   presence_penalty?: number;
-  /**
-   * frequency penalty 值，由当前实例内部维护。
-   */
+  /** 频率惩罚系数。 */
   frequency_penalty?: number;
-  /**
-   * seed 值，由当前实例内部维护。
-   */
+  /** 随机种子。 */
   seed?: number;
 }
 
 /**
- * 描述调用Provider 请求能力时需要传入的参数。
+ * 启动流式生成请求所需的参数集合。
  */
 export interface ProviderStreamStartParams {
-  /**
-   * 任务标识。
-   */
+  /** 唯一任务标识。 */
   taskId: string;
-  /**
-   * 聊天标识。
-   */
+  /** 所属聊天会话标识。 */
   chatId: string;
-  /**
-   * 消息标识。
-   */
+  /** 所属消息标识。 */
   messageId: string;
-  /**
-   * request 值，由当前实例内部维护。
-   */
+  /** 流式请求的完整参数。 */
   request: ProviderStreamRequest;
-  /**
-   * 来源类型，由当前实例内部维护。
-   */
+  /** 数据来源（如 OpenAI 兼容的流式请求源）。 */
   source: ProviderStreamSource;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * 流式请求的句柄，提供关闭/中止流的能力。
  */
 export interface ProviderStreamHandle {
-  /**
-   * 执行 close 的内部处理步骤，供当前模块复用。
-   */
+  /** 关闭当前流式请求，释放网络连接。 */
   close(): void;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * 流式数据的消费者，接收来自源端的流式数据块、错误和完成事件。
  */
 export interface ProviderStreamSink {
-  /**
-   * 执行 onChunk 的内部处理步骤，供当前模块复用。
-
-   */
+  /** 处理接收到的原始数据块。 */
   onChunk(chunk: string): Promise<void>;
   /**
-   * 执行 onError 的内部处理步骤，供当前模块复用。
-   * @param message 消息记录。
+   * 处理流式请求过程中的错误。
+   * @param message 错误描述信息。
    */
   onError(message: string): Promise<void>;
-  /**
-   * 执行 onDone 的内部处理步骤，供当前模块复用。
-   */
+  /** 处理流式请求正常结束事件。 */
   onDone(): Promise<void>;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * 流式数据的来源，负责启动请求并将数据投递到 Sink。
  */
 export interface ProviderStreamSource {
   /**
-   * 启动目标对象流程，并记录初始任务或会话状态。
-   * @param request 待处理的请求对象。
+   * 启动流式请求，建立与后端的连接。
+   * @param request 流式请求参数。
+   * @param sink 数据消费者，接收流式事件。
+   * @returns 流式句柄，可用于关闭请求。
    */
   start(request: ProviderStreamRequest, sink: ProviderStreamSink): Promise<ProviderStreamHandle>;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * Provider 流式任务的状态记录，贯穿任务的整个生命周期。
  */
 export interface ProviderStreamTask {
-  /**
-   * 任务标识。
-   */
+  /** 唯一任务标识。 */
   taskId: string;
-  /**
-   * session 标识。
-   */
+  /** 所属 session 标识。 */
   sessionId: string;
-  /**
-   * 聊天标识。
-   */
+  /** 所属聊天会话标识。 */
   chatId: string;
-  /**
-   * 消息标识。
-   */
+  /** 所属消息标识。 */
   messageId: string;
-  /**
-   * provider 值，由当前实例内部维护。
-   */
+  /** 后端名称。 */
   provider: string;
-  /**
-   * 模型名称，由当前实例内部维护。
-   */
+  /** 使用的模型名称。 */
   model: string;
-  /**
-   * 状态值，由当前实例内部维护。
-   */
+  /** 任务状态：running / completed / failed / aborted。 */
   status: string;
-  /**
-   * 错误信息，由当前实例内部维护。
-   */
+  /** 错误信息，仅 status 为 failed 或 aborted 时有意义。 */
   error: string;
-  /**
-   * finish Reason 值，由当前实例内部维护。
-   */
+  /** 结束原因，如 "stop"、"length"、"content_filter" 等。 */
   finishReason: string;
-  /**
-   * created At 值，由当前实例内部维护。
-   */
+  /** 任务创建时间戳（毫秒）。 */
   createdAt: number;
-  /**
-   * updated At 值，由当前实例内部维护。
-   */
+  /** 任务最后更新时间戳（毫秒）。 */
   updatedAt: number;
 }
 
 /**
- * 描述Provider 请求事件发布时携带的数据结构。
+ * Provider 生成事件发布时携带的载荷。
  */
 export interface ProviderGenerationPayload {
-  /**
-   * task 值，由当前实例内部维护。
-   */
+  /** 当前已完成/失败/中止的流式任务。 */
   task: ProviderStreamTask;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * 解析后的 SSE 事件数据结构。
  */
 export interface ProviderSSEEvent {
-  /**
-   * event 值，由当前实例内部维护。
-   */
+  /** 事件类型名称，如 "message"、"error"、"ping"。 */
   event: string;
-  /**
-   * 数据内容。
-   */
+  /** 事件数据内容（JSON 字符串）。 */
   data: string;
-  /**
-   * 标识。
-   */
+  /** 事件标识（可选，来自 SSE 协议的 id 字段）。 */
   id: string;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * 归一化后的流式数据块，统一了不同后端输出的格式差异。
  */
 export interface ProviderNormalizedChunk {
-  /**
-   * text Delta 值，由当前实例内部维护。
-   */
+  /** 本次数据块中的文本增量。 */
   textDelta: string;
-  /**
-   * reasoning Delta 值，由当前实例内部维护。
-   */
+  /** 本次数据块中的推理过程增量（如思维链文本）。 */
   reasoningDelta: string;
-  /**
-   * finish Reason 值，由当前实例内部维护。
-   */
+  /** 结束原因，非空时表示生成已终止。 */
   finishReason: string;
-  /**
-   * raw JSON 字符串。
-   */
+  /** 原始 JSON 字符串，保留后端原始响应。 */
   rawJson: string;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * OpenAI 兼容格式的流式聊天补全 Chunk。
  */
 export interface OpenAICompatibleChatChunk {
-  /**
-   * choices 列表，由当前实例内部维护。
-   */
+  /** 候选结果列表。 */
   choices: Array<OpenAICompatibleChatChoice>;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * OpenAI 兼容格式的单个候选结果。
  */
 export interface OpenAICompatibleChatChoice {
-  /**
-   * delta 值，由当前实例内部维护。
-   */
+  /** 增量数据（delta 模式）。 */
   delta?: OpenAICompatibleChatDelta;
-  /**
-   * finish reason 值，由当前实例内部维护。
-   */
+  /** 结束原因。 */
   finish_reason?: string | null;
 }
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * OpenAI 兼容格式的增量数据，包含文本内容和推理内容。
  */
 export interface OpenAICompatibleChatDelta {
-  /**
-   * 内容。
-   */
+  /** 文本增量内容。 */
   content?: string | null;
-  /**
-   * reasoning content 值，由当前实例内部维护。
-   */
+  /** 推理过程增量内容（DeepSeek/OpenAI 风格）。 */
   reasoning_content?: string | null;
-  /**
-   * reasoning 值，由当前实例内部维护。
-   */
+  /** 推理过程增量内容（通用风格）。 */
   reasoning?: string | null;
 }

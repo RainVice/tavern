@@ -25,51 +25,53 @@ const DEFAULT_MAX_CACHE_SIZE = 1000;
 
 /**
  * 提供翻译相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 在消息发送前或接收后流程中，支持将文本翻译为指定语言，包括策略管理、任务跟踪、缓存加速等。
  */
 export class TranslationRuntime {
   /**
-   * 事件总线。
+   * 事件总线实例，用于发布翻译任务和缓存事件。
    */
   private events: EventBus;
   /**
-   * 条目列表，由当前实例内部维护。
+   * 按 entryId 保存的翻译条目映射表，记录每条待翻译或已翻译的文本。
    */
   private entries: Map<string, TranslationEntry> = new Map<string, TranslationEntry>();
   /**
-   * tasks 列表，由当前实例内部维护。
+   * 按 taskId 保存的翻译任务映射表，管理翻译任务的批次执行。
    */
   private tasks: Map<string, TranslationTask> = new Map<string, TranslationTask>();
   /**
-   * cache 值，由当前实例内部维护。
+   * 翻译缓存：键为 "sourceLang:targetLang:sourceText"。
    */
   private cache: Map<string, TranslationCacheEntry> = new Map<string, TranslationCacheEntry>();
   /**
-   * strategies 列表，由当前实例内部维护。
+   * 按作用域保存的翻译策略映射表，不同作用域可配置不同的语言方向和开关。
    */
   private strategies: Map<TranslationScope, TranslationStrategy> = new Map<TranslationScope, TranslationStrategy>();
   /**
-   * entry Counter 值，由当前实例内部维护。
+   * 条目自增 ID 计数器。
    */
   private entryCounter: number = 0;
   /**
-   * task Counter 值，由当前实例内部维护。
+   * 任务自增 ID 计数器。
    */
   private taskCounter: number = 0;
   /**
-   * max Cache Size 值，由当前实例内部维护。
+   * 缓存最大容量，超过时淘汰最旧条目。
    */
   private maxCacheSize: number = DEFAULT_MAX_CACHE_SIZE;
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化 TranslationRuntime 实例。
+   * @param events 事件总线实例。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 设置翻译策略。
+   * 设置翻译策略并发布更新事件。
+   * 在用户配置翻译设置时由 UI 层调用。
    * @param strategy 策略配置。
    */
   setStrategy(strategy: TranslationStrategy): void {
@@ -80,9 +82,9 @@ export class TranslationRuntime {
   }
 
   /**
-   * 读取指定Strategy，不存在时抛出错误。
-   * @param scope 绑定或查询使用的作用域。
-   * @returns 更新或读取后的记录副本。
+   * 获取指定作用域的翻译策略。
+   * @param scope 作用域。
+   * @returns 策略配置副本（不存在时返回 undefined）。
    */
   getStrategy(scope: TranslationScope): TranslationStrategy | undefined {
     const strategy = this.strategies.get(scope);
@@ -101,10 +103,11 @@ export class TranslationRuntime {
 
   /**
    * 创建新的条目记录，写入存储并返回副本。
-
-
-
-   * @returns 更新或读取后的记录副本。
+   * 在准备翻译一段文本时由调用方（如消息处理流程）调用。
+   * @param direction 翻译方向。
+   * @param languagePair 语言对。
+   * @param sourceText 源文本。
+   * @returns 新建的条目记录副本。
    */
   createEntry(
     direction: TranslationDirection,
@@ -112,7 +115,6 @@ export class TranslationRuntime {
     sourceText: string,
   ): TranslationEntry {
     this.entryCounter += 1;
-    // entry 标识。
     const entryId = `trans-${this.entryCounter}`;
     const now = Date.now();
     const entry: TranslationEntry = {
@@ -135,7 +137,10 @@ export class TranslationRuntime {
 
   /**
    * 标记Entry 值完成，并写入最终结果。
+   * 在翻译完成后由实际的翻译服务调用方调用。
    * @param entryId 条目标识。
+   * @param translatedText 翻译后的文本。
+   * @returns 更新后的条目记录。
    */
   completeEntry(entryId: string, translatedText: string): TranslationEntry {
     const entry = this.requireEntry(entryId);
@@ -160,19 +165,20 @@ export class TranslationRuntime {
   }
 
   /**
-   * 读取指定条目，不存在时抛出错误。
+   * 获取指定条目的翻译记录。
    * @param entryId 条目标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 新建的条目记录副本。
    */
   getEntry(entryId: string): TranslationEntry {
     return this.copyEntry(this.requireEntry(entryId));
   }
 
   /**
-   * 在当前集合中查找In Cache 值，未命中时返回空值或默认位置。
+   * 查找缓存中的翻译结果。
+   * 在发起翻译请求前调用，命中缓存则直接返回译文，避免重复翻译请求。
+   * @returns 翻译结果（含原文、译文和缓存标记），未命中时返回 undefined。
    */
   findInCache(sourceText: string, sourceLanguage: string, targetLanguage: string): TranslationResult | undefined {
-    // 键名。
     const key = this.cacheKey(sourceText, sourceLanguage, targetLanguage);
     const cached = this.cache.get(key);
     if (cached === undefined) {
@@ -189,14 +195,13 @@ export class TranslationRuntime {
   }
 
   /**
-   * 添加到缓存。
+   * 添加翻译结果到缓存，缓存满时淘汰最早条目。
    * @param sourceText 源文本。
    * @param sourceLanguage 源语言。
    * @param targetLanguage 目标语言。
    * @param translatedText 译文文本。
    */
   addToCache(sourceText: string, sourceLanguage: string, targetLanguage: string, translatedText: string): void {
-    // 键名。
     const key = this.cacheKey(sourceText, sourceLanguage, targetLanguage);
     const entry: TranslationCacheEntry = {
       sourceText: sourceText,
@@ -230,14 +235,14 @@ export class TranslationRuntime {
   }
 
   /**
-   * 创建新的任务记录，写入存储并返回副本。
-   * @param entryIds 目标条目标识列表。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 创建新的翻译任务，设置初始状态并发布 started 事件。
+   * 在发起一批翻译操作时由调用方调用。
+   * @param entryIds 要翻译的条目 ID 列表。
+   * @param strategy 使用的翻译策略。
+   * @returns 新建的任务记录。
    */
   createTask(entryIds: Array<string>, strategy: TranslationStrategy): TranslationTask {
     this.taskCounter += 1;
-    // task 标识。
     const taskId = `trans-task-${this.taskCounter}`;
     const now = Date.now();
     const task: TranslationTask = {
@@ -257,10 +262,10 @@ export class TranslationRuntime {
   }
 
   /**
-   * 更新Task Progress 列表，同步内部状态并按需发布变更事件。
+   * 更新任务进度，设置状态为 running 并发布 progress 事件。
    * @param taskId 目标任务标识。
-
-   * @returns 更新或读取后的记录副本。
+   * @param progress 进度值（0-100）。
+   * @returns 更新后的任务记录。
    */
   updateTaskProgress(taskId: string, progress: number): TranslationTask {
     const task = this.requireTask(taskId);
@@ -316,18 +321,18 @@ export class TranslationRuntime {
   }
 
   /**
-   * 读取指定任务，不存在时抛出错误。
+   * 获取指定任务的记录。
    * @param taskId 目标任务标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 任务记录副本。
    */
   getTask(taskId: string): TranslationTask {
     return this.copyTask(this.requireTask(taskId));
   }
 
   /**
-   * 读取Tasks列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param status 状态值。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有任务，可按状态筛选。
+   * @param status 可选，筛选指定状态的任务。
+   * @returns 任务记录副本数组。
    */
   listTasks(status?: TranslationTaskStatus): Array<TranslationTask> {
     const result = new Array<TranslationTask>();
@@ -360,8 +365,8 @@ export class TranslationRuntime {
   }
 
   /**
-   * 导入。
-   * @param data 数据内容。
+   * 导入翻译数据（策略、条目、缓存）。
+   * @param data 要导入的数据。
    */
   importData(data: TranslationExportData): void {
     for (let index = 0; index < data.strategies.length; index += 1) {
@@ -375,7 +380,6 @@ export class TranslationRuntime {
     }
     for (let index = 0; index < data.cache.length; index += 1) {
       const entry = this.copyCacheEntry(data.cache[index]);
-      // 键名。
       const key = this.cacheKey(entry.sourceText, entry.sourceLanguage, entry.targetLanguage);
       this.cache.set(key, entry);
     }
@@ -385,7 +389,7 @@ export class TranslationRuntime {
   }
 
   /**
-   * 读取必须存在的Entry 值，缺失时抛出错误。
+   * 确保指定条目存在，缺失时抛出错误。
    * @param entryId 条目标识。
    */
   private requireEntry(entryId: string): TranslationEntry {
@@ -397,7 +401,7 @@ export class TranslationRuntime {
   }
 
   /**
-   * 读取必须存在的Task 值，缺失时抛出错误。
+   * 确保指定任务存在，缺失时抛出错误。
    * @param taskId 目标任务标识。
    */
   private requireTask(taskId: string): TranslationTask {
@@ -482,8 +486,8 @@ export class TranslationRuntime {
   }
 
   /**
-   * 读取Cache条目列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取缓存中的所有条目列表。
+   * @returns 缓存条目副本数组。
    */
   private listCacheEntries(): Array<TranslationCacheEntry> {
     const result = new Array<TranslationCacheEntry>();

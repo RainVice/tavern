@@ -1,195 +1,205 @@
 /**
- * 描述预设模块在运行时交换的数据结构。
+ * 预设中的一个字段条目。
+ * 用于 PresetRuntime 中存储预设的各配置项，如温度、top_p 等模型参数。
  */
 export interface PresetField {
   /**
-   * 名称。
+   * 字段名称，用于标识预设中的某个配置项（如 temperature、max_tokens）。
    */
   name: string;
   /**
-   * 字段值。
+   * 字段值，存储对应配置项的具体数值或文本。
    */
   value: string;
   /**
-   * value Type 值，由当前实例内部维护。
+   * 字段值的类型标识（如 string、number、json），用于在反序列化时确定值的处理方式。
    */
   valueType: string;
 }
 
 /**
- * 描述调用预设能力时需要传入的参数。
+ * 创建预设时所需的参数。
+ * 用于 PresetRuntime.createPreset 方法，定义预设的完整信息。
  */
 export interface PresetCreateParams {
   /**
-   * 标识。
+   * 预设的唯一标识，用于在运行时索引和定位预设。
    */
   id: string;
   /**
-   * 名称。
+   * 预设的显示名称，用于在 UI 中展示。
    */
   name: string;
   /**
-   * kind 值，由当前实例内部维护。
+   * 预设的种类标识（如 completion、chat、instruct），用于在 listPresets 时按种类过滤。
    */
   kind: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 预设是否启用，启用时可在对应场景中自动应用。
    */
   enabled: boolean;
   /**
-   * version 值，由当前实例内部维护。
+   * 预设的格式版本号，用于支持预设格式的版本迁移（migratePreset）。
    */
   version: number;
   /**
-   * fields 列表，由当前实例内部维护。
+   * 预设的字段列表，存储各配置项的具体值。
    */
   fields: Array<PresetField>;
   /**
-   * migrated From 值，由当前实例内部维护。
+   * 迁移来源（上一版本的预设 ID 或版本号），用于追踪预设版本变迁历史。
    */
   migratedFrom: string;
 }
 
 /**
- * 描述调用预设能力时需要传入的参数。
+ * 更新预设时所需的参数。
+ * 用于 PresetRuntime.updatePreset 方法，定义需要更新的字段。
  */
 export interface PresetUpdateParams {
   /**
-   * 名称。
+   * 预设的显示名称。
    */
   name: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 预设是否启用。
    */
   enabled: boolean;
   /**
-   * version 值，由当前实例内部维护。
+   * 预设的格式版本号。
    */
   version: number;
   /**
-   * fields 列表，由当前实例内部维护。
+   * 预设的字段列表。
    */
   fields: Array<PresetField>;
   /**
-   * migrated From 值，由当前实例内部维护。
+   * 迁移来源，用于记录本次更新是否来自版本迁移。
    */
   migratedFrom: string;
 }
 
 /**
- * 描述预设持久化或内存索引中的一条记录。
+ * 预设的持久化记录。
+ * 由 PresetRuntime 管理，存储预设的完整数据。
  */
 export interface PresetRecord {
   /**
-   * 标识。
+   * 预设的唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 预设的显示名称。
    */
   name: string;
   /**
-   * kind 值，由当前实例内部维护。
+   * 预设的种类标识。
    */
   kind: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 预设是否启用。
    */
   enabled: boolean;
   /**
-   * version 值，由当前实例内部维护。
+   * 预设的格式版本号。
    */
   version: number;
   /**
-   * fields 列表，由当前实例内部维护。
+   * 预设的字段列表。
    */
   fields: Array<PresetField>;
   /**
-   * migrated From 值，由当前实例内部维护。
+   * 迁移来源信息。
    */
   migratedFrom: string;
 }
 
 /**
- * 描述预设持久化或内存索引中的一条记录。
+ * 预设与作用域的绑定记录。
+ * 用于将预设绑定到特定角色或聊天，通过 getBinding 可按作用域解析出对应的预设。
  */
 export interface PresetBindingRecord {
   /**
-   * owner Type 值，由当前实例内部维护。
+   * 绑定的所有者类型（如 character、chat），用于在获取绑定时确定范围。
    */
   ownerType: string;
   /**
-   * owner 标识。
+   * 所有者的标识，与 ownerType 组合形成唯一绑定键。
    */
   ownerId: string;
   /**
-   * preset Kind 值，由当前实例内部维护。
+   * 绑定的预设种类，用于在同一所有者绑定不同种类（如 completion vs chat）的预设。
    */
   presetKind: string;
   /**
-   * preset 标识。
+   * 绑定的预设标识，用于定位被绑定的预设记录。
    */
   presetId: string;
 }
 
 /**
- * 描述预设模块在运行时交换的数据结构。
+ * 预设的导出/导入格式。
+ * 用于序列化预设数据以便备份恢复或在不同运行环境间迁移。
  */
 export interface PresetExportData {
   /**
-   * preset 值，由当前实例内部维护。
+   * 要导出或导入的预设记录，包含完整的预设数据。
    */
   preset: PresetRecord;
 }
 
 /**
- * 描述预设事件发布时携带的数据结构。
+ * 预设事件统一的数据载荷（创建、更新、导入等）。
+ * 由 publishPresetEvent 方法统一构建，在 createPreset、updatePreset、importPreset 中发布。
  */
 export interface PresetEventPayload {
   /**
-   * preset 值，由当前实例内部维护。
+   * 关联的预设记录，供监听方获取预设详情。
    */
   preset: PresetRecord;
 }
 
 /**
- * 描述预设事件发布时携带的数据结构。
+ * 预设被删除时通过事件总线发布的数据载荷。
+ * 由 deletePreset 发布，通知监听方（如 UI 层）移除预设显示。
  */
 export interface PresetDeletedPayload {
   /**
-   * preset 标识。
+   * 被删除的预设标识，供监听方清理引用。
    */
   presetId: string;
   /**
-   * kind 值，由当前实例内部维护。
+   * 被删除预设的种类标识，供监听方按种类刷新显示。
    */
   kind: string;
 }
 
 /**
- * 描述预设事件发布时携带的数据结构。
+ * 预设绑定完成时通过事件总线发布的数据载荷。
+ * 由 bindPreset 发布，通知监听方（如 UI 层）更新绑定关系的显示。
  */
 export interface PresetBoundPayload {
   /**
-   * binding 值，由当前实例内部维护。
+   * 创建的绑定记录，供监听方获取绑定详情。
    */
   binding: PresetBindingRecord;
 }
 
 /**
- * 描述预设事件发布时携带的数据结构。
+ * 预设迁移完成时通过事件总线发布的数据载荷。
+ * 由 migratePreset 发布，通知监听方（如 UI 层）预设版本已更新。
  */
 export interface PresetMigratedPayload {
   /**
-   * preset 值，由当前实例内部维护。
+   * 迁移后的预设记录，供监听方获取更新后的预设详情。
    */
   preset: PresetRecord;
   /**
-   * from Version 值，由当前实例内部维护。
+   * 迁移前的版本号，用于记录迁移的历史路径。
    */
   fromVersion: number;
   /**
-   * to Version 值，由当前实例内部维护。
+   * 迁移后的版本号，用于标识迁移的目标版本。
    */
   toVersion: number;
 }

@@ -9,25 +9,27 @@ import {
 
 /**
  * 提供作者注释相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 在每次聊天消息处理流程中，由 Prompt 构建器调用 buildInjection 来决定是否注入作者注释。
  */
 export class AuthorNoteRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于在注入完成后发布 authorNote.built 事件通知其他模块。
    */
   private events: EventBus;
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化当前运行时实例，由宿主在应用启动时通过依赖注入创建。
+   * @param events 事件总线，用于发布作者注释注入完成事件。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 根据入参构建Injection 值，仅生成数据结构，不直接执行外部请求。
-   * @param input 待处理的输入对象。
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * 根据输入参数构建作者注释注入，判断是否到达注入时机、应用角色注释并发布构建事件。
+   * 在 Prompt 构建阶段被调用，用于决定是否向上下文插入作者注释。
+   * @param input 构建输入，包含聊天状态、元数据、默认值和角色注释配置，用于计算注入时机和内容。
+   * @returns 构建完成的 AuthorNoteInjection 对象副本，供 Prompt 构建器使用。
    */
   buildInjection(input: AuthorNoteBuildInput): AuthorNoteInjection {
     const interval = this.valueOrDefault(input.metadata.interval, input.defaults.interval, 1);
@@ -56,6 +58,9 @@ export class AuthorNoteRuntime {
     const prompt = this.applyCharacterNote(basePrompt, input.characterNote);
     return this.publish(this.makeInjection(input.chatId, prompt, true, input.defaults.allowWorldInfoScan, 0, position, depth, role));
   }
+  /**
+   * 从元数据、默认值和硬编码默认值中逐级回退，返回最终有效的数值。
+   */
   private valueOrDefault(value: number, fallback: number, hardDefault: number): number {
     if (Number.isNaN(value)) {
       if (Number.isNaN(fallback)) {
@@ -67,7 +72,7 @@ export class AuthorNoteRuntime {
   }
 
   /**
-   * 根据当前上下文解析Prompt 值，返回实际可用值。
+   * 解析最终的提示词：优先使用元数据中的 prompt，回退到默认值。
    */
   private resolvePrompt(prompt: string, fallback: string): string {
     if (prompt.length > 0) {
@@ -131,7 +136,7 @@ export class AuthorNoteRuntime {
   }
 
   /**
-   * 复制Injection 值，避免外部修改内部状态。
+   * 深拷贝 AuthorNoteInjection，防止外部修改内部状态。
    */
   private copyInjection(injection: AuthorNoteInjection): AuthorNoteInjection {
     return {

@@ -14,18 +14,17 @@ import type {
  */
 export class RagRuntime {
   /**
-   * vectors 列表，由当前实例内部维护。
+   * 向量检索运行时，用于执行向量查询以获取语义相似的文本片段。
    */
   private vectors: VectorRuntime;
   /**
-   * 事件总线。
+   * 事件总线，用于发布 RAG 检索完成事件。
    */
   private events: EventBus;
 
   /**
-   * 注入RAG 检索运行时依赖并初始化实例状态。
-
-   * @param events 事件总线。
+   * 通过依赖注入初始化 RAG 检索运行时。
+   * @param events 事件总线实例，用于发布 rag.retrieved 事件。
    */
   constructor(vectors: VectorRuntime, events: EventBus) {
     this.vectors = vectors;
@@ -33,8 +32,9 @@ export class RagRuntime {
   }
 
   /**
-   * 执行 retrieve 的内部处理步骤，供当前模块复用。
-   * @param input 待处理的输入对象。
+   * 执行 RAG 向量检索：将输入转换为向量查询、从向量库检索命中、生成 Prompt 文本并发布检索事件。
+   * 在 LLM 请求组装流程中调用，用于为 Prompt 注入外部知识上下文。
+   * @param input 检索输入参数（查询文本、向量、集合范围、阈值等）。
    */
   retrieve(input: RagRetrievalInput): RagRetrievalResult {
     const queryParams: VectorQueryParams = {
@@ -71,9 +71,10 @@ export class RagRuntime {
   }
 
   /**
-   * 根据入参构建Query From Last User Message 值，仅生成数据结构，不直接执行外部请求。
-   * @param messages 消息列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 从消息列表中提取最后一条用户消息的文本内容，用于构建 RAG 查询。
+   * 在消息流式渲染或消息发送完成后调用，以用户最新输入作为语义检索依据。
+   * @param messages 聊天消息列表，按时间正序排列。
+   * @returns 最后一条用户消息的文本，无用户消息时返回空字符串。
    */
   buildQueryFromLastUserMessage(messages: Array<RagChatMessage>): string {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -85,10 +86,11 @@ export class RagRuntime {
   }
 
   /**
-   * 根据入参构建Query From Recent Chat Window 值，仅生成数据结构，不直接执行外部请求。
-   * @param messages 消息列表。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 从最近的消息窗口中提取非系统角色的消息内容，拼接为查询字符串。
+   * 在需要更丰富的对话上下文进行语义检索时调用，而非仅使用单条用户消息。
+   * @param messages 聊天消息列表，按时间正序排列。
+   * @param windowSize 最近消息窗口大小，限定参与拼接的消息数量。
+   * @returns 拼接后的查询字符串。
    */
   buildQueryFromRecentChatWindow(messages: Array<RagChatMessage>, windowSize: number): string {
     const selected = new Array<string>();
@@ -124,9 +126,8 @@ export class RagRuntime {
   }
 
   /**
-   * 根据入参构建Debug Trace 值，仅生成数据结构，不直接执行外部请求。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 根据命中结果构建调试追踪字符串，格式为 "collectionId:vectorId:score"，每行一个命中。
+   * @returns 换行分隔的调试追踪字符串。
    */
   private buildDebugTrace(chunks: Array<RagChunk>): string {
     const parts = new Array<string>();
@@ -137,8 +138,8 @@ export class RagRuntime {
   }
 
   /**
-   * 复制Result 值，避免外部修改内部状态。
-   * @param result 返回结果。
+   * 深拷贝检索结果对象，防止外部修改内部状态。
+   * @param result 待拷贝的检索结果。
    */
   private copyResult(result: RagRetrievalResult): RagRetrievalResult {
     return {
@@ -151,9 +152,8 @@ export class RagRuntime {
   }
 
   /**
-   * 复制Chunks 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深拷贝文本片段列表，防止外部修改内部数据。
+   * @returns 文本片段列表的深拷贝。
    */
   private copyChunks(chunks: Array<RagChunk>): Array<RagChunk> {
     const result = new Array<RagChunk>();
@@ -164,7 +164,7 @@ export class RagRuntime {
   }
 
   /**
-   * 复制Chunk 值，避免外部修改内部状态。
+   * 深拷贝单个文本片段对象。
    */
   private copyChunk(chunk: RagChunk): RagChunk {
     return {

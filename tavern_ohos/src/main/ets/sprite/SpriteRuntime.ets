@@ -13,33 +13,20 @@ import type {
 
 /**
  * 提供表情图相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 在对话流程中由聊天 UI 层调用以管理角色表情图（uploadSprite / deleteSprite / setExpression / getExpression），
+ * 在角色导入流程中由 CharacterRuntime 调用以导入 Risu 格式表情图（importRisuSprites）。
  */
 export class SpriteRuntime {
-  /**
-   * 文件存储适配器。
-   */
   private files: TavernFileStore;
-  /**
-   * 事件总线。
-   */
   private events: EventBus;
-  /**
-   * 记录副本列表，由当前实例内部维护。
-   */
   private records: Map<string, SpriteRecord> = new Map<string, SpriteRecord>();
-  /**
-   * selections 列表，由当前实例内部维护。
-   */
   private selections: Map<string, SpriteSelectionRecord> = new Map<string, SpriteSelectionRecord>();
-  /**
-   * 数据根路径。
-   */
   private rootPath: string = 'tavern-data/users/default/characters';
 
   /**
    * 初始化当前运行时实例。
-   * @param files 文件存储适配器。
-   * @param events 事件总线。
+   * @param files 文件存储适配器，用于读写表情图图片文件。
+   * @param events 事件总线实例，用于在表情图上传、删除、表情切换时发布事件。
    */
   constructor(files: TavernFileStore, events: EventBus) {
     this.files = files;
@@ -47,19 +34,16 @@ export class SpriteRuntime {
   }
 
   /**
-   * 执行 uploadSprite 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 上传一张表情图片，写入文件存储并更新内存索引，发布上传事件。
+   * 由 UI 层在用户上传角色表情图时调用，如果 spriteName 已存在则覆盖旧文件。
+   * @param params 表情图上传参数，包含角色名、子文件夹、图片内容和文件名等信息，由 UI 表单收集。
+   * @returns 上传后的表情图记录副本。
    */
   async uploadSprite(params: SpriteUploadParams): Promise<SpriteRecord> {
-    // character 名称。
     const characterName = safePathSegment(params.characterName, 'character');
-    // subfolder 名称。
     const subfolderName = this.safeOptionalSegment(params.subfolderName);
-    // sprite 名称。
     const spriteName = safePathSegment(params.spriteName, 'sprite');
-    // file 名称。
     const fileName = `${spriteName}${this.extension(params.fileName)}`;
-    // 键名。
     const key = this.key(characterName, subfolderName, spriteName);
     const existing = this.records.get(key);
     if (existing !== undefined) {
@@ -89,15 +73,15 @@ export class SpriteRuntime {
   }
 
   /**
-   * 从外部数据导入Risu Sprites 列表，转换为当前运行时的数据结构。
-   * @param characterName 角色名称。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 从 Risu 格式导入一组表情图数据，批量上传到当前角色下。
+   * 由 CharacterRuntime 在导入角色数据时调用，将 Risu 格式的表情列表转换为 SpriteRecord 存储。
+   * @param characterName 目标角色名称，传入 uploadSprite 作为 characterName。
+   * @param sprites Risu 格式的表情图导入数据列表，每个元素包含标签和图片内容。
+   * @returns 上传后的表情图记录列表。
    */
   async importRisuSprites(characterName: string, sprites: Array<RisuSpriteImport>): Promise<Array<SpriteRecord>> {
     const imported = new Array<SpriteRecord>();
     for (let index = 0; index < sprites.length; index += 1) {
-      // 调用参数。
       const params: SpriteUploadParams = {
         characterName: characterName,
         subfolderName: '',
@@ -113,10 +97,11 @@ export class SpriteRuntime {
   }
 
   /**
-   * 读取Sprites列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 查询指定角色和子文件夹下的所有表情图列表。
+   * 由 UI 层在初始化表情选择器或刷新表情列表时调用。
+   * @param characterName 角色名称，用于限定查询范围。
+   * @param subfolderName 子文件夹名称，用于限定查询范围。
+   * @returns 匹配的表情图记录列表副本，按标签和名称排序。
    */
   async listSprites(characterName: string, subfolderName: string): Promise<Array<SpriteRecord>> {
     const normalizedCharacter = safePathSegment(characterName, 'character');
@@ -132,11 +117,12 @@ export class SpriteRuntime {
   }
 
   /**
-   * 设置表情状态，用于切换运行时状态或保存配置。
-   * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
-
-   * @param spriteName 立绘名称。
+   * 设置指定角色和子文件夹的当前表情状态，并发布表情变更事件。
+   * 由 UI 层在用户切换角色表情时调用，更新当前表情选择状态并通知宿主刷新显示。
+   * @param characterName 角色名称，用于定位在哪个角色下切换表情。
+   * @param subfolderName 子文件夹名称，用于确定表情变更发生的子文件夹范围。
+   * @param expression 表情名称（如 "happy"），标识当前表情的语义（如开心、难过等）。
+   * @param spriteName 对应的立绘名称，用于查找具体的表情图片文件。
    */
   async setExpression(characterName: string, subfolderName: string, expression: string, spriteName: string): Promise<SpriteSelectionRecord> {
     const normalizedCharacter = safePathSegment(characterName, 'character');
@@ -167,10 +153,11 @@ export class SpriteRuntime {
   }
 
   /**
-   * 读取指定Expression，不存在时抛出错误。
+   * 获取指定角色和子文件夹的当前表情选择状态。
+   * 由 UI 层在初始化聊天界面或恢复角色显示时调用，获取该角色当前应该展示的表情。
    * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
-   * @returns 更新或读取后的记录副本。
+   * @param subfolderName 子文件夹名称。
+   * @returns 表情选择记录副本；未设置时返回空选择记录（expression 和 spriteName 为空字符串）。
    */
   getExpression(characterName: string, subfolderName: string): SpriteSelectionRecord {
     const normalizedCharacter = safePathSegment(characterName, 'character');
@@ -183,10 +170,11 @@ export class SpriteRuntime {
   }
 
   /**
-   * 删除指定立绘，并清理相关索引或资源引用。
-   * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
-   * @param spriteName 立绘名称。
+   * 删除指定立绘及其文件，并清理内存索引和选择状态。
+   * 由 UI 层在用户删除角色表情图时调用，同时清理文件存储和内存中的相关数据。
+   * @param characterName 角色名称，用于定位要删除的表情图所属角色。
+   * @param subfolderName 子文件夹名称，用于定位要删除的表情图所属子文件夹。
+   * @param spriteName 要删除的立绘名称，对应 SpriteRecord.spriteName。
    */
   async deleteSprite(characterName: string, subfolderName: string, spriteName: string): Promise<void> {
     const normalizedCharacter = safePathSegment(characterName, 'character');
@@ -210,9 +198,9 @@ export class SpriteRuntime {
   }
 
   /**
-   * 读取必须存在的Record 值，缺失时抛出错误。
+   * 查找指定角色和子文件夹下的表情图记录，不存在时抛出异常。
    * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
+   * @param subfolderName 子文件夹名称。
    * @param spriteName 立绘名称。
    */
   private requireRecord(characterName: string, subfolderName: string, spriteName: string): SpriteRecord {
@@ -229,7 +217,7 @@ export class SpriteRuntime {
     return `${this.rootPath}/${characterName}/${subfolderName}/${fileName}`;
   }
   private extension(fileName: string): string {
-    // safe 名称。
+    // 安全处理文件名。
     const safeName = safeFileName(fileName, 'sprite.png');
     const dotIndex = safeName.lastIndexOf('.');
     if (dotIndex < 0) {
@@ -252,9 +240,10 @@ export class SpriteRuntime {
   }
 
   /**
-   * 读取或解析ionKey，调用方应处理不存在或不匹配的情况。
+   * 生成角色和子文件夹的选择状态键名。
    * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
+   * @param subfolderName 子文件夹名称。
+   * @returns 格式为 "characterName:subfolderName" 的键名。
    */
   private selectionKey(characterName: string, subfolderName: string): string {
     return `${characterName}:${subfolderName}`;
@@ -271,8 +260,8 @@ export class SpriteRuntime {
   }
 
   /**
-   * 复制Record 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深拷贝表情图记录。
+   * @param record 待拷贝的记录。
    */
   private copyRecord(record: SpriteRecord): SpriteRecord {
     return {
@@ -291,7 +280,7 @@ export class SpriteRuntime {
   }
 
   /**
-   * 复制Selection 值，避免外部修改内部状态。
+   * 深拷贝表情选择记录。
    */
   private copySelection(selection: SpriteSelectionRecord): SpriteSelectionRecord {
     return {

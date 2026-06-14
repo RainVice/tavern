@@ -1,229 +1,238 @@
 /**
- * 描述调用权限审计能力时需要传入的参数。
+ * 调用权限授予接口时所需的参数。
+ * 用于 PermissionRuntime.grant 方法，指定要授予的主体、权限、作用域和过期时间。
  */
 export interface PermissionGrantParams {
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 请求权限的主体类型（如 plugin、persona），用于在授权记录和审计日志中区分主体种类。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 请求权限的主体标识，用于在授权记录中定位具体主体。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 权限名称（如 file:access、network:private），标识授权的具体操作类型。
    */
   permission: string;
   /**
-   * 作用域。
+   * 权限的作用域标识，用于限定权限适用的资源范围（如特定文件路径或 API 端点）。
    */
   scope: string;
   /**
-   * expires At 值，由当前实例内部维护。
+   * 权限过期时间戳，0 表示永不过期，用于实现时效性授权。
    */
   expiresAt: number;
 }
 
 /**
- * 描述权限审计持久化或内存索引中的一条记录。
+ * 权限授予记录，存储已授予的权限及其过期时间。
+ * 由 PermissionRuntime.grant 创建，在 check 时用于判断主体是否拥有某权限。
  */
 export interface PermissionGrantRecord {
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 授予权限的主体类型，用于在授权索引中与 subjectId 组合作为键的一部分。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 授予权限的主体标识，用于定位具体主体的授权记录。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 授予的权限名称，用于在 check 时匹配主体申请的权限。
    */
   permission: string;
   /**
-   * 作用域。
+   * 权限的作用域标识，用于在授权记录中记录权限适用的资源范围。
    */
   scope: string;
   /**
-   * expires At 值，由当前实例内部维护。
+   * 权限过期时间戳，0 表示永不过期，check 时用于校验权限是否仍有效。
    */
   expiresAt: number;
   /**
-   * granted At 值，由当前实例内部维护。
+   * 权限授予的时间戳，用于审计和授权记录的时间追溯。
    */
   grantedAt: number;
 }
 
 /**
- * 描述权限审计操作完成后返回给调用方的结果。
+ * 权限检查后返回给调用方的结果。
+ * 由 PermissionRuntime.check、checkNetworkAccess、checkFileAccess、checkDangerousApi 等方法返回。
  */
 export interface PermissionCheckResult {
   /**
-   * allowed 值，由当前实例内部维护。
+   * 是否允许通过，决定调用方后续操作是否可继续。
    */
   allowed: boolean;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 判决的原因描述（如 "allowed"、"Missing permission: xxx"、"Permission expired: xxx"），用于日志和调试。
    */
   reason: string;
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 请求权限的主体类型，回显给调用方用于确认检查的目标主体。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 请求权限的主体标识，回显给调用方用于确认检查的目标主体。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 被检查的权限名称，回显给调用方用于确认检查的权限。
    */
   permission: string;
   /**
-   * resource 值，由当前实例内部维护。
+   * 被访问的资源标识，回显给调用方用于确认检查的资源。
    */
   resource: string;
 }
 
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * 发送给外部服务或宿主层的权限同意请求。
+ * 由 PermissionRuntime.requestConsent 创建，resolveConsent 处理审批结果。
  */
 export interface PermissionConsentRequest {
   /**
-   * 标识。
+   * 同意请求的唯一标识，用于在 resolveConsent 时定位目标请求。
    */
   id: string;
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 请求权限的主体类型，说明谁在请求权限。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 请求权限的主体标识，说明谁在请求权限。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 请求的权限名称，说明主体需要什么权限。
    */
   permission: string;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 请求权限的原因说明，用于向用户展示请求上下文以决定是否批准。
    */
   reason: string;
   /**
-   * resolved 值，由当前实例内部维护。
+   * 是否已处理，resolveConsent 执行后设为 true，避免重复处理。
    */
   resolved: boolean;
   /**
-   * approved 值，由当前实例内部维护。
+   * 是否已批准，resolveConsent 根据调用方传入的 approved 参数设置。
    */
   approved: boolean;
   /**
-   * created At 值，由当前实例内部维护。
+   * 请求创建时的时间戳，用于追踪请求发起时间。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 请求更新时的时间戳，resolveConsent 执行时更新。
    */
   updatedAt: number;
 }
 
 /**
- * 描述权限审计持久化或内存索引中的一条记录。
+ * 权限审计记录，记录每次权限操作的详细信息。
+ * 由 addAudit 在 grant、revoke、check 等操作时创建，通过 listAudit 可查询所有审计记录。
  */
 export interface PermissionAuditRecord {
   /**
-   * 标识。
+   * 审计记录的唯一标识，格式为 permission-audit-{自增序号}。
    */
   id: string;
   /**
-   * action 值，由当前实例内部维护。
+   * 操作类型（如 grant、revoke、check、consent.request、consent.denied），用于审计分类。
    */
   action: string;
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 操作涉及的主体类型，用于审计追溯时确定主体种类。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 操作涉及的主体标识，用于审计追溯时确定具体主体。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 操作涉及的权限名称，用于审计追溯时确定被操作的权限。
    */
   permission: string;
   /**
-   * resource 值，由当前实例内部维护。
+   * 操作涉及的资源标识，用于审计追溯时确定被操作的资源。
    */
   resource: string;
   /**
-   * allowed 值，由当前实例内部维护。
+   * 操作是否允许，用于审计追溯时判断操作结果。
    */
   allowed: boolean;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 操作的原因或结果描述，用于审计追溯时的详细说明。
    */
   reason: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 审计记录创建时的时间戳。
    */
   createdAt: number;
 }
 
 /**
- * 描述权限审计持久化或内存索引中的一条记录。
+ * 权限策略记录，存储针对主体的各种策略配置。
+ * 由 setPolicy 创建，可通过 listPolicies 查询指定主体的所有策略。
  */
 export interface PermissionPolicyRecord {
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 策略所属的主体类型，用于区分不同类型主体（如 plugin、persona）的策略。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 策略所属的主体标识，用于定位具体主体的策略记录。
    */
   subjectId: string;
   /**
-   * policy Type 值，由当前实例内部维护。
+   * 策略类型（如 fileRoot 文件根目录、executionTimeout 执行超时、crashCount 崩溃次数），区分不同策略种类。
    */
   policyType: string;
   /**
-   * 字段值。
+   * 策略的字段值，对应策略类型的具体取值。
    */
   value: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 策略创建时的时间戳，用于追踪策略首次配置时间。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 策略最后更新时间戳，用于追踪策略最近一次变更时间。
    */
   updatedAt: number;
 }
 
 /**
- * 描述权限审计事件发布时携带的数据结构。
+ * 权限授予完成时通过事件总线发布的数据载荷。
+ * 由 grant 方法发布，通知监听方（如 UI 层）更新权限状态显示。
  */
 export interface PermissionGrantedPayload {
   /**
-   * grant 值，由当前实例内部维护。
+   * 已授予的权限记录，供监听方获取授权详情。
    */
   grant: PermissionGrantRecord;
 }
 
 /**
- * 描述权限审计事件发布时携带的数据结构。
+ * 权限检查完成时通过事件总线发布的数据载荷。
+ * 由 publishCheck 在每次 check 操作后发布，通知监听方记录权限检查日志。
  */
 export interface PermissionCheckedPayload {
   /**
-   * 处理结果。
+   * 权限检查结果，供监听方获取判决详情。
    */
   result: PermissionCheckResult;
 }
 
 /**
- * 描述权限审计事件发布时携带的数据结构。
+ * 权限同意请求创建或处理完成时通过事件总线发布的数据载荷。
+ * 由 requestConsent（创建）和 resolveConsent（处理）发布，通知监听方更新同意请求 UI。
  */
 export interface PermissionConsentPayload {
   /**
-   * request 值，由当前实例内部维护。
+   * 当前的权限同意请求对象，供监听方获取请求状态和详情。
    */
   request: PermissionConsentRequest;
 }

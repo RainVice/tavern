@@ -1,132 +1,132 @@
 import type { ChatMessage } from '../chats/ChatModels';
 
 /**
- * 定义书签和分支模块使用的固定配置值。
+ * 定义生成书签和分支默认名称时使用的前缀令牌，用于在自动命名时标识书签名称。
  */
 export const BOOKMARK_NAME_TOKEN: string = 'Checkpoint #';
 /**
- * 定义书签和分支模块使用的固定配置值。
+ * 定义生成书签和分支默认名称时使用的前缀令牌，用于在自动命名时标识分支名称。
  */
 export const BRANCH_NAME_TOKEN: string = 'Branch #';
 
 /**
- * 描述调用书签和分支能力时需要传入的参数。
+ * 生成书签或分支名称时所需的输入参数，在创建检查点或分支时由调用方提供。
  */
 export interface BookmarkNameInput {
   /**
-   * current Chat 名称。
+   * 当前聊天的名称，用作生成书签或分支名称的基准名称。
    */
   currentChatName: string;
   /**
-   * existing Chat Names 列表，由当前实例内部维护。
+   * 已存在的聊天名称列表，用于避免生成重复名称。
    */
   existingChatNames: Array<string>;
   /**
-   * force 名称。
+   * 强制指定的名称，不为空时直接使用此值，跳过自动递增命名逻辑。
    */
   forceName?: string;
 }
 
 /**
- * 描述书签和分支模块在运行时交换的数据结构。
+ * 书签元数据，记录书签所属的主聊天名称，用于在分支导航中关联回原始聊天。
  */
 export interface BookmarkMetadata {
   /**
-   * main Chat 值，由当前实例内部维护。
+   * 书签所在的主聊天名称，用于标识书签属于哪个聊天树。
    */
   mainChat: string;
 }
 
 /**
- * 描述书签和分支模块在运行时交换的数据结构。
+ * 消息扩展数据，记录关联的书签链接和所有分支名称，用于在聊天消息中标记检查点和分支信息。
  */
 export interface BookmarkExtra {
   /**
-   * bookmark link 值，由当前实例内部维护。
+   * 关联的书签名称（指向创建该书签的那个检查点），用于从消息跳转到书签快照。
    */
   bookmark_link: string;
   /**
-   * branches 列表，由当前实例内部维护。
+   * 从该消息分出的所有分支名称列表，用于展示消息的分支导航。
    */
   branches: Array<string>;
 }
 
 /**
- * 描述书签和分支操作完成后返回给调用方的结果。
+ * 创建书签的结果，包含书签名、元数据、消息快照和更新后的消息列表，用于通知调用方书签创建的状态。
  */
 export interface BookmarkResult {
   /**
-   * 名称。
+   * 书签名称，用于标识该书签在聊天列表中的位置。
    */
   name: string;
   /**
-   * metadata 值，由当前实例内部维护。
+   * 书签元数据，记录关联的主聊天名称。
    */
   metadata: BookmarkMetadata;
   /**
-   * snapshot 值，由当前实例内部维护。
+   * 创建书签时的消息快照（从开头到标记消息为止），用于在恢复书签时还原消息状态。
    */
   snapshot: Array<ChatMessage>;
   /**
-   * updated Messages 列表，由当前实例内部维护。
+   * 更新了书签链接后的完整消息列表，用于持久化替换原始消息列表。
    */
   updatedMessages: Array<ChatMessage>;
 }
 
 /**
- * 描述书签和分支操作完成后返回给调用方的结果。
+ * 创建分支的结果，包含分支名、元数据、消息快照和更新后的消息列表，用于通知调用方分支创建的状态。
  */
 export interface BranchResult {
   /**
-   * 名称。
+   * 分支名称，用于标识该分支在聊天树中的路径。
    */
   name: string;
   /**
-   * metadata 值，由当前实例内部维护。
+   * 分支元数据，记录关联的主聊天名称。
    */
   metadata: BookmarkMetadata;
   /**
-   * snapshot 值，由当前实例内部维护。
+   * 创建分支时的消息快照（从开头到锚点消息为止），用于在分支间切换时恢复消息状态。
    */
   snapshot: Array<ChatMessage>;
   /**
-   * updated Messages 列表，由当前实例内部维护。
+   * 更新了分支信息后的完整消息列表，用于持久化替换原始消息列表。
    */
   updatedMessages: Array<ChatMessage>;
 }
 
 /**
- * 描述书签和分支事件发布时携带的数据结构。
+ * 书签创建事件发布时携带的数据结构，用于通知其他模块书签已被创建。
  */
 export interface BookmarkCreatedPayload {
   /**
-   * 名称。
+   * 创建的书签名称，供事件订阅者更新聊天列表或导航结构。
    */
   name: string;
   /**
-   * 消息标识。
+   * 创建书签所基于的消息标识，供事件订阅者关联书签到具体消息。
    */
   messageId: string;
   /**
-   * metadata 值，由当前实例内部维护。
+   * 书签元数据，供事件订阅者获取书签所属的主聊天信息。
    */
   metadata: BookmarkMetadata;
 }
 
 /**
- * 描述书签和分支事件发布时携带的数据结构。
+ * 分支创建事件发布时携带的数据结构，用于通知其他模块分支已被创建。
  */
 export interface BranchCreatedPayload {
   /**
-   * 名称。
+   * 创建的分支名称，供事件订阅者更新聊天树结构。
    */
   name: string;
   /**
-   * 消息标识。
+   * 创建分支所基于的消息标识，供事件订阅者关联分支到具体消息。
    */
   messageId: string;
   /**
-   * metadata 值，由当前实例内部维护。
+   * 分支元数据，供事件订阅者获取分支所属的主聊天信息。
    */
   metadata: BookmarkMetadata;
 }

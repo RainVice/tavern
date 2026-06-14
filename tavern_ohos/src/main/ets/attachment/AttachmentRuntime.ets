@@ -11,34 +11,38 @@ import type {
 } from './AttachmentModels';
 
 /**
- * 提供附件相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供附件相关的无 UI 运行时能力，负责附件的全生命周期管理（创建、查询、绑定、标注、导入导出、软删除），
+ * 通过事件总线向外部模块发布附件变更通知，
+ * 用于在消息附件管理、角色附件关联、多模态内容处理等流程中驱动附件数据的读写和状态同步。
  */
 export class AttachmentRuntime {
   /**
-   * 事件总线。
+   * 事件总线实例，用于在附件创建、更新、删除等操作完成后发布事件，供 UI 或其他 Runtime 模块监听响应。
    */
   private events: EventBus;
   /**
-   * attachments 列表，由当前实例内部维护。
+   * 附件记录映射表，以附件 id 为键，用于在附件管理各流程中快速存取附件元信息。
    */
   private attachments: Map<string, AttachmentRecord> = new Map<string, AttachmentRecord>();
   /**
-   * bindings 列表，由当前实例内部维护。
+   * 附件绑定关系映射表，以附件 id 为键，值为该附件的绑定列表，
+   * 用于在绑定查询和目标附件查询流程中快速获取附件与目标对象的关系。
    */
   private bindings: Map<string, Array<AttachmentBindingRecord>> = new Map<string, Array<AttachmentBindingRecord>>();
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化当前运行时实例，在模块加载时调用，建立与事件总线的连接。
+   * @param events 事件总线实例，用于在附件各生命周期阶段发布事件通知外部模块。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 创建新的附件记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新的附件记录，存入内存映射表并发布更新事件，
+   * 用于在用户添加附件（如图片、文件）时初始化附件数据并通知监听方。
+   * @param params 附件创建参数，包含标识、类型、文件名、内容等，由调用方传入以确定附件的属性和行为。
+   * @returns 新创建的附件记录副本。
    */
   createAttachment(params: AttachmentCreateParams): AttachmentRecord {
     const now = Date.now();
@@ -66,17 +70,19 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取指定附件，不存在时抛出错误。
-   * @param attachmentId 目标附件标识。
-   * @returns 更新或读取后的记录副本。
+   * 根据附件 id 获取附件记录副本，
+   * 用于在外部模块或 UI 查询附件详情时获取完整的附件元信息。
+   * @param attachmentId 目标附件标识，用于在附件映射表中检索。
+   * @returns 附件记录深拷贝。
    */
   getAttachment(attachmentId: string): AttachmentRecord {
     return this.cloneAttachment(this.requireAttachment(attachmentId));
   }
 
   /**
-   * 读取Attachments列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取所有未删除的附件记录深拷贝列表，
+   * 用于在附件管理 UI 或数据导出流程中列出全部可用附件。
+   * @returns 附件记录列表。
    */
   listAttachments(): Array<AttachmentRecord> {
     const result = new Array<AttachmentRecord>();
@@ -90,10 +96,12 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 把附件对象绑定到指定作用域，后续读取会按该绑定解析。
-   * @param attachmentId 目标附件标识。
-
-   * @param targetId 目标目标对象标识。
+   * 将附件绑定到指定的目标对象（如角色、消息），并发布添加事件，
+   * 用于在用户向角色或个人资料添加附件时建立附件与目标对象的关联关系。
+   * @param attachmentId 目标附件标识，用于在附件映射表中定位要绑定的附件。
+   * @param targetType 目标对象类型（如 character、message），用于确定绑定的目标模块。
+   * @param targetId 目标对象标识，用于在目标对象上关联附件。
+   * @returns 创建的绑定关系记录副本。
    */
   bindAttachment(attachmentId: string, targetType: string, targetId: string): AttachmentBindingRecord {
     const attachment = this.requireAttachment(attachmentId);
@@ -122,9 +130,10 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取Bindings列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param attachmentId 目标附件标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取指定附件的绑定关系列表（深拷贝），
+   * 用于在查询附件关联到哪些目标对象时获取完整的绑定信息。
+   * @param attachmentId 目标附件标识，用于在绑定映射表中检索。
+   * @returns 绑定关系记录列表。
    */
   listBindings(attachmentId: string): Array<AttachmentBindingRecord> {
     const records = this.bindings.get(attachmentId);
@@ -135,10 +144,11 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取AttachmentsForTarget列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @param targetId 目标目标对象标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 根据目标类型和目标标识查找所有绑定的附件记录，
+   * 用于在角色详情页或消息上下文构建流程中获取与指定目标关联的所有附件。
+   * @param targetType 目标对象类型，用于在绑定查询中筛选特定模块（如 character、message）的附件。
+   * @param targetId 目标对象标识，用于在绑定查询中定位特定目标的附件。
+   * @returns 匹配的附件记录列表（深拷贝）。
    */
   listAttachmentsForTarget(targetType: string, targetId: string): Array<AttachmentRecord> {
     const result = new Array<AttachmentRecord>();
@@ -155,8 +165,11 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 更新图片描述Result状态，必要时写回存储并发布对应事件。
-   * @param attachmentId 目标附件标识。
+   * 更新附件的图片描述（caption）结果，刷新更新时间并发布更新事件，
+   * 用于在图片描述（caption）服务返回结果后存储描述文本供 Prompt 构建使用。
+   * @param attachmentId 目标附件标识，用于在附件映射表中定位要更新的附件。
+   * @param captionText 图片描述文本，由 caption 服务返回后传入。
+   * @returns 更新后的附件记录副本。
    */
   markCaptionResult(attachmentId: string, captionText: string): AttachmentRecord {
     const attachment = this.requireAttachment(attachmentId);
@@ -167,8 +180,12 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 更新翻译Result状态，必要时写回存储并发布对应事件。
-   * @param attachmentId 目标附件标识。
+   * 更新附件的翻译结果，同时将目标语言信息写入元数据，
+   * 用于在翻译服务返回结果后存储翻译文本供多语言对话场景使用。
+   * @param attachmentId 目标附件标识，用于在附件映射表中定位要更新的附件。
+   * @param targetLanguage 翻译目标语言，写入元数据供后续查询。
+   * @param translationText 翻译后的文本，由翻译服务返回后传入。
+   * @returns 更新后的附件记录副本。
    */
   markTranslationResult(attachmentId: string, targetLanguage: string, translationText: string): AttachmentRecord {
     const attachment = this.requireAttachment(attachmentId);
@@ -180,8 +197,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取PromptAttachments列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取标记为包含在 Prompt 中的附件摘要列表，
+   * 用于在 Prompt 组装流程中收集需要作为上下文提供给模型的附件内容。
+   * @returns 符合 Prompt 构建需求的附件摘要记录列表。
    */
   listPromptAttachments(): Array<AttachmentPromptRecord> {
     const result = new Array<AttachmentPromptRecord>();
@@ -203,8 +221,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取RagDocuments列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取标记为纳入 RAG 的附件记录列表，
+   * 用于在知识检索流程中收集需要建立索引的附件文档。
+   * @returns 符合 RAG 条件的附件记录。
    */
   listRagDocuments(): Array<AttachmentRecord> {
     const result = new Array<AttachmentRecord>();
@@ -218,9 +237,10 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 导出附件，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param attachmentId 目标附件标识。
-   * @returns 可持久化或可传输的导出内容。
+   * 导出指定附件及其绑定关系，用于备份或数据迁移，
+   * 在用户执行导出操作或外部系统请求数据互通时调用。
+   * @param attachmentId 目标附件标识，用于定位要导出的附件。
+   * @returns 包含附件记录和绑定关系的导出数据。
    */
   exportAttachment(attachmentId: string): AttachmentExportData {
     const data: AttachmentExportData = {
@@ -231,10 +251,11 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 从外部数据导入Attachment 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
-   * @param newAttachmentId 目标新记录附件标识。
-   * @returns 更新或读取后的记录副本。
+   * 从外部数据导入附件记录和绑定关系，可用于数据恢复，
+   * 在应用启动还原备份或从外部数据源同步附件时调用。
+   * @param data 包含附件和绑定关系的导出数据，由外部备份文件解析后传入。
+   * @param newAttachmentId 导入后使用的新附件标识（允许重命名），避免与现有记录冲突。
+   * @returns 导入后的附件记录副本。
    */
   importAttachment(data: AttachmentExportData, newAttachmentId: string): AttachmentRecord {
     if (this.attachments.has(newAttachmentId)) {
@@ -254,8 +275,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 删除指定附件，并清理相关索引或资源引用。
-   * @param attachmentId 目标附件标识。
+   * 将附件标记为已删除，清除绑定关系并发布删除事件，
+   * 用于在用户删除附件时执行软删除操作，保留记录但使其不可见。
+   * @param attachmentId 目标附件标识，用于定位要删除的附件。
    */
   deleteAttachment(attachmentId: string): void {
     const attachment = this.requireAttachment(attachmentId);
@@ -270,8 +292,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取必须存在的Attachment 值，缺失时抛出错误。
+   * 获取附件记录，不存在或已删除时抛出异常。
    * @param attachmentId 目标附件标识。
+   * @returns 附件记录（内部引用）。
    */
   private requireAttachment(attachmentId: string): AttachmentRecord {
     const attachment = this.attachments.get(attachmentId);
@@ -282,9 +305,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取必须存在的Bindings 列表，缺失时抛出错误。
+   * 获取指定附件的绑定关系列表，不存在时抛出异常。
    * @param attachmentId 目标附件标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 绑定关系列表（内部引用）。
    */
   private requireBindings(attachmentId: string): Array<AttachmentBindingRecord> {
     const records = this.bindings.get(attachmentId);
@@ -301,10 +324,11 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 追加Metadata 值，保留既有内容并写入新增片段。
-   * @param metadataJson metadata JSON 字符串。
-   * @param key 键名。
-   * @param value 要保存或比较的字段值。
+   * 向现有元数据 JSON 中追加一个键值对，保留已有字段。
+   * @param metadataJson 原始 metadata JSON 字符串。
+   * @param key 要追加的键名。
+   * @param value 要追加的键值。
+   * @returns 更新后的 metadata JSON 字符串。
    */
   private appendMetadata(metadataJson: string, key: string, value: string): string {
     const metadata: Record<string, string> = {};
@@ -323,7 +347,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 复制Attachment 值，避免外部修改内部状态。
+   * 深拷贝 AttachmentRecord，防止外部代码修改内部状态。
+   * @param attachment 要复制的附件记录。
+   * @returns 深拷贝后的附件记录。
    */
   private cloneAttachment(attachment: AttachmentRecord): AttachmentRecord {
     const cloned: AttachmentRecord = {
@@ -347,9 +373,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 复制Bindings 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深拷贝绑定关系列表，防止外部代码修改内部状态。
+   * @param bindings 要复制的绑定关系列表。
+   * @returns 深拷贝后的绑定关系列表。
    */
   private cloneBindings(bindings: Array<AttachmentBindingRecord>): Array<AttachmentBindingRecord> {
     const cloned = new Array<AttachmentBindingRecord>();
@@ -360,7 +386,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 复制Binding 值，避免外部修改内部状态。
+   * 深拷贝单个绑定关系记录。
+   * @param binding 要复制的绑定关系。
+   * @returns 深拷贝后的绑定关系。
    */
   private cloneBinding(binding: AttachmentBindingRecord): AttachmentBindingRecord {
     return {
@@ -372,8 +400,8 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 发布附件事件，把状态变化通知给宿主或其他 Runtime。
-
+   * 发布附件更新事件，通知宿主或其他 Runtime 状态变化。
+   * @param attachment 被更新的附件记录。
    */
   private publishUpdated(attachment: AttachmentRecord): void {
     const payload: AttachmentUpdatedPayload = {

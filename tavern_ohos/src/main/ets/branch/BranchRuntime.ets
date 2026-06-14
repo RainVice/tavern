@@ -12,33 +12,35 @@ import type {
 
 /**
  * 提供聊天分支相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 在聊天对话的分支管理流程中被调用，用于创建分支、检查点、切换分支以及导出恢复分支数据。
  */
 export class BranchRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于发布分支创建、激活、恢复和检查点创建事件。
    */
   private events: EventBus;
   /**
-   * branches 列表，由当前实例内部维护。
+   * 分支记录内存索引，以分支标识为键，用于快速查找和管理分支记录。
    */
   private branches: Map<string, BranchRecord> = new Map<string, BranchRecord>();
   /**
-   * checkpoints 列表，由当前实例内部维护。
+   * 检查点记录内存索引，以检查点标识为键，用于快速查找和管理检查点记录。
    */
   private checkpoints: Map<string, CheckpointRecord> = new Map<string, CheckpointRecord>();
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化当前运行时实例，由宿主在应用启动时通过依赖注入创建。
+   * @param events 事件总线，用于发布分支和检查点状态变更事件。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 创建新的分支记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新分支记录：校验唯一性，写入内存索引并发布创建事件。
+   * 在用户从聊天对话中选择"创建分支"时触发，用于建立新的聊天分支树。
+   * @param params 分支创建参数，包含父聊天标识、锚点消息标识、子聊天标识和标题。
+   * @returns 创建后的分支记录副本，包含完整的分支元数据和时间戳。
    */
   createBranch(params: BranchCreateParams): BranchRecord {
     if (this.branches.has(params.id)) {
@@ -61,9 +63,10 @@ export class BranchRuntime {
   }
 
   /**
-   * 创建新的检查点记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 在指定分支下创建检查点：校验分支存在性和标识唯一性，写入内存索引并发布事件。
+   * 在用户从分支管理中选择"创建检查点"时触发，用于捕获分支特定时刻的消息状态。
+   * @param params 检查点创建参数，包含分支标识、锚点消息标识、标签和快照引用。
+   * @returns 创建后的检查点记录副本，包含完整的检查点元数据和时间戳。
    */
   createCheckpoint(params: CheckpointCreateParams): CheckpointRecord {
     this.requireBranch(params.branchId);
@@ -87,8 +90,10 @@ export class BranchRuntime {
   }
 
   /**
-   * 更新分支状态，必要时写回存储并发布对应事件。
-   * @param branchId 目标分支标识。
+   * 激活指定分支：将同属一个父聊天的其它分支设为非激活，标记该分支为激活并发布事件。
+   * 在用户从分支导航中选择切换到另一个分支时触发。
+   * @param branchId 要激活的分支标识，用于在内存索引中定位并切换状态。
+   * @returns 激活后的分支记录副本，active 字段为 true。
    */
   activateBranch(branchId: string): BranchRecord {
     const branch = this.requireBranch(branchId);
@@ -103,9 +108,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 读取指定分支，不存在时抛出错误。
-   * @param parentChatId 目标父聊天标识。
-   * @returns 更新或读取后的记录副本。
+   * 获取指定父聊天下当前激活的分支，未找到时抛出异常，用于确认当前正在使用的分支。
+   * @param parentChatId 父聊天的标识，用于筛选属于该聊天的所有分支。
+   * @returns 激活中的分支记录副本。
    */
   getActiveBranch(parentChatId: string): BranchRecord {
     const branches = Array.from(this.branches.values());
@@ -119,9 +124,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 读取Branches列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param parentChatId 目标父聊天标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取指定父聊天下的所有分支记录，为空时返回全部，用于在 UI 中展示分支列表。
+   * @param parentChatId 父聊天的标识；传入空字符串则返回所有分支（全局视图）。
+   * @returns 符合条件的分支记录副本列表，调用方可安全修改。
    */
   listBranches(parentChatId: string): Array<BranchRecord> {
     const result = new Array<BranchRecord>();
@@ -136,13 +141,13 @@ export class BranchRuntime {
   }
 
   /**
-   * 读取指定Lineage，不存在时抛出错误。
-   * @param chatId 目标聊天标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 从指定聊天标识出发，沿子→父方向追溯完整的分支继承链，用于在 UI 中展示分支历史路径。
+   * @param chatId 起始聊天标识，从当前聊天开始向上追踪分支来源。
+   * @returns 从根到该聊天的分支记录列表（祖先在前，当前在后），按分支创建顺序排列。
    */
   getLineage(chatId: string): Array<BranchRecord> {
     const reversed = new Array<BranchRecord>();
-    // current Chat 标识。
+    // 从当前聊天向上追溯父聊天，构建分支继承链
     let currentChatId = chatId;
     let found = true;
     while (found) {
@@ -166,9 +171,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 导出分支，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param branchId 目标分支标识。
-   * @returns 可持久化或可传输的导出内容。
+   * 导出指定分支及其所有检查点，用于备份、迁移或与外部工具数据互通。
+   * @param branchId 要导出的分支标识，用于定位分支及其关联的检查点。
+   * @returns 包含分支记录和关联检查点的导出数据，可用于 restoreBranch 恢复。
    */
   exportBranch(branchId: string): BranchExportData {
     const branch = this.cloneBranch(this.requireBranch(branchId));
@@ -187,10 +192,12 @@ export class BranchRuntime {
   }
 
   /**
-   * 执行 restoreBranch 的内部处理步骤，供当前模块复用。
-   * @param data 导入或恢复使用的序列化数据。
-   * @param newBranchId 目标新分支标识。
-   * @param newChildChatId 目标新子聊天标识。
+   * 从导出的分支数据中恢复分支和关联检查点：重置标识和状态，写入内存索引并发布事件。
+   * 在数据迁移或从备份还原分支数据时调用，用于将导出的分支恢复到当前运行环境。
+   * @param data 分支导出数据，包含分支记录和检查点列表，通过 exportBranch 获得。
+   * @param newBranchId 恢复后使用的新分支标识，避免与现有分支标识冲突。
+   * @param newChildChatId 恢复后使用的新子聊天标识，指向恢复后的聊天会话。
+   * @returns 恢复后的分支记录副本，状态已被重置为未激活。
    */
   restoreBranch(data: BranchExportData, newBranchId: string, newChildChatId: string): BranchRecord {
     if (this.branches.has(newBranchId)) {
@@ -213,8 +220,8 @@ export class BranchRuntime {
   }
 
   /**
-   * 读取必须存在的Branch 值，缺失时抛出错误。
-   * @param branchId 目标分支标识。
+   * 根据标识查找分支记录，不存在时抛出异常，供内部方法在需要确保分支存在时使用。
+   * @param branchId 要查找的分支标识，用于在内存索引中定位分支记录。
    */
   private requireBranch(branchId: string): BranchRecord {
     const branch = this.branches.get(branchId);
@@ -225,8 +232,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 更新Siblings状态，必要时写回存储并发布对应事件。
-   * @param parentChatId 目标父聊天标识。
+   * 将指定父聊天下的所有分支设为非激活状态（激活新分支前的清理步骤），
+   * 确保同一父聊天下只有一个分支处于激活状态。
+   * @param parentChatId 父聊天的标识，用于筛选需要去激活的分支。
    */
   private deactivateSiblings(parentChatId: string): void {
     const branches = Array.from(this.branches.values());
@@ -239,7 +247,7 @@ export class BranchRuntime {
   }
 
   /**
-   * 复制Branch 值，避免外部修改内部状态。
+   * 复制分支记录，生成值副本，防止外部修改内部状态，用于所有对外暴露分支记录的场景。
    */
   private cloneBranch(branch: BranchRecord): BranchRecord {
     const cloned: BranchRecord = {
@@ -256,7 +264,7 @@ export class BranchRuntime {
   }
 
   /**
-   * 复制Checkpoint 值，避免外部修改内部状态。
+   * 复制检查点记录，生成值副本，防止外部修改内部状态，用于所有对外暴露检查点记录的场景。
    */
   private cloneCheckpoint(checkpoint: CheckpointRecord): CheckpointRecord {
     const cloned: CheckpointRecord = {
@@ -284,9 +292,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 发布聊天分支事件，把状态变化通知给宿主或其他 Runtime。
-   * @param eventName 要订阅或发布的事件名。
-
+   * 发布分支事件（创建、恢复等），将分支状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要发布的事件名称（如 branch.created、branch.restored），用于订阅者识别事件类型。
+   * @param branch 事件关联的分支记录，用于事件载荷中传递分支状态。
    */
   private publishBranchEvent(eventName: string, branch: BranchRecord): void {
     const payload: BranchEventPayload = {

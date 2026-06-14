@@ -10,13 +10,13 @@ import type {
 // Anthropic / Claude 后端
 export class AnthropicBackend {
   /**
-   * 根据入参构建Chat Request 值，仅生成数据结构，不直接执行外部请求。
-   * @param model 模型名称。
-   * @param maxTokens token 数量或 token 内容。
-
-   * @param messages 消息列表。
-
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * 构建 Anthropic (Claude) API 的聊天补全请求体。
+   * @param model Anthropic 模型名称（如 "claude-sonnet-4"）。
+   * @param maxTokens 生成的最大 token 数。
+   * @param systemPrompt 系统提示词内容。
+   * @param messages 对话历史消息列表。
+   * @param stream 是否启用流式输出。
+   * @returns Anthropic 格式的聊天补全请求体。
    */
   buildChatRequest(model: string, maxTokens: number, systemPrompt: string,
                    messages: Array<ProviderBackendMessage>, stream: boolean): AnthropicRequest {
@@ -27,12 +27,12 @@ export class AnthropicBackend {
 // Azure OpenAI 后端
 export class AzureBackend {
   /**
-   * 根据入参构建Chat Request 值，仅生成数据结构，不直接执行外部请求。
-
-   * @param messages 消息列表。
-
-   * @param maxTokens token 数量或 token 内容。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 构建 Azure OpenAI API 的聊天补全请求体。
+   * @param deployment Azure 部署名称，作为 model 字段发送。
+   * @param messages 对话历史消息列表。
+   * @param stream 是否启用流式输出。
+   * @param maxTokens 生成的最大 token 数。
+   * @returns Azure OpenAI 格式的聊天补全请求体。
    */
   buildChatRequest(deployment: string, messages: Array<ProviderBackendMessage>,
                    stream: boolean, maxTokens: number): AzureRequest {
@@ -43,11 +43,11 @@ export class AzureBackend {
 // Google Gemini 后端
 export class GeminiBackend {
   /**
-   * 根据入参构建Chat Request 值，仅生成数据结构，不直接执行外部请求。
-
-
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 构建 Google Gemini API 的聊天补全请求体。
+   * @param contents 对话内容列表，包含角色和文本片段。
+   * @param systemInstruction 系统指令。
+   * @param generationConfig 生成配置参数（温度、maxTokens 等）。
+   * @returns Gemini 格式的聊天补全请求体。
    */
   buildChatRequest(contents: Array<GeminiContent>,
                    systemInstruction: GeminiSystemInstruction,
@@ -59,14 +59,14 @@ export class GeminiBackend {
 // Kobold / KoboldCpp 后端
 export class KoboldBackend {
   /**
-   * 根据入参构建Text Request 值，仅生成数据结构，不直接执行外部请求。
-
-
-
-
-
-
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * 构建 Kobold/KoboldCpp API 的文本补全请求体。
+   * @param prompt 提示词文本。
+   * @param maxLength 生成的最大 token 数。
+   * @param temperature 温度参数。
+   * @param topP Top-P 采样参数。
+   * @param repPen 重复惩罚系数。
+   * @param stopSequences 停止字符串列表。
+   * @returns Kobold 格式的文本补全请求体。
    */
   buildTextRequest(prompt: string, maxLength: number, temperature: number,
                    topP: number, repPen: number,
@@ -81,11 +81,11 @@ export class KoboldBackend {
 // Horde 后端
 export class HordeBackend {
   /**
-   * 根据入参构建Text Request 值，仅生成数据结构，不直接执行外部请求。
-
-   * @param params 创建、更新或执行操作所需的参数对象。
-
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * 构建 Horde API 的文本补全请求体。
+   * @param prompt 提示词文本。
+   * @param params 后端参数集合，包含温度、采样参数和停止字符串。
+   * @param models 请求使用的模型列表。
+   * @returns Horde 格式的文本补全请求体。
    */
   buildTextRequest(prompt: string, params: ProviderBackendParameters,
                    models: Array<string>): HordeRequest {
@@ -96,12 +96,12 @@ export class HordeBackend {
 // MiniMax 后端
 export class MiniMaxBackend {
   /**
-   * 根据入参构建Chat Request 值，仅生成数据结构，不直接执行外部请求。
+   * 构建 MiniMax API 的聊天补全请求体。
    * @param model 模型名称。
-   * @param messages 消息列表。
-
-   * @param maxTokens token 数量或 token 内容。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param messages 对话历史消息列表。
+   * @param stream 是否启用流式输出。
+   * @param maxTokens 生成的最大 token 数。
+   * @returns MiniMax 格式的聊天补全请求体。
    */
   buildChatRequest(model: string, messages: Array<ProviderBackendMessage>,
                    stream: boolean, maxTokens: number): MiniMaxRequest {
@@ -112,12 +112,12 @@ export class MiniMaxBackend {
 // NanoGPT 后端
 export class NanoGPTBackend {
   /**
-   * 根据入参构建Text Request 值，仅生成数据结构，不直接执行外部请求。
-
-   * @param maxTokens token 数量或 token 内容。
-
-
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * 构建 NanoGPT API 的文本补全请求体。
+   * @param prompt 提示词文本。
+   * @param maxTokens 生成的最大 token 数。
+   * @param temperature 温度参数。
+   * @param stop 停止字符串列表。
+   * @returns NanoGPT 格式的文本补全请求体。
    */
   buildTextRequest(prompt: string, maxTokens: number, temperature: number,
                    stop: Array<string>): NanoGPTRequest {
@@ -128,11 +128,11 @@ export class NanoGPTBackend {
 // NovelAI 后端
 export class NovelAIBackend {
   /**
-   * 根据入参构建Text Request 值，仅生成数据结构，不直接执行外部请求。
-   * @param input 待处理的输入对象。
+   * 构建 NovelAI API 的文本补全请求体。
+   * @param input 输入文本。
    * @param model 模型名称。
-
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * @param parameters 后端参数集合，包含采样和生成参数。
+   * @returns NovelAI 格式的文本补全请求体。
    */
   buildTextRequest(input: string, model: string,
                    parameters: ProviderBackendParameters): NovelAIRequest {
@@ -143,13 +143,13 @@ export class NovelAIBackend {
 // OpenRouter 后端
 export class OpenRouterBackend {
   /**
-   * 根据入参构建Chat Request 值，仅生成数据结构，不直接执行外部请求。
+   * 构建 OpenRouter API 的聊天补全请求体。
    * @param model 模型名称。
-   * @param messages 消息列表。
-
-   * @param maxTokens token 数量或 token 内容。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param messages 对话历史消息列表。
+   * @param stream 是否启用流式输出。
+   * @param maxTokens 生成的最大 token 数。
+   * @param provider 路由提供商选项，控制模型回退策略。
+   * @returns OpenRouter 格式的聊天补全请求体。
    */
   buildChatRequest(model: string, messages: Array<ProviderBackendMessage>,
                    stream: boolean, maxTokens: number,
@@ -161,13 +161,13 @@ export class OpenRouterBackend {
 // Volcengine / 火山引擎 后端
 export class VolcengineBackend {
   /**
-   * 根据入参构建Chat Request 值，仅生成数据结构，不直接执行外部请求。
+   * 构建火山引擎 API 的聊天补全请求体。
    * @param model 模型名称。
-   * @param messages 消息列表。
-
-   * @param maxTokens token 数量或 token 内容。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param messages 对话历史消息列表。
+   * @param stream 是否启用流式输出。
+   * @param maxTokens 生成的最大 token 数。
+   * @param parameters 后端参数集合，包含采样和生成参数。
+   * @returns 火山引擎格式的聊天补全请求体。
    */
   buildChatRequest(model: string, messages: Array<ProviderBackendMessage>,
                    stream: boolean, maxTokens: number,

@@ -7,19 +7,19 @@ import type {
 } from './PromptTemplateModels';
 
 /**
- * 描述Prompt 模板模块在运行时交换的数据结构。
+ * 已知 chat template 哈希值的缓存条目，用于快速匹配无需重复推导的模板。
  */
 interface PromptTemplateKnownHash {
   /**
-   * hash 值，由当前实例内部维护。
+   * chat template 内容的 SHA-256 哈希值，用作缓存查找的键。
    */
   hash: string;
   /**
-   * context 值，由当前实例内部维护。
+   * 该哈希对应的系统上下文模板名称，匹配后直接返回而无需再次推导。
    */
   context: string | null;
   /**
-   * instruct 值，由当前实例内部维护。
+   * 该哈希对应的指令模板名称，匹配后直接返回而无需再次推导。
    */
   instruct: string | null;
 }
@@ -29,11 +29,11 @@ interface PromptTemplateKnownHash {
  */
 export class PromptTemplateRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于发布模板渲染完成事件通知宿主和其他 Runtime 模块。
    */
   private events: EventBus;
   /**
-   * templates 列表，由当前实例内部维护。
+   * 已注册的 Prompt 模板字典，键为模板 ID，值为模板记录——由 registerTemplate 方法填充。
    */
   private templates: Map<string, PromptTemplateRecord> = new Map<string, PromptTemplateRecord>();
   private knownHashes: Array<PromptTemplateKnownHash> = [
@@ -59,15 +59,19 @@ export class PromptTemplateRuntime {
   ];
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化当前运行时实例，清空模板字典。
+   * @param events 事件总线实例，用于发布 promptTemplate.rendered 事件。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 执行 deriveTemplatesFromChatTemplate 的内部处理步骤，供当前模块复用。
+   * 从 chat template 字符串推导出 context 和 instruct 模板名称。
+   * 优先检查已知哈希缓存，再按特征标记匹配常见模板格式（Moonshot AI、OpenAI Harmony、ChatML 等）。
+   * 在连接新 LLM 获取到 chat_template 元数据时由外部模块调用。
+   * @param chatTemplate LLM 返回的原始 chat_template 字符串，用于推导模板类型。
+   * @param hash chat_template 内容的哈希值，用于命中已知模板缓存以跳过重复推导。
    */
   deriveTemplatesFromChatTemplate(chatTemplate: string, hash: string): PromptTemplateDerivation {
     if (chatTemplate.trim().length === 0) {
@@ -92,8 +96,8 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 注册Template 值，使其可被后续运行时流程使用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 注册一个 Prompt 模板，写入内部字典以供后续渲染使用。由外部模块（如角色加载流程）在初始化时调用。
+   * @param params 包含模板 ID 和模板内容的注册参数。
    */
   registerTemplate(params: PromptTemplateRegistrationParams): PromptTemplateRecord {
     if (params.id.length === 0) {
@@ -108,9 +112,9 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 读取指定Template，不存在时抛出错误。
-   * @param id 唯一标识。
-   * @returns 更新或读取后的记录副本。
+   * 按 ID 查询已注册的 Prompt 模板，不存在时返回 undefined。由渲染流程（renderTemplate）或 UI 预览逻辑调用。
+   * @param id 模板唯一标识，与 registerTemplate 写入的 ID 对应。
+   * @returns 匹配的模板记录副本，或 undefined。
    */
   getTemplate(id: string): PromptTemplateRecord | undefined {
     const record = this.templates.get(id);
@@ -121,17 +125,18 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 读取模板标识列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有已注册模板 ID 的排序列表。用于 UI 列表展示或批量操作前的枚举。
+   * @returns 按字典序排列的模板 ID 数组。
    */
   listTemplateIds(): Array<string> {
     return Array.from(this.templates.keys()).sort();
   }
 
   /**
-   * 生成Template输出，供请求发送、导出或界面展示使用。
-   * @param id 唯一标识。
-   * @param data 导入或恢复使用的序列化数据。
+   * 使用给定数据渲染模板，将模板中的 {{key}} 占位符替换为实际值，并发布渲染事件。
+   * 在组装最终 Prompt 发送给 LLM 之前由格式化流程调用。
+   * @param id 模板唯一标识，用于查找已注册的模板内容。
+   * @param data 键值对映射，用于替换模板中的 {{key}} 占位符——键名对应 {{key}} 中的 key，值为实际文本。
    */
   renderTemplate(id: string, data: Map<string, string>): string {
     const record = this.templates.get(id);
@@ -148,9 +153,9 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 生成Content输出，供请求发送、导出或界面展示使用。
-   * @param content 要写入或追加的文本内容。
-   * @param data 导入或恢复使用的序列化数据。
+   * 对给定的内容字符串执行 {{key}} 占位符替换，返回渲染后的文本。被 renderTemplate 内部调用，也可单独用于占位符替换。
+   * @param content 包含 {{key}} 占位符的模板内容字符串，其中 key 将替换为 data 对应值。
+   * @param data 键值对映射，用于替换占位符；缺失的键替换为空字符串。
    */
   renderContent(content: string, data: Map<string, string>): string {
     let output = '';
@@ -167,7 +172,7 @@ export class PromptTemplateRuntime {
         break;
       }
       output += content.substring(cursor, start);
-      // 键名。
+        // 从模板内容中提取占位符键名：{{key}} 中被 trim 后的部分。
       const key = content.substring(start + 2, end).trim();
       const value = data.get(key);
       output += value === undefined ? '' : value;
@@ -177,7 +182,7 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 在当前集合中查找Known Hash 值，未命中时返回空值或默认位置。
+   * 根据哈希值在已知模板缓存中查找匹配项，命中则返回缓存条目；否则返回 undefined。
    */
   private findKnownHash(hash: string): PromptTemplateKnownHash | undefined {
     for (let index = 0; index < this.knownHashes.length; index += 1) {
@@ -190,10 +195,10 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 检查All是否满足当前规则。
-   * @param value 要保存或比较的字段值。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 检查字符串是否包含所有指定的子串，用于识别 chat template 的格式特征。
+   * @param value 待检查的 chat template 字符串。
+   * @param tokens 需要在该字符串中全部出现的子串列表。
+   * @returns 当所有子串都在 value 中出现时返回 true，否则返回 false。
    */
   private containsAll(value: string, tokens: Array<string>): boolean {
     for (let index = 0; index < tokens.length; index += 1) {
@@ -224,7 +229,7 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 复制Known Hash 值，避免外部修改内部状态。
+   * 深拷贝已知哈希条目为模板推导结果，防止外部修改缓存内容。
    */
   private cloneKnownHash(known: PromptTemplateKnownHash): PromptTemplateDerivation {
     return {
@@ -234,8 +239,8 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 复制Record 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深拷贝模板记录对象，防止外部修改内部存储的原始记录。
+   * @param record 待拷贝的模板记录。
    */
   private cloneRecord(record: PromptTemplateRecord): PromptTemplateRecord {
     return {

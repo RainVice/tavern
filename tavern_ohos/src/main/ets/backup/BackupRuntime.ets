@@ -12,25 +12,26 @@ import type {
 
 /**
  * 提供备份恢复相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 在数据迁移、手动备份和还原恢复流程中被调用，用于保障用户数据的安全性和可恢复性。
  */
 export class BackupRuntime {
   /**
-   * 文件存储适配器。
+   * 文件存储适配器，用于读写备份存档文件和遍历数据目录。
    */
   private files: TavernFileStore;
   /**
-   * 事件总线。
+   * 事件总线，用于发布备份完成和还原事件通知其他模块。
    */
   private events: EventBus;
   /**
-   * backup Counter 值，由当前实例内部维护。
+   * 自增计数器，用于生成备份唯一标识（如 backup-1、backup-2）。
    */
   private backupCounter: number = 0;
 
   /**
-   * 初始化当前运行时实例。
-   * @param files 文件存储适配器。
-   * @param events 事件总线。
+   * 初始化当前运行时实例，注入文件存储和事件总线依赖，由宿主在应用启动时创建。
+   * @param files 文件存储适配器，用于读写备份存档文件和遍历数据目录。
+   * @param events 事件总线，用于发布备份完成和还原完成事件。
    */
   constructor(files: TavernFileStore, events: EventBus) {
     this.files = files;
@@ -38,28 +39,33 @@ export class BackupRuntime {
   }
 
   /**
-   * 创建新的备份记录，写入存储并返回副本。
-   * @param rootPath Tavern 数据根路径。
-   * @param destinationPath destination 路径。
-   * @param kind 记录类型。
-   * @returns 更新或读取后的记录副本。
+   * 创建手动备份：收集数据根路径下所有文件并写入目标路径，发布备份完成事件。
+   * 在用户主动触发备份操作（如设置页面中的"创建备份"按钮）时调用。
+   * @param rootPath Tavern 数据根路径，用于遍历和收集所有数据文件。
+   * @param destinationPath 备份存档的目标写入路径，用于存储最终生成的备份文件。
+   * @param kind 备份类型标识（如 manual），用于在存档记录中标记备份来源。
+   * @returns 创建的备份存档对象，包含标识、时间戳和所有文件条目。
    */
   async createBackup(rootPath: string, destinationPath: string, kind: string): Promise<BackupArchive> {
     return this.createBackupInternal(rootPath, destinationPath, kind, 'manual');
   }
 
   /**
-   * 创建新的迁移备份记录，写入存储并返回副本。
-   * @param rootPath Tavern 数据根路径。
-   * @param reason 失败、中止或恢复操作的原因说明。
-   * @returns 更新或读取后的记录副本。
+   * 创建迁移备份：在数据迁移前自动创建备份，以防迁移失败时数据丢失。
+   * 在数据版本升级或格式变更时由迁移流程自动触发，无需用户干预。
+   * @param rootPath Tavern 数据根路径，用于遍历和收集所有数据文件。
+   * @param reason 触发迁移备份的原因说明（如版本升级、格式变更等），用于记录备份背景。
+   * @returns 创建的迁移备份存档对象，包含标识、时间戳和所有文件条目。
    */
   async createMigrationBackup(rootPath: string, reason: string): Promise<BackupArchive> {
     return this.createBackupInternal(rootPath, `backups/migration-${this.backupCounter + 1}.json`, 'migration', reason);
   }
 
   /**
-   * 校验Archive 值是否满足运行时约束。
+   * 校验备份存档的完整性：检查每个条目的路径安全性、内容大小和校验和是否正确。
+   * 在还原备份之前调用，用于提前发现损坏或不安全的存档，避免还原操作造成数据异常。
+   * @param archive 待校验的备份存档对象，包含所有文件条目。
+   * @returns 校验结果，包含是否通过和所有错误详情，结果为 valid 时方可安全还原。
    */
   validateArchive(archive: BackupArchive): BackupValidationResult {
     const errors = new Array<string>();
@@ -82,9 +88,11 @@ export class BackupRuntime {
   }
 
   /**
-   * 执行 restoreBackup 的内部处理步骤，供当前模块复用。
-
-   * @param targetRootPath target Root 路径。
+   * 还原备份存档：校验完整性后将每个条目还原到目标根路径下，并发布还原完成事件。
+   * 在用户选择备份文件并确认还原时调用，用于将存档中的数据恢复到指定位置。
+   * @param archive 待还原的备份存档，校验通过后执行还原操作。
+   * @param targetRootPath 还原的目标根路径，存档中的相对路径将拼接在此路径下。
+   * @returns 还原结果，包含成功恢复的路径列表（可在 UI 中展示完成状态）。
    */
   async restoreBackup(archive: BackupArchive, targetRootPath: string): Promise<BackupRestoreResult> {
     const validation = this.validateArchive(archive);
@@ -111,12 +119,13 @@ export class BackupRuntime {
   }
 
   /**
-   * 创建内部备份记录，写入存储并返回副本。
-   * @param rootPath Tavern 数据根路径。
-   * @param destinationPath destination 路径。
-   * @param kind 记录类型。
-   * @param reason 失败、中止或恢复操作的原因说明。
-   * @returns 更新或读取后的记录副本。
+   * 内部方法：收集文件、构建备份存档、写入目标路径并发布完成事件。
+   * 由 createBackup 和 createMigrationBackup 调用，统一处理文件收集和存档写入流程。
+   * @param rootPath 数据根路径，用于计算文件相对路径和遍历目录。
+   * @param destinationPath 备份存档的写入路径，用于存储最终的 JSON 存档文件。
+   * @param kind 备份类型标识（manual / migration），用于存档记录分类。
+   * @param reason 备份原因描述，用于描述触发备份的业务场景。
+   * @returns 创建的备份存档对象，包含所有收集到的文件条目。
    */
   private async createBackupInternal(rootPath: string, destinationPath: string, kind: string, reason: string): Promise<BackupArchive> {
     this.backupCounter += 1;
@@ -153,10 +162,11 @@ export class BackupRuntime {
   }
 
   /**
-   * 创建或写入条目，完成持久化后返回可供调用方使用的结果。
-   * @param rootPath Tavern 数据根路径。
-   * @param path 目标文件或目录路径。
-   * @param entries 条目列表。
+   * 添加单个文件到备份条目列表：读取文件内容并计算大小和校验和。
+   * 在递归遍历目录时对每个文件执行，用于将文件元数据和内容纳入备份存档。
+   * @param rootPath 数据根路径，用于计算文件在存档中的相对路径。
+   * @param path 文件绝对路径（或相对于文件存储的路径），用于读取文件内容。
+   * @param entries 备份条目列表，新条目将被追加到其中。
    */
   private async addFileEntry(rootPath: string, path: string, entries: Array<BackupManifestEntry>): Promise<void> {
     try {
@@ -174,8 +184,10 @@ export class BackupRuntime {
   }
 
   /**
-   * 检查sum是否满足当前规则。
-   * @param content 要写入或追加的文本内容。
+   * 计算字符串内容的简易校验和（基于字符编码值的加权求和），用于快速检测内容变化。
+   * 在创建备份条目时对每个文件内容计算，用于还原时的完整性验证。
+   * @param content 要计算校验和的文本内容，通常是文件内容的完整字符串。
+   * @returns 格式为 "长度:加权和" 的校验和字符串，用于还原时比对内容一致性。
    */
   private checksum(content: string): string {
     let sum = 0;
@@ -205,7 +217,7 @@ export class BackupRuntime {
   }
 
   /**
-   * 复制Archive 值，避免外部修改内部状态。
+   * 复制 BackupArchive，生成所有条目的深拷贝，防止外部修改内部状态，用于发布事件和对外返回。
    */
   private copyArchive(archive: BackupArchive): BackupArchive {
     const entries = new Array<BackupManifestEntry>();
@@ -223,8 +235,8 @@ export class BackupRuntime {
   }
 
   /**
-   * 复制Entry 值，避免外部修改内部状态。
-   * @param entry 条目记录。
+   * 复制单条备份条目，生成值副本，防止外部修改内部状态，用于深拷贝存档中的单条条目。
+   * @param entry 要复制的备份条目，原对象不会被修改。
    */
   private copyEntry(entry: BackupManifestEntry): BackupManifestEntry {
     return {
@@ -236,8 +248,8 @@ export class BackupRuntime {
   }
 
   /**
-   * 复制Restore Result 值，避免外部修改内部状态。
-   * @param result 返回结果。
+   * 复制还原结果，生成数组副本，防止外部修改内部状态，用于对外返回和事件发布。
+   * @param result 要复制的还原结果对象，原对象不会被修改。
    */
   private copyRestoreResult(result: BackupRestoreResult): BackupRestoreResult {
     return {

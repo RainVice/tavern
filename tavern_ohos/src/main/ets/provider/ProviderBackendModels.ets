@@ -1,11 +1,11 @@
 import type { ProviderCapability } from './ProviderModels';
 
-// 后端名称
+// 后端名称联合类型
 export type ProviderBackendName =
   | 'anthropic' | 'azure' | 'gemini' | 'kobold' | 'horde'
   | 'minimax' | 'nanogpt' | 'novelai' | 'openrouter' | 'volcengine';
 
-// ---- 能力声明 ----
+// ---- 各后端能力声明数据 ----
 const ANTHROPIC_CAPABILITY_DATA: ProviderCapability = {
   provider: 'anthropic', model: 'claude',
   supportsStreaming: true, supportsSystemPrompt: true, supportsTools: true,
@@ -15,9 +15,7 @@ const ANTHROPIC_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: false, supportsChatCompletion: true,
   maxContext: 200000, tokenizer: 'claude',
 };
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Anthropic (Claude) 后端的固定能力声明。 */
 const AZURE_CAPABILITY_DATA: ProviderCapability = {
   provider: 'azure', model: 'azure-openai',
   supportsStreaming: true, supportsSystemPrompt: true, supportsTools: true,
@@ -27,9 +25,7 @@ const AZURE_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: false, supportsChatCompletion: true,
   maxContext: 128000, tokenizer: 'openai',
 };
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Azure OpenAI 后端的固定能力声明。 */
 const GEMINI_CAPABILITY_DATA: ProviderCapability = {
   provider: 'gemini', model: 'gemini',
   supportsStreaming: true, supportsSystemPrompt: true, supportsTools: true,
@@ -39,9 +35,7 @@ const GEMINI_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: false, supportsChatCompletion: true,
   maxContext: 1000000, tokenizer: 'gemini',
 };
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Google Gemini 后端的固定能力声明。 */
 const KOBOLD_CAPABILITY_DATA: ProviderCapability = {
   provider: 'kobold', model: 'kobold',
   supportsStreaming: true, supportsSystemPrompt: false, supportsTools: false,
@@ -51,9 +45,7 @@ const KOBOLD_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: true, supportsChatCompletion: false,
   maxContext: 4096, tokenizer: 'llama',
 };
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Kobold/KoboldCpp 后端的固定能力声明。 */
 const HORDE_CAPABILITY_DATA: ProviderCapability = {
   provider: 'horde', model: 'horde',
   supportsStreaming: true, supportsSystemPrompt: false, supportsTools: false,
@@ -63,9 +55,7 @@ const HORDE_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: true, supportsChatCompletion: false,
   maxContext: 4096, tokenizer: 'llama',
 };
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Horde 后端的固定能力声明。 */
 const MINIMAX_CAPABILITY_DATA: ProviderCapability = {
   provider: 'minimax', model: 'minimax',
   supportsStreaming: true, supportsSystemPrompt: true, supportsTools: false,
@@ -75,9 +65,7 @@ const MINIMAX_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: false, supportsChatCompletion: true,
   maxContext: 245760, tokenizer: 'llama',
 };
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** MiniMax 后端的固定能力声明。 */
 const NANOGPT_CAPABILITY_DATA: ProviderCapability = {
   provider: 'nanogpt', model: 'nanogpt',
   supportsStreaming: true, supportsSystemPrompt: false, supportsTools: false,
@@ -87,9 +75,7 @@ const NANOGPT_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: true, supportsChatCompletion: false,
   maxContext: 4096, tokenizer: 'llama',
 };
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** NanoGPT 后端的固定能力声明。 */
 const NOVELAI_CAPABILITY_DATA: ProviderCapability = {
   provider: 'novelai', model: 'novelai',
   supportsStreaming: true, supportsSystemPrompt: false, supportsTools: false,
@@ -99,9 +85,7 @@ const NOVELAI_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: true, supportsChatCompletion: false,
   maxContext: 8192, tokenizer: 'llama',
 };
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** NovelAI 后端的固定能力声明。 */
 const OPENROUTER_CAPABILITY_DATA: ProviderCapability = {
   provider: 'openrouter', model: 'openrouter',
   supportsStreaming: true, supportsSystemPrompt: true, supportsTools: true,
@@ -111,9 +95,7 @@ const OPENROUTER_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: false, supportsChatCompletion: true,
   maxContext: 200000, tokenizer: 'openai',
 };
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** OpenRouter 后端的固定能力声明。 */
 const VOLCENGINE_CAPABILITY_DATA: ProviderCapability = {
   provider: 'volcengine', model: 'volcengine',
   supportsStreaming: true, supportsSystemPrompt: true, supportsTools: false,
@@ -123,57 +105,36 @@ const VOLCENGINE_CAPABILITY_DATA: ProviderCapability = {
   supportsTextCompletion: false, supportsChatCompletion: true,
   maxContext: 32768, tokenizer: 'llama',
 };
+/** 火山引擎后端的固定能力声明。 */
 
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Anthropic 后端公开的能力声明（只读副本）。 */
 export const ANTHROPIC_CAPABILITY: ProviderCapability = cloneProviderCapability(ANTHROPIC_CAPABILITY_DATA);
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Azure OpenAI 后端公开的能力声明（只读副本）。 */
 export const AZURE_CAPABILITY: ProviderCapability = cloneProviderCapability(AZURE_CAPABILITY_DATA);
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Google Gemini 后端公开的能力声明（只读副本）。 */
 export const GEMINI_CAPABILITY: ProviderCapability = cloneProviderCapability(GEMINI_CAPABILITY_DATA);
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Kobold/KoboldCpp 后端公开的能力声明（只读副本）。 */
 export const KOBOLD_CAPABILITY: ProviderCapability = cloneProviderCapability(KOBOLD_CAPABILITY_DATA);
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** Horde 后端公开的能力声明（只读副本）。 */
 export const HORDE_CAPABILITY: ProviderCapability = cloneProviderCapability(HORDE_CAPABILITY_DATA);
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** MiniMax 后端公开的能力声明（只读副本）。 */
 export const MINIMAX_CAPABILITY: ProviderCapability = cloneProviderCapability(MINIMAX_CAPABILITY_DATA);
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** NanoGPT 后端公开的能力声明（只读副本）。 */
 export const NANOGPT_CAPABILITY: ProviderCapability = cloneProviderCapability(NANOGPT_CAPABILITY_DATA);
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** NovelAI 后端公开的能力声明（只读副本）。 */
 export const NOVELAI_CAPABILITY: ProviderCapability = cloneProviderCapability(NOVELAI_CAPABILITY_DATA);
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** OpenRouter 后端公开的能力声明（只读副本）。 */
 export const OPENROUTER_CAPABILITY: ProviderCapability = cloneProviderCapability(OPENROUTER_CAPABILITY_DATA);
-/**
- * 定义Provider 请求模块使用的固定配置值。
- */
+/** 火山引擎后端公开的能力声明（只读副本）。 */
 export const VOLCENGINE_CAPABILITY: ProviderCapability = cloneProviderCapability(VOLCENGINE_CAPABILITY_DATA);
 
 /**
- * 读取指定BackendCapability，不存在时抛出错误。
- * @param name 显示名称或注册名称。
- * @returns 更新或读取后的记录副本。
+ * 根据后端名称获取其能力声明的只读副本。
+ * @param name 后端名称，取值范围为 ProviderBackendName。
+ * @returns 对应后端的能力声明副本。
  */
 export function getBackendCapability(name: ProviderBackendName): ProviderCapability {
-  /**
-   * 执行 switch 的内部处理步骤，供当前模块复用。
-   */
+  // 根据后端名称路由到对应的能力数据
   switch (name) {
     case 'anthropic': return cloneProviderCapability(ANTHROPIC_CAPABILITY_DATA);
     case 'azure': return cloneProviderCapability(AZURE_CAPABILITY_DATA);
@@ -190,7 +151,7 @@ export function getBackendCapability(name: ProviderBackendName): ProviderCapabil
 }
 
 /**
- * 复制Provider Capability 值，避免外部修改内部状态。
+ * 创建 ProviderCapability 的浅拷贝，防止外部代码修改内部常量数据。
  */
 function cloneProviderCapability(capability: ProviderCapability): ProviderCapability {
   return {
@@ -216,239 +177,181 @@ function cloneProviderCapability(capability: ProviderCapability): ProviderCapabi
 
 // ---- 各后端请求体类型 ----
 export interface ProviderBackendMessage {
-  /**
-   * role 值，由当前实例内部维护。
-   */
+  /** 消息角色：如 "user"、"assistant"、"system"。 */
   role: string;
-  /**
-   * 内容。
-   */
+  /** 消息文本内容。 */
   content: string;
 }
 
-/**
- * 描述Provider 请求模块在运行时交换的数据结构。
- */
+/** Gemini API 中的 Part 结构，表示多模态内容的一个片段。 */
 export interface GeminiPart {
-  /**
-   * 文本内容。
-   */
+  /** 文本内容。 */
   text: string;
 }
 
-/**
- * 描述Provider 请求模块在运行时交换的数据结构。
- */
+/** Gemini API 中的 Content 结构，表示一段带有角色的对话内容。 */
 export interface GeminiContent {
-  /**
-   * role 值，由当前实例内部维护。
-   */
+  /** 该段内容的角色：如 "user"、"model"。 */
   role: string;
-  /**
-   * 路径分段，由当前实例内部维护。
-   */
+  /** 内容片段列表。 */
   parts: Array<GeminiPart>;
 }
 
-/**
- * 描述Provider 请求模块在运行时交换的数据结构。
- */
+/** Gemini API 中的 SystemInstruction 结构，表示系统指令。 */
 export interface GeminiSystemInstruction {
-  /**
-   * 路径分段，由当前实例内部维护。
-   */
+  /** 系统指令的内容片段列表。 */
   parts: Array<GeminiPart>;
 }
 
-/**
- * 描述Provider 请求模块在运行时交换的数据结构。
- */
+/** Gemini API 中的 GenerationConfig 结构，控制文本生成参数。 */
 export interface GeminiGenerationConfig {
-  /**
-   * temperature 值，由当前实例内部维护。
-   */
+  /** 采样温度参数。 */
   temperature: number;
-  /**
-   * max Output Tokens 列表，由当前实例内部维护。
-   */
+  /** 生成的最大 token 数。 */
   maxOutputTokens: number;
-  /**
-   * top P 值，由当前实例内部维护。
-   */
+  /** Top-P 采样参数。 */
   topP: number;
-  /**
-   * stop Sequences 列表，由当前实例内部维护。
-   */
+  /** 停止字符串列表。 */
   stopSequences: Array<string>;
 }
 
-/**
- * 描述Provider 请求模块在运行时交换的数据结构。
- */
+/** 通用后端参数集合，用于 Kobold/Horde/NovelAI/火山引擎等后端。 */
 export interface ProviderBackendParameters {
-  /**
-   * temperature 值，由当前实例内部维护。
-   */
+  /** 采样温度参数。 */
   temperature: number;
-  /**
-   * top P 值，由当前实例内部维护。
-   */
+  /** Top-P 采样参数。 */
   topP: number;
-  /**
-   * top K 值，由当前实例内部维护。
-   */
+  /** Top-K 采样参数，限制到概率最高的 K 个 token。 */
   topK: number;
-  /**
-   * repetition Penalty 值，由当前实例内部维护。
-   */
+  /** 重复惩罚系数，降低已生成 token 的重复概率。 */
   repetitionPenalty: number;
-  /**
-   * max Tokens 列表，由当前实例内部维护。
-   */
+  /** 生成的最大 token 数。 */
   maxTokens: number;
-  /**
-   * stop 值，由当前实例内部维护。
-   */
+  /** 停止字符串列表。 */
   stop: Array<string>;
-  /**
-   * 扩展 JSON 字符串。
-   */
+  /** 扩展配置的 JSON 字符串，用于传递后端特有参数。 */
   extraJson: string;
 }
 
-/**
- * 描述Provider 请求模块在运行时交换的数据结构。
- */
+/** OpenRouter 后端的 Provider 选项，控制模型路由策略。 */
 export interface OpenRouterProviderOptions {
-  /**
-   * order 值，由当前实例内部维护。
-   */
+  /** 排序列表，指定模型提供商的优先级。 */
   order: Array<string>;
-  /**
-   * allow Fallbacks 列表，由当前实例内部维护。
-   */
+  /** 是否允许在首选提供商不可用时回退到其他提供商。 */
   allowFallbacks: boolean;
 }
 
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** Anthropic (Claude) API 的聊天补全请求体结构。 */
 export interface AnthropicRequest {
-  /**
-   * 模型名称，由当前实例内部维护。
-   */
-  model: string; max_tokens: number; system: string;
-  /**
-   * 消息列表。
-   */
-  messages: Array<ProviderBackendMessage>; stream: boolean;
+  /** 模型名称。 */
+  model: string;
+  /** 生成的最大 token 数。 */
+  max_tokens: number;
+  /** 系统提示词。 */
+  system: string;
+  /** 对话消息列表。 */
+  messages: Array<ProviderBackendMessage>;
+  /** 是否启用流式输出。 */
+  stream: boolean;
 }
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** Azure OpenAI API 的聊天补全请求体结构。 */
 export interface AzureRequest {
-  /**
-   * 消息列表。
-   */
-  messages: Array<ProviderBackendMessage>; model: string;
-  /**
-   * stream 值，由当前实例内部维护。
-   */
-  stream: boolean; max_tokens: number;
+  /** 消息列表。 */
+  messages: Array<ProviderBackendMessage>;
+  /** 部署名称。 */
+  model: string;
+  /** 是否启用流式输出。 */
+  stream: boolean;
+  /** 生成的最大 token 数。 */
+  max_tokens: number;
 }
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** Google Gemini API 的聊天补全请求体结构。 */
 export interface GeminiRequest {
-  /**
-   * contents 列表，由当前实例内部维护。
-   */
+  /** 对话内容列表。 */
   contents: Array<GeminiContent>;
-  /**
-   * system Instruction 值，由当前实例内部维护。
-   */
+  /** 系统指令。 */
   systemInstruction: GeminiSystemInstruction;
-  /**
-   * generation Config 值，由当前实例内部维护。
-   */
+  /** 生成配置参数。 */
   generationConfig: GeminiGenerationConfig;
 }
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** Kobold/KoboldCpp API 的文本补全请求体结构。 */
 export interface KoboldRequest {
-  /**
-   * prompt 值，由当前实例内部维护。
-   */
-  prompt: string; max_length: number; temperature: number;
-  /**
-   * top p 值，由当前实例内部维护。
-   */
-  top_p: number; rep_pen: number; stop_sequence: Array<string>;
+  /** 提示词文本。 */
+  prompt: string;
+  /** 生成的最大 token 数。 */
+  max_length: number;
+  /** 温度参数。 */
+  temperature: number;
+  /** Top-P 采样参数。 */
+  top_p: number;
+  /** 重复惩罚系数。 */
+  rep_pen: number;
+  /** 停止字符串列表。 */
+  stop_sequence: Array<string>;
 }
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** Horde API 的文本补全请求体结构。 */
 export interface HordeRequest {
-  /**
-   * prompt 值，由当前实例内部维护。
-   */
-  prompt: string; params: ProviderBackendParameters; models: Array<string>;
+  /** 提示词文本。 */
+  prompt: string;
+  /** 后端参数集合。 */
+  params: ProviderBackendParameters;
+  /** 请求使用的模型列表。 */
+  models: Array<string>;
 }
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** MiniMax API 的聊天补全请求体结构。 */
 export interface MiniMaxRequest {
-  /**
-   * 模型名称，由当前实例内部维护。
-   */
-  model: string; messages: Array<ProviderBackendMessage>;
-  /**
-   * stream 值，由当前实例内部维护。
-   */
-  stream: boolean; max_tokens: number;
+  /** 模型名称。 */
+  model: string;
+  /** 对话消息列表。 */
+  messages: Array<ProviderBackendMessage>;
+  /** 是否启用流式输出。 */
+  stream: boolean;
+  /** 生成的最大 token 数。 */
+  max_tokens: number;
 }
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** NanoGPT API 的文本补全请求体结构。 */
 export interface NanoGPTRequest {
-  /**
-   * prompt 值，由当前实例内部维护。
-   */
-  prompt: string; max_tokens: number; temperature: number; stop: Array<string>;
+  /** 提示词文本。 */
+  prompt: string;
+  /** 生成的最大 token 数。 */
+  max_tokens: number;
+  /** 温度参数。 */
+  temperature: number;
+  /** 停止字符串列表。 */
+  stop: Array<string>;
 }
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** NovelAI API 的文本补全请求体结构。 */
 export interface NovelAIRequest {
-  /**
-   * 输入数据。
-   */
-  input: string; model: string; parameters: ProviderBackendParameters;
+  /** 输入文本。 */
+  input: string;
+  /** 模型名称。 */
+  model: string;
+  /** 后端参数集合。 */
+  parameters: ProviderBackendParameters;
 }
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** OpenRouter API 的聊天补全请求体结构。 */
 export interface OpenRouterRequest {
-  /**
-   * 模型名称，由当前实例内部维护。
-   */
-  model: string; messages: Array<ProviderBackendMessage>;
-  /**
-   * stream 值，由当前实例内部维护。
-   */
-  stream: boolean; max_tokens: number; provider: OpenRouterProviderOptions;
+  /** 模型名称。 */
+  model: string;
+  /** 对话消息列表。 */
+  messages: Array<ProviderBackendMessage>;
+  /** 是否启用流式输出。 */
+  stream: boolean;
+  /** 生成的最大 token 数。 */
+  max_tokens: number;
+  /** 路由提供商选项。 */
+  provider: OpenRouterProviderOptions;
 }
-/**
- * 描述发送给外部服务或宿主网络层的请求数据。
- */
+/** 火山引擎 API 的聊天补全请求体结构。 */
 export interface VolcengineRequest {
-  /**
-   * 模型名称，由当前实例内部维护。
-   */
-  model: string; messages: Array<ProviderBackendMessage>;
-  /**
-   * stream 值，由当前实例内部维护。
-   */
-  stream: boolean; max_tokens: number; parameters: ProviderBackendParameters;
+  /** 模型名称。 */
+  model: string;
+  /** 对话消息列表。 */
+  messages: Array<ProviderBackendMessage>;
+  /** 是否启用流式输出。 */
+  stream: boolean;
+  /** 生成的最大 token 数。 */
+  max_tokens: number;
+  /** 后端参数集合。 */
+  parameters: ProviderBackendParameters;
 }

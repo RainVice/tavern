@@ -3,67 +3,67 @@
  */
 export interface RegexScriptRecord {
   /**
-   * 标识。
+   * 正则脚本唯一标识，用于在数组中索引和更新该脚本。
    */
   id: string;
   /**
-   * script 名称。
+   * 脚本显示名称，用于 UI 列表展示和用户识别。
    */
   scriptName: string;
   /**
-   * source Type 值，由当前实例内部维护。
+   * 脚本来源类型（如 local、imported 等），用于区分用户自建和外部导入的脚本。
    */
   sourceType: string;
   /**
-   * 作用域标识。
+   * 作用域标识，限制该脚本仅在特定范围内生效——与输入上下文的 scopeId 匹配才能执行。
    */
   scopeId: string;
   /**
-   * find Regex 值，由当前实例内部维护。
+   * 用于匹配文本的正则表达式字符串，作为替换操作的匹配模式。
    */
   findRegex: string;
   /**
-   * flags 列表，由当前实例内部维护。
+   * 正则匹配标志（如 g、i、m 等），控制正则的全局搜索、大小写不敏感等行为。
    */
   flags: string;
   /**
-   * replace String 值，由当前实例内部维护。
+   * 替换匹配结果的字符串，支持 $& 引用原始匹配；也支持 {{match}} 占位符自动转换为 $&。
    */
   replaceString: string;
   /**
-   * placements 列表，由当前实例内部维护。
+   * 脚本生效的 placement 列表（如 before_prompt、after_prompt 等），决定在 Prompt 处理的哪个阶段执行该脚本。
    */
   placements: Array<string>;
   /**
-   * disabled 值，由当前实例内部维护。
+   * 脚本是否被禁用，禁用时不参与任何替换流程。
    */
   disabled: boolean;
   /**
-   * markdown Only 值，由当前实例内部维护。
+   * 是否仅在 Markdown 格式内容上执行，用于按内容格式过滤执行条件。
    */
   markdownOnly: boolean;
   /**
-   * prompt Only 值，由当前实例内部维护。
+   * 是否仅在 Prompt 内容上执行，用于按内容类型过滤执行条件。
    */
   promptOnly: boolean;
   /**
-   * run On Edit 值，由当前实例内部维护。
+   * 是否在编辑操作时自动执行，用于按操作类型过滤执行条件——编辑场景下触发。
    */
   runOnEdit: boolean;
   /**
-   * min Depth 值，由当前实例内部维护。
+   * 脚本执行的最小递归深度阈值，低于此深度不执行——用于嵌套处理中的深度控制。
    */
   minDepth: number;
   /**
-   * max Depth 值，由当前实例内部维护。
+   * 脚本执行的最大递归深度阈值，高于此深度不执行——用于防止无限递归。
    */
   maxDepth: number;
   /**
-   * ephemeral 值，由当前实例内部维护。
+   * 脚本是否为临时性的（重启后不持久化），用于一次性或会话级别的正则替换。
    */
   ephemeral: boolean;
   /**
-   * trim Strings 列表，由当前实例内部维护。
+   * 需要从文本中移除的字符串列表，在正则替换后执行——用于清理多余的空格或特定标记。
    */
   trimStrings: Array<string>;
 }
@@ -73,31 +73,31 @@ export interface RegexScriptRecord {
  */
 export interface RegexApplyInput {
   /**
-   * 文本内容。
+   * 待处理的原始文本，将依次经过所有匹配条件的正则脚本处理。
    */
   text: string;
   /**
-   * placement 值，由当前实例内部维护。
+   * 当前处理的 placement 阶段（如 before_prompt、after_prompt 等），用于筛选匹配的脚本。
    */
   placement: string;
   /**
-   * is Markdown 值，由当前实例内部维护。
+   * 当前文本是否为 Markdown 格式，用于匹配脚本的 markdownOnly 过滤条件。
    */
   isMarkdown: boolean;
   /**
-   * is Prompt 值，由当前实例内部维护。
+   * 当前文本是否为 Prompt 内容，用于匹配脚本的 promptOnly 过滤条件。
    */
   isPrompt: boolean;
   /**
-   * is Edit 值，由当前实例内部维护。
+   * 当前是否为编辑操作，用于匹配脚本的 runOnEdit 过滤条件。
    */
   isEdit: boolean;
   /**
-   * depth 值，由当前实例内部维护。
+   * 当前处理深度，用于匹配脚本的 minDepth/maxDepth 阈值——在嵌套替换场景中递增。
    */
   depth: number;
   /**
-   * 作用域标识。
+   * 当前处理的作用域标识，用于匹配脚本的 scopeId 过滤条件。
    */
   scopeId: string;
 }
@@ -107,31 +107,31 @@ export interface RegexApplyInput {
  */
 export interface RegexApplyTrace {
   /**
-   * script 标识。
+   * 执行的脚本标识，用于追踪是哪条脚本执行的替换。
    */
   scriptId: string;
   /**
-   * script 名称。
+   * 执行的脚本名称，用于日志和调试输出以便识别替换来源。
    */
   scriptName: string;
   /**
-   * placement 值，由当前实例内部维护。
+   * 执行时的 placement 阶段，记录替换发生的处理阶段上下文。
    */
   placement: string;
   /**
-   * before 值，由当前实例内部维护。
+   * 替换前的文本内容，用于对比替换效果和调试。
    */
   before: string;
   /**
-   * after 值，由当前实例内部维护。
+   * 替换后的文本内容，用于对比替换效果和调试。
    */
   after: string;
   /**
-   * changed 值，由当前实例内部维护。
+   * 文本是否发生了实际变更，用于判断替换是否真正生效。
    */
   changed: boolean;
   /**
-   * diff 值，由当前实例内部维护。
+   * 变更差异描述（格式："替换前 -> 替换后"），用于快速浏览替换效果。
    */
   diff: string;
 }
@@ -141,11 +141,11 @@ export interface RegexApplyTrace {
  */
 export interface RegexApplyResult {
   /**
-   * 文本内容。
+   * 经过所有匹配脚本处理后的最终文本，由调用方用于后续流程（如发送给 LLM 或展示）。
    */
   text: string;
   /**
-   * traces 列表，由当前实例内部维护。
+   * 所有成功执行的正则替换追踪记录，用于调试或审计每次替换的详情。
    */
   traces: Array<RegexApplyTrace>;
 }
@@ -155,7 +155,7 @@ export interface RegexApplyResult {
  */
 export interface RegexAppliedPayload {
   /**
-   * trace 值，由当前实例内部维护。
+   * 最近一次正则替换的追踪记录，用于通知监听方（如 UI 调试面板）替换已执行。
    */
   trace: RegexApplyTrace;
 }

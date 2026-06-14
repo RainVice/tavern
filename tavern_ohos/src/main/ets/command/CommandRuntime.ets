@@ -15,47 +15,50 @@ import type {
 import { CommandInvocation } from './CommandModels';
 
 /**
- * 描述命令模块在运行时交换的数据结构。
+ * 描述命令模块运行时内部的命令定义结构。
  */
 interface CommandDefinitionInternal {
   /**
-   * 记录数据。
+   * 命令的持久化记录数据。
    */
   record: CommandRecord;
   /**
-   * action 值，由当前实例内部维护。
+   * 命令的执行行为实现。
    */
   action: CommandAction;
 }
 
 /**
- * 提供命令相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供命令相关的无 UI 运行时能力，负责命令的注册、解析、执行和事件发布，
+ * 供聊天输入框中的斜杠命令处理、命令行界面和脚本执行等场景调用。
  */
 export class CommandRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于发布命令注册、执行成功和失败等事件。
    */
   private events: EventBus;
   /**
-   * commands 列表，由当前实例内部维护。
+   * 已注册的命令映射表，键为命令名称。
    */
   private commands: Map<string, CommandDefinitionInternal> = new Map<string, CommandDefinitionInternal>();
   /**
-   * aliases 列表，由当前实例内部维护。
+   * 命令别名映射表，键为别名，值为对应的命令名称。
    */
   private aliases: Map<string, string> = new Map<string, string>();
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化当前运行时实例，在应用启动或进入命令处理环境时调用。
+   * @param events 事件总线，用于在命令注册、执行成功、执行失败后发布事件通知其他模块。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 注册Command 值，使其可被后续运行时流程使用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 注册命令，在外部模块初始化或新增命令时调用。
+   * 流程：创建命令记录 -> 建立命令名称映射 -> 建立别名映射 -> 发布 command.registered 事件。
+   * @param params 包含命令名称、别名、权限和实现行为的注册参数，由外部模块在启动或按需时提供。
+   * @returns 注册后的命令记录副本，用于注册结果确认。
    */
   registerCommand(params: CommandRegistrationParams): CommandRecord {
     const record: CommandRecord = {
@@ -82,8 +85,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 取消注册Command 值，避免后续流程继续调用。
-   * @param name 显示名称或注册名称。
+   * 取消注册命令，移除别名映射，在模块卸载或命令替换时调用。
+   * 流程：根据名称或别名解析标准名称 -> 删除别名映射 -> 从命令表移除。
+   * @param name 命令名称或别名，由取消注册操作传入。
    */
   unregisterCommand(name: string): void {
     const canonical = this.resolveCommandName(name);
@@ -98,8 +102,10 @@ export class CommandRuntime {
   }
 
   /**
-   * 解析Text，非法输入会返回失败标记或空结果。
-   * @param text 文本内容。
+   * 解析命令文本，提取命令名称、命名参数和未命名参数，在用户输入斜杠命令时由执行流程调用。
+   * 文本格式："/commandName arg1 key=val" -> 命令名为 commandName，命名参数 key=val，未命名参数 arg1。
+   * @param text 以斜杠开头的命令文本（如 "/command arg1 key=val"），由聊天输入框或命令行输入提供。
+   * @returns 解析后的结构化命令输入，供命令执行使用。
    */
   parseText(text: string): CommandParsedInput {
     const trimmed = text.trim();
@@ -111,7 +117,6 @@ export class CommandRuntime {
     if (tokens.length === 0) {
       throw new Error('Command name is missing.');
     }
-    // command 名称。
     const commandName = tokens[0];
     const namedArguments = new Array<CommandNamedArgument>();
     const unnamed = new Array<string>();
@@ -136,9 +141,11 @@ export class CommandRuntime {
   }
 
   /**
-   * 执行 executeText 的内部处理步骤，供当前模块复用。
-   * @param text 文本内容。
-   * @param options 控制本次调用行为的选项。
+   * 执行文本格式的命令（单条命令，不支持管道），在聊天输入框或其他单条命令执行场景调用。
+   * 流程：parseText 解析 -> resolveCommandName 解析别名 -> 校验权限和启用状态 -> 调用 action.execute -> 发布执行成功/失败事件。
+   * @param text 以斜杠开头的命令文本，由输入框提交时传入。
+   * @param options 执行控制选项，包含权限列表和取消状态，由调用方根据当前上下文提供。
+   * @returns 命令执行结果，包含 output、ok、error 等字段。
    */
   async executeText(text: string, options: CommandExecuteOptions): Promise<CommandExecutionResult> {
     const parsed = this.parseText(text);
@@ -146,9 +153,11 @@ export class CommandRuntime {
   }
 
   /**
-   * 执行 executePipeline 的内部处理步骤，供当前模块复用。
-   * @param text 文本内容。
-   * @param options 控制本次调用行为的选项。
+   * 执行管道命令，以管道符 | 分隔多段命令，前一段的输出作为下一段的管道输入，在需要链式处理命令时调用。
+   * 流程：splitPipeline 分割 -> 逐段 parseText -> 逐段执行 -> 失败时中断并返回聚合结果。
+   * @param text 包含管道符的命令文本，如 "/cmd1 | /cmd2 key=val"，由管道命令输入提供。
+   * @param options 执行控制选项，包含权限列表和取消状态，传递给每段命令的执行过程。
+   * @returns 管道执行的聚合结果，包含每步结果和最终输出。
    */
   async executePipeline(text: string, options: CommandExecuteOptions): Promise<CommandPipelineResult> {
     const segments = this.splitPipeline(text);
@@ -179,9 +188,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 执行 autocomplete 的内部处理步骤，供当前模块复用。
-   * @param prefix CIDR 前缀长度。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 根据输入前缀返回匹配的命令名和别名列表，在用户输入命令时提供自动补全建议。
+   * @param prefix 输入的前缀字符串，由输入框的自动补全触发传递。
+   * @returns 按字母排序的匹配命令名称列表，用于 UI 显示补全下拉选项。
    */
   autocomplete(prefix: string): Array<string> {
     const result = new Array<string>();
@@ -202,9 +211,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 读取指定Help，不存在时抛出错误。
-   * @param name 显示名称或注册名称。
-   * @returns 更新或读取后的记录副本。
+   * 获取指定命令的帮助文本，在用户查询命令帮助时调用。
+   * @param name 命令名称或别名，由帮助查询操作传入。
+   * @returns 命令的帮助说明文本，未找到时返回空字符串。
    */
   getHelp(name: string): string {
     const definition = this.commands.get(this.resolveCommandName(name));
@@ -215,8 +224,8 @@ export class CommandRuntime {
   }
 
   /**
-   * 读取Commands列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取所有已注册命令的列表，在展示命令列表或帮助页面时调用。
+   * @returns 已注册命令的记录副本列表，用于命令列表展示和帮助信息输出。
    */
   listCommands(): Array<CommandRecord> {
     const result = new Array<CommandRecord>();
@@ -231,7 +240,6 @@ export class CommandRuntime {
     pipeInput: string,
     options: CommandExecuteOptions,
   ): Promise<CommandExecutionResult> {
-    // command 名称。
     const commandName = this.resolveCommandName(parsed.commandName);
     const invocation = new CommandInvocation(
       commandName,
@@ -279,11 +287,11 @@ export class CommandRuntime {
   }
 
   /**
-   * 发布命令事件，把状态变化通知给宿主或其他 Runtime。
-
-   * @param message 消息记录。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 发布命令执行失败事件，并构造 CommandExecutionResult 返回。
+   * @param invocation 命令调用的上下文信息。
+   * @param message 错误描述信息。
+   * @param cancelled 是否因取消而失败。
+   * @returns 构造的失败执行结果。
    */
   private publishError(invocation: CommandInvocation, message: string, cancelled: boolean = false): CommandExecutionResult {
     const result: CommandExecutionResult = {
@@ -302,8 +310,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 根据当前上下文解析Command 名称，返回实际可用值。
-   * @param name 显示名称或注册名称。
+   * 解析命令名称，如果输入是别名则返回对应的标准名称。
+   * @param name 命令名称或别名。
+   * @returns 解析后的标准命令名称。
    */
   private resolveCommandName(name: string): string {
     const aliasTarget = this.aliases.get(name);
@@ -314,10 +323,10 @@ export class CommandRuntime {
   }
 
   /**
-   * 判断当前对象是否包含Permission 值。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 检查当前上下文是否包含执行指定命令所需的权限。
+   * @param permission 命令所需的权限标识。
+   * @param allowedPermissions 当前上下文允许的权限列表。
+   * @returns true 表示有权执行，false 表示无权限。
    */
   private hasPermission(permission: string, allowedPermissions: Array<string>): boolean {
     if (permission.length === 0) {
@@ -353,9 +362,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 把命令文本拆分为 token 列表。
-   * @param text 文本内容。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 把命令文本拆分为 token 列表，支持引号包裹的带空格文本。
+   * @param text 待拆分的命令文本（不含开头的斜杠）。
+   * @returns 拆分后的 token 列表。
    */
   private tokenize(text: string): Array<string> {
     const tokens = new Array<string>();
@@ -381,17 +390,18 @@ export class CommandRuntime {
   }
 
   /**
-   * 判断Whitespace 值是否满足条件。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断字符是否为空白字符（空格、制表符、换行符、回车符）。
+   * @param char 待判断的字符。
+   * @returns true 表示是空白字符。
    */
   private isWhitespace(char: string): boolean {
     return char === ' ' || char === '\t' || char === '\n' || char === '\r';
   }
 
   /**
-   * 复制Command 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 复制命令记录，避免外部修改内部状态。
+   * @param record 原始命令记录。
+   * @returns 命令记录的副本。
    */
   private copyCommand(record: CommandRecord): CommandRecord {
     return {
@@ -405,8 +415,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 复制Result 值，避免外部修改内部状态。
-   * @param result 返回结果。
+   * 复制命令执行结果，避免外部修改内部状态。
+   * @param result 原始执行结果。
+   * @returns 执行结果的副本。
    */
   private copyResult(result: CommandExecutionResult): CommandExecutionResult {
     return {
@@ -419,7 +430,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 复制Invocation 值，避免外部修改内部状态。
+   * 复制命令调用上下文，避免外部修改内部状态。
+   * @param invocation 原始调用上下文。
+   * @returns 调用上下文的副本。
    */
   private copyInvocation(invocation: CommandInvocation): CommandInvocation {
     const namedArguments = new Array<CommandNamedArgument>();
