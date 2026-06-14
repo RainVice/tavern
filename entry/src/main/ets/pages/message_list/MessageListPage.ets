@@ -1,18 +1,48 @@
 import { Route } from '@hzw/zrouter'
 import { LengthMetrics } from '@kit.ArkUI'
-import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
+import {
+  HdsListItem,
+  HdsListItemCard,
+  hdsMaterial,
+  HdsNavDestination,
+  IconSize,
+  PrefixIcon,
+  ScrollEffectType,
+  SuffixIcon,
+} from '@kit.UIDesignKit'
 import { AppUtil } from '@pura/harmony-utils'
-import { FullPercent } from 'common'
+import { FullPercent, symbolModifier } from 'common'
 import { RouterName } from 'router'
+import type { ChatIndexEntry } from 'tavern_ohos'
+import { MessageListState } from './MessageListState'
+import { MessageListViewModel } from './MessageListViewModel'
 
 @Route({ name: RouterName.MessageList })
 @ComponentV2
 export struct MessageListPage {
+  private readonly state = new MessageListState()
+  private readonly vm = new MessageListViewModel(this.state)
+
+  aboutToAppear(): void {
+    this.vm.loadChats()
+  }
+
   build() {
     HdsNavDestination() {
       List({ space: 10 }) {
-        ListItem() {
-          MessageListEmpty()
+        if (this.state.chats.length === 0) {
+          ListItem() {
+            MessageListEmpty()
+          }
+        } else {
+          Repeat<ChatIndexEntry>(this.state.chats)
+            .each((obj: RepeatItem<ChatIndexEntry>) => {
+              ChatListItem({
+                chat: obj.item,
+                onChatClick: () => this.vm.onChatClick(obj.item),
+              })
+            })
+            .key((item: ChatIndexEntry) => item.id + '_' + item.updatedAt)
         }
       }
       .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
@@ -35,6 +65,47 @@ export struct MessageListPage {
       }
     })
     .hideBackButton(true)
+  }
+}
+
+@ComponentV2
+struct ChatListItem {
+  @Param @Require chat: ChatIndexEntry
+  @Event onChatClick: () => void
+
+  build() {
+    this.content()
+  }
+
+  @Builder
+  private content() {
+    HdsListItem({
+      customItemBuilder: () => this.customItemBuilder()
+    })
+  }
+
+  @Builder
+  private customItemBuilder() {
+    HdsListItemCard({
+      prefixItem: new PrefixIcon({
+        iconValue: {
+          symbol: symbolModifier($r("sys.symbol.message_fill"))
+            .fontColor([$r("sys.color.font_emphasize")])
+        },
+        iconSize: IconSize.SYSTEM_ICON
+      }),
+      textItem: {
+        primaryText: { text: this.chat.title },
+        secondaryText: { text: this.chat.previewMessage.length > 0 ? this.chat.previewMessage : this.chat.characterId },
+      },
+      suffixItem: new SuffixIcon({
+        iconValue: {
+          symbol: symbolModifier($r("sys.symbol.chevron_right"))
+            .fontColor([$r("sys.color.font_tertiary")])
+        }
+      }),
+      onClick: (): void => this.onChatClick(),
+    })
   }
 }
 

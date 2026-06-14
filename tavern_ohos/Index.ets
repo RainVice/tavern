@@ -254,6 +254,8 @@ export type {
 export { ProviderRuntime } from './src/main/ets/provider/ProviderRuntime';
 export { ProviderSSEParser } from './src/main/ets/provider/ProviderSSEParser';
 export { OpenAICompatibleNormalizer } from './src/main/ets/provider/OpenAICompatibleNormalizer';
+export { OpenAIOhosProviderStreamSource } from './src/main/ets/provider/OpenAIOhosProviderSource';
+export type { OpenAIOhosProviderStreamSourceOptions } from './src/main/ets/provider/OpenAIOhosProviderSource';
 export type {
   OpenAICompatibleChatChoice,
   OpenAICompatibleChatChunk,

@@ -1,13 +1,24 @@
 import { describe, it, expect } from '@ohos/hypium';
+import type {
+  OpenAIRequestOptions,
+  OpenAIResponse,
+  OpenAIStream,
+  OpenAIStreamChunkHandler,
+  OpenAIStreamDoneHandler,
+  OpenAIStreamErrorHandler,
+  OpenAITransport,
+} from 'openai_ohos';
 import {
   EventBus,
   getBackendCapability,
+  OpenAIOhosProviderStreamSource,
   OPENROUTER_CAPABILITY,
   ProviderRuntime,
   StreamingRuntime,
   type ProviderChatMessage,
   type ProviderCapability,
   type ProviderGenerationPayload,
+  type OpenAIOhosProviderStreamSourceOptions,
   type ProviderTextCompletionRequest,
   type ProviderStreamHandle,
   type ProviderStreamRequest,
@@ -231,6 +242,38 @@ export default function providerUnitTest() {
       expect(queried.supportsStreaming).assertTrue();
       expect(queried.maxContext).assertEqual(200000);
     });
+
+    it('uses openai_ohos streamPost for OpenAI-compatible chat streams', 0, async () => {
+      const transport = new RecordingOpenAITransport();
+      transport.nextStreamChunk = 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n';
+      const headers: Record<string, string> = {
+        'X-Test': 'provider',
+      };
+      const options: OpenAIOhosProviderStreamSourceOptions = {
+        apiKey: 'sk-test',
+        baseURL: 'https://gateway.example/v1',
+        defaultHeaders: headers,
+        transport: transport,
+      };
+      const source: ProviderStreamSource = new OpenAIOhosProviderStreamSource(options);
+      const sink = new RecordingProviderStreamSink();
+      const handle = await source.start(makeRequest(), sink);
+
+      expect(transport.latestUrl).assertEqual('https://gateway.example/v1/chat/completions');
+      expect(transport.latestHeaders['Authorization']).assertEqual('Bearer sk-test');
+      expect(transport.latestHeaders['X-Test']).assertEqual('provider');
+      expect(transport.latestBody).assertContain('"model":"test-model"');
+      expect(transport.latestBody).assertContain('"stream":true');
+      expect(transport.latestBody).assertContain('"messages":[{"role":"user","content":"Hello"}]');
+      expect(transport.latestBody).assertContain('"stop":[]');
+      expect(sink.chunks.length).assertEqual(1);
+      expect(sink.chunks[0]).assertEqual('data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n');
+      expect(sink.doneCount).assertEqual(1);
+
+      handle.close();
+
+      expect(transport.closedCount).assertEqual(1);
+    });
   });
 }
 
@@ -303,6 +346,75 @@ class ThrowingStreamSource implements ProviderStreamSource {
       await sink.onError('stream disabled');
     }
     throw new Error('provider start failed');
+  }
+}
+
+class RecordingProviderStreamSink implements ProviderStreamSink {
+  chunks: Array<string> = [];
+  errors: Array<string> = [];
+  doneCount: number = 0;
+
+  async onChunk(chunk: string): Promise<void> {
+    this.chunks.push(chunk);
+  }
+
+  async onError(message: string): Promise<void> {
+    this.errors.push(message);
+  }
+
+  async onDone(): Promise<void> {
+    this.doneCount += 1;
+  }
+}
+
+class RecordingOpenAITransport implements OpenAITransport {
+  latestUrl: string = '';
+  latestHeaders: Record<string, string> = {};
+  latestBody: string = '';
+  nextStreamChunk: string = '';
+  closedCount: number = 0;
+
+  async request(options: OpenAIRequestOptions): Promise<OpenAIResponse> {
+    this.record(options);
+    return {
+      statusCode: 200,
+      body: '{}',
+    };
+  }
+
+  stream(
+    options: OpenAIRequestOptions,
+    onChunk: OpenAIStreamChunkHandler,
+    _onError?: OpenAIStreamErrorHandler,
+    onDone?: OpenAIStreamDoneHandler
+  ): OpenAIStream {
+    const owner: RecordingOpenAITransport = this;
+    this.record(options);
+    if (this.nextStreamChunk.length > 0) {
+      onChunk(this.nextStreamChunk);
+    }
+    if (onDone !== undefined) {
+      onDone();
+    }
+    return new RecordingOpenAIStream(owner);
+  }
+
+  private record(options: OpenAIRequestOptions): void {
+    this.latestUrl = options.url;
+    this.latestHeaders = options.headers;
+    this.latestBody = options.body === undefined ? '' : options.body;
+  }
+}
+
+class RecordingOpenAIStream implements OpenAIStream {
+  private transport: RecordingOpenAITransport;
+
+  constructor(transport: RecordingOpenAITransport) {
+    this.transport = transport;
+  }
+
+  close(): void {
+    this.transport.closedCount += 1;
   }
 }
 

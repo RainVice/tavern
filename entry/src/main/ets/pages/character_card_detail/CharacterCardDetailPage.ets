@@ -4,7 +4,7 @@ import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent, symbolModifier } from 'common'
 import { RouterName, RVRouter } from 'router'
-import { CharacterCard } from '../../db/entity/CharacterCardEntity'
+import type { CharacterRecord } from 'tavern_ohos'
 import { CharacterCardDetailState } from './CharacterCardDetailState'
 import { CharacterCardDetailViewModel } from './CharacterCardDetailViewModel'
 
@@ -245,7 +245,7 @@ export struct CharacterCardDetailPage {
     .padding(4)
   }
 
-  public static startWithParam(param: CharacterCard, onPop?: () => void) {
+  public static startWithParam(param: CharacterRecord, onPop?: () => void) {
     RVRouter.pushWithParam(RouterName.CharacterCardDetail, param, onPop)
   }
 }

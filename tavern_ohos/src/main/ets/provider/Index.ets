@@ -1,6 +1,8 @@
 export { OpenAICompatibleNormalizer } from './OpenAICompatibleNormalizer';
+export { OpenAIOhosProviderStreamSource } from './OpenAIOhosProviderSource';
 export { ProviderRuntime } from './ProviderRuntime';
 export { ProviderSSEParser } from './ProviderSSEParser';
+export type { OpenAIOhosProviderStreamSourceOptions } from './OpenAIOhosProviderSource';
 export type {
   OpenAICompatibleChatChoice,
   OpenAICompatibleChatChunk,

@@ -4,7 +4,8 @@ import {
   HdsListItemCard,
   hdsMaterial,
   HdsNavDestination,
-  PrefixImage,
+  IconSize,
+  PrefixIcon,
   ScrollEffectType,
   SuffixIcon
 } from '@kit.UIDesignKit'
@@ -12,9 +13,8 @@ import { FullPercent, symbolModifier } from 'common'
 import { RouterName } from 'router'
 import { CharacterCardViewModel } from './CharacterCardViewModel'
 import { CharacterCardListState } from './CharacterCardListState'
-import { ImageModifier } from '@kit.ArkUI'
 import { AppUtil } from '@pura/harmony-utils'
-import { CharacterCard } from '../../db/entity/CharacterCardEntity'
+import type { CharacterRecord } from 'tavern_ohos'
 
 @Route({ name: RouterName.CharacterCard })
 @ComponentV2
@@ -25,14 +25,14 @@ export struct CharacterCardPage {
   build() {
     HdsNavDestination() {
       List({ space: 10 }) {
-        Repeat(this.state.cards)
-          .each((obj) => {
+        Repeat<CharacterRecord>(this.state.cards)
+          .each((obj: RepeatItem<CharacterRecord>) => {
             CharacterCardItem({
               repeat: obj,
               onCardClick: () => this.vm.onCardClick(obj.item),
               onCardDelete: () => this.vm.onDeleteCard(obj.item)
             })
-          }).key((item: CharacterCard) => item.id + '_' + item.updateTime)
+          }).key((item: CharacterRecord) => item.id + '_' + item.updatedAt)
           .virtualScroll()
       }
       .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
@@ -72,7 +72,7 @@ export struct CharacterCardPage {
 
 @ComponentV2
 struct CharacterCardItem {
-  @Param @Require repeat: RepeatItem<CharacterCard>
+  @Param @Require repeat: RepeatItem<CharacterRecord>
   @Event onCardClick: () => void
   @Event onCardDelete: () => void
 
@@ -90,14 +90,17 @@ struct CharacterCardItem {
   @Builder
   customItemBuilder() {
     HdsListItemCard({
-      prefixItem: new PrefixImage({
-        image: this.repeat.item.avatarUrl,
-        modifier: new ImageModifier().size({ width: 40, height: 40 })
+      prefixItem: new PrefixIcon({
+        iconValue: {
+          symbol: symbolModifier($r("sys.symbol.person_fill"))
+            .fontColor([$r("sys.color.font_emphasize")])
+        },
+        iconSize: IconSize.SYSTEM_ICON
       }),
       textItem: {
         primaryText: { text: this.repeat.item.name },
         secondaryText: {
-          text: this.repeat.item.description ?? this.repeat.item.personality ?? '',
+          text: this.repeat.item.description.length > 0 ? this.repeat.item.description : this.repeat.item.personality,
         }
       },
       suffixItem: new SuffixIcon({

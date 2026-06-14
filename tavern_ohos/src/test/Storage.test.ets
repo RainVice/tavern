@@ -73,6 +73,16 @@ export default function storageUnitTest() {
       expect(await files.exists('tavern-data/users/default/assets/thumbnails')).assertFalse();
     });
 
+    it('重复确保已存在目录时不报错', 0, async () => {
+      const files: TavernFileStore = new InMemoryFileStore();
+      const directory = 'tavern-data/users/default/connection-profiles';
+
+      await files.ensureDirectory(directory);
+      await files.ensureDirectory(directory);
+
+      expect(await files.exists(directory)).assertTrue();
+    });
+
     it('reads a JSON default and preserves explicit fields after write', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
       const store = new JsonStore<DemoSettings>(files, 'tavern-data/app/settings.json');

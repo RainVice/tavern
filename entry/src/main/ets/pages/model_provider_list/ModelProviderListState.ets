@@ -1,6 +1,7 @@
-import { ModelProvider } from "../../db/entity/ModelProviderEntity";
+import type { ConnectionProfileRecord } from 'tavern_ohos';
 
 @ObservedV2
 export class ModelProviderListState {
-  @Trace providers: ModelProvider[] = []
+  @Trace providers: Array<ConnectionProfileRecord> = []
+  @Trace defaultProviderId: string = ''
 }

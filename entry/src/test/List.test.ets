@@ -1,9 +1,7 @@
 import localUnitTest from './LocalUnit.test';
-import conversationStoreTest from './ConversationStore.test';
-import storeModelMappingTest from './StoreModelMapping.test';
+import tavernRuntimeTest from './TavernRuntime.test';
 
 export default function testsuite() {
   localUnitTest();
-  conversationStoreTest();
-  storeModelMappingTest();
+  tavernRuntimeTest();
 }

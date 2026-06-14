@@ -5,7 +5,7 @@ import {
   HdsNavDestination,
   PrefixIcon,
   ScrollEffectType,
-  SuffixSwitch
+  SuffixSwitch,
 } from '@kit.UIDesignKit';
 import { FullPercent, hdsAttribute, symbolGlyphAttribute, symbolModifier, symbolSpanAttribute } from 'common';
 import { RouterName, RVRouter } from 'router';
@@ -14,7 +14,7 @@ import { LengthMetrics } from '@kit.ArkUI';
 import { ModelProviderEditState } from './ModelProviderEditState';
 import { Route } from '@hzw/zrouter';
 import { AppUtil } from '@pura/harmony-utils';
-import { ModelProvider } from '../../db/entity/ModelProviderEntity';
+import type { ConnectionProfileRecord } from 'tavern_ohos';
 
 
 @Route({ name: RouterName.ModelProviderEdit })
@@ -74,7 +74,7 @@ export struct ModelProviderEditPage {
   private baseUrlInput() {
     ModelProviderInput({
       icon: $r("sys.symbol.link"),
-      text: this.state.baseUrl!!,
+      text: this.state.serverUrl!!,
       title: $r("app.string.base_url"),
       placeholder: $r("app.string.base_url_placeholder"),
     })
@@ -84,7 +84,7 @@ export struct ModelProviderEditPage {
   private apiKeyInput() {
     ModelProviderInput({
       icon: $r("sys.symbol.key_fill"),
-      text: this.state.apiKey!!,
+      text: this.state.secretRef!!,
       title: $r("app.string.api_key"),
       placeholder: $r("app.string.api_key_placeholder"),
     })
@@ -113,7 +113,7 @@ export struct ModelProviderEditPage {
     RVRouter.push(RouterName.ModelProviderEdit, onPop)
   }
 
-  public static startWithParam(param: ModelProvider, onPop?: () => void) {
+  public static startWithParam(param: ConnectionProfileRecord, onPop?: () => void) {
     RVRouter.pushWithParam(RouterName.ModelProviderEdit, param, onPop)
   }
 }
@@ -190,9 +190,9 @@ struct ModelListInput {
 
       if (this.state.modelList.length > 0) {
         Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
-          Repeat(this.state.modelList).each(repeat => {
+          Repeat<string>(this.state.modelList).each((repeat: RepeatItem<string>) => {
             Text() {
-              Span(repeat.item.modelId)
+              Span(repeat.item)
               Span(" ")
               SymbolSpan($r("sys.symbol.xmark"))
                 .attributeModifier(symbolSpanAttribute())
@@ -206,7 +206,7 @@ struct ModelListInput {
             .backgroundColor($r('sys.color.background_fourth'))
             .borderRadius(100)
             .attributeModifier(hdsAttribute())
-          }).key((item, index) => `${item.modelId ?? index}`)
+          }).key((item: string) => item)
         }
       }
     }.alignItems(HorizontalAlign.Start).padding(4)

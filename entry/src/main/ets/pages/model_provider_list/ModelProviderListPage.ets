@@ -14,7 +14,7 @@ import { RouterName, RVRouter } from 'router';
 import { ModelProviderListViewModel } from './ModelProviderListViewModel';
 import { ModelProviderListState } from './ModelProviderListState';
 import { AppUtil } from '@pura/harmony-utils';
-import { ModelProvider } from '../../db/entity/ModelProviderEntity';
+import type { ConnectionProfileRecord } from 'tavern_ohos';
 
 @Route({ name: RouterName.ModelProviderList })
 @ComponentV2
@@ -25,14 +25,15 @@ export struct ModelProviderListPage {
   build() {
     HdsNavDestination() {
       List({ space: 10 }) {
-        Repeat<ModelProvider>(this.state.providers)
-          .each((obj: RepeatItem<ModelProvider>) => {
+        Repeat<ConnectionProfileRecord>(this.state.providers)
+          .each((obj: RepeatItem<ConnectionProfileRecord>) => {
             ModelProviderItem({
               repeat: obj,
+              isDefault: obj.item.id === this.state.defaultProviderId,
               onProviderClick: () => this.vm.onProviderClick(obj.item),
               onProviderDelete: () => this.vm.onDeleteProvider(obj.item),
             })
-          }).key((item: ModelProvider) => item.id + '_' + item.updateTime)
+          }).key((item: ConnectionProfileRecord) => item.id + '_' + item.updatedAt)
           .virtualScroll()
       }
       .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
@@ -75,7 +76,8 @@ export struct ModelProviderListPage {
 
 @ComponentV2
 struct ModelProviderItem {
-  @Param @Require repeat: RepeatItem<ModelProvider>
+  @Param @Require repeat: RepeatItem<ConnectionProfileRecord>
+  @Param isDefault: boolean = false
   @Event onProviderClick: () => void
   @Event onProviderDelete: () => void
 
@@ -102,10 +104,10 @@ struct ModelProviderItem {
       }),
       textItem: {
         primaryText: {
-          text: this.repeat.item.name,
+          text: this.providerTitle(),
         },
         secondaryText: {
-          text: this.repeat.item.baseUrl,
+          text: this.providerDescription(),
         }
       },
       suffixItem: new SuffixIcon({
@@ -116,5 +118,16 @@ struct ModelProviderItem {
       }),
       onClick: (): void => this.onProviderClick()
     })
+  }
+
+  private providerTitle(): string {
+    return this.isDefault ? this.repeat.item.name + ' · 默认' : this.repeat.item.name;
+  }
+
+  private providerDescription(): string {
+    if (this.repeat.item.model.length === 0) {
+      return this.repeat.item.serverUrl;
+    }
+    return this.repeat.item.serverUrl + ' · ' + this.repeat.item.model;
   }
 }

@@ -2,7 +2,7 @@
 
 本文面向宿主应用开发者，说明如何把 `tavern_ohos` 接入到 OpenHarmony / HarmonyOS 项目里，并按功能场景完成初始化、保存、读取、请求构造、事件监听和 UI 刷新。
 
-`tavern_ohos` 是无 UI 后台运行时 SDK。它负责 SillyTavern 风格的数据结构、Prompt 组装、世界书激活、流式响应解析、导入导出、事件分发和应用沙箱内的默认文件读写；宿主应用负责页面、权限、真实网络请求、密钥安全存储和设备能力。
+`tavern_ohos` 是无 UI 后台运行时 SDK。它负责 SillyTavern 风格的数据结构、Prompt 组装、世界书激活、OpenAI-compatible chat streaming 默认请求适配、流式响应解析、导入导出、事件分发和应用沙箱内的默认文件读写；宿主应用负责页面、权限、密钥安全存储和设备能力。除内置 `OpenAIOhosProviderStreamSource` 覆盖的 OpenAI-compatible chat streaming 外，其他 provider 或媒体类请求仍由宿主决定真实网络发送。
 
 ## 一、接入前提
 
@@ -587,7 +587,7 @@ const promptText = result.finalText;
 
 ## 七、OpenAI-compatible 请求和流式响应
 
-SDK 不直接发送 HTTP。宿主必须实现网络层。
+OpenAI-compatible chat streaming 可直接使用 SDK 内置的 `OpenAIOhosProviderStreamSource`，它基于 `openai_ohos` 发起 `/chat/completions` SSE 请求。需要企业代理、离线模型、非标准 SSE 或测试替身时，再自定义 `ProviderStreamSource`。
 
 ### 场景一：构造文本补全请求体
 
@@ -616,23 +616,79 @@ const request = container.provider.buildTextCompletionRequest({
 });
 ```
 
-### 场景二：接入 OpenAI-compatible SSE 流
+### 场景二：用内置 openai_ohos 适配器接入 OpenAI-compatible SSE 流
 
 前提：
 
 1. 已有 `StreamingRuntime` 和 `ProviderRuntime`。
 2. 已有待写回的 assistant 消息 ID。
-3. 宿主能发起 SSE、WebSocket 或分块 HTTP 请求。
-4. 宿主实现 `ProviderStreamSource`。
+3. 宿主已安全取得 API key，例如从加密存储或用户输入读取。
+4. 应用已申请网络权限，并允许访问目标 `baseURL`。
 
 步骤：
 
 1. 先创建 assistant 空消息。
 2. 调用 `streaming.attachMessageRuntime(messages)`，让普通文本 delta 自动写回消息。
-3. 实现 `ProviderStreamSource.start()`。
-4. 每收到一段 SSE 文本，调用 `sink.onChunk(chunk)`。
-5. 完成时调用 `sink.onDone()`。
-6. 失败时调用 `sink.onError(message)`。
+3. 创建 `OpenAIOhosProviderStreamSource`，传入 `apiKey`、`baseURL` 和可选 headers。
+4. 组装 `ProviderStreamRequest`。
+5. 调用 `provider.startOpenAICompatibleStream()` 并传入 `source`。
+6. 页面监听 `stream.delta` 刷新打字效果，监听 `generation.completed` 或 `generation.failed` 更新按钮状态。
+
+```ts
+import {
+  OpenAIOhosProviderStreamSource,
+} from 'tavern_ohos';
+
+const messages = container.chats.messages('chat-1');
+const assistant = await messages.addMessage({ role: 'assistant', name: 'Alice', text: '' });
+container.streaming.attachMessageRuntime(messages);
+
+const source = new OpenAIOhosProviderStreamSource({
+  apiKey: openAIKey,
+  baseURL: 'https://api.openai.com/v1',
+  defaultHeaders: {
+    'OpenAI-Project': 'proj_...',
+  },
+});
+
+await container.provider.startOpenAICompatibleStream({
+  taskId: 'generation-1',
+  chatId: 'chat-1',
+  messageId: assistant.id,
+  request: {
+    provider: 'openai-compatible',
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: '你好' }],
+    temperature: 0.7,
+    maxTokens: 512,
+    stop: [],
+    stream: true,
+  },
+  source: source,
+});
+```
+
+取消生成：
+
+```ts
+container.provider.abortProviderStream('generation-1', '用户取消');
+```
+
+### 场景三：自定义 ProviderStreamSource
+
+前提：
+
+1. 目标 provider 不是标准 OpenAI-compatible `/chat/completions` SSE，或需要统一代理、审计、缓存、离线模型。
+2. 宿主能把返回内容转换成 OpenAI-compatible SSE 文本。
+
+步骤：
+
+1. 实现 `ProviderStreamSource.start(request, sink)`。
+2. 在方法内部发起宿主网络请求。
+3. 每收到一段 SSE 原文，调用 `await sink.onChunk(chunk)`。
+4. 请求完成时调用 `await sink.onDone()`。
+5. 请求失败时调用 `await sink.onError(message)`。
+6. 返回的 `ProviderStreamHandle.close()` 必须能关闭底层请求。
 
 ```ts
 import {
@@ -652,26 +708,6 @@ class HttpSseSource implements ProviderStreamSource {
     };
   }
 }
-
-const messages = container.chats.messages('chat-1');
-const assistant = await messages.addMessage({ role: 'assistant', name: 'Alice', text: '' });
-container.streaming.attachMessageRuntime(messages);
-
-await container.provider.startOpenAICompatibleStream({
-  taskId: 'generation-1',
-  chatId: 'chat-1',
-  messageId: assistant.id,
-  request: {
-    provider: 'openai-compatible',
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: '你好' }],
-    temperature: 0.7,
-    maxTokens: 512,
-    stop: [],
-    stream: true,
-  },
-  source: new HttpSseSource(),
-});
 ```
 
 事件：
@@ -741,16 +777,14 @@ connections.createProfile({
   reasoningFormat: '',
   toolCallingEnabled: false,
   proxyUrl: '',
-  additionalHeaders: [
-    { name: 'Authorization', value: 'Bearer sk-...', secret: true },
-  ],
+  additionalHeaders: [],
   enabled: true,
 });
 
 const headers = network.resolveHeadersForProfile('profile-openai');
 ```
 
-注意：当前 `openai` / `openai-compatible` 建议宿主显式提供 `Authorization`，或在宿主网络层补齐。
+注意：如果使用 `OpenAIOhosProviderStreamSource`，把安全存储中取出的 API key 传给 `apiKey`，适配器会自动生成 `Authorization`。只有使用自定义 `ProviderStreamSource` 或其它请求体构造类 Runtime 时，才需要宿主网络层自行补齐鉴权 header。
 
 ## 九、Data Bank、Embedding、向量和 RAG
 

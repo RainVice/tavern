@@ -1,19 +1,20 @@
-import { CharacterCard } from "../../db/entity/CharacterCardEntity"
+import type { CharacterRecord } from 'tavern_ohos'
 
 @ObservedV2
 export class CharacterCardDetailState {
-  private param?: CharacterCard = undefined
+  @Trace private param?: CharacterRecord = undefined
+  @Trace avatarUrl: string = ''
 
-  setParam(param?: CharacterCard): void {
+  setParam(param?: CharacterRecord): void {
     this.param = param
   }
 
-  getParam(): CharacterCard | undefined {
+  getParam(): CharacterRecord | undefined {
     return this.param
   }
 
-  getId(): number {
-    return this.param?.id ?? 0
+  getId(): string {
+    return this.param?.id ?? ''
   }
 
   getName(): string {
@@ -21,7 +22,7 @@ export class CharacterCardDetailState {
   }
 
   getAvatarUrl(): string {
-    return this.param?.avatarUrl ?? ''
+    return this.avatarUrl
   }
 
   getDescription(): string {
@@ -41,6 +42,6 @@ export class CharacterCardDetailState {
   }
 
   getExampleMessages(): string {
-    return this.param?.exampleMessages ?? ''
+    return this.param?.exampleDialogue ?? ''
   }
 }

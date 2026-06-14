@@ -1,12 +1,14 @@
 import {
   CharacterRuntime,
   ChatRuntime,
+  ConnectionProfileRuntime,
   EventBus,
   PromptRuntime,
   ProviderRuntime,
   SandboxTavernFileStore,
   StreamingRuntime,
   WorldInfoRuntime,
+  type CharacterRecord,
   type MessageRuntime,
   type TavernFileStore,
 } from 'tavern_ohos';
@@ -14,6 +16,8 @@ import {
 export class TavernRuntimeContainer {
   static readonly ROOT_PATH: string = 'tavern-data';
   static readonly USER_ID: string = 'default';
+  static readonly DEFAULT_CONNECTION_SCOPE: string = 'global';
+  static readonly DEFAULT_CONNECTION_SCOPE_ID: string = 'default-provider';
 
   private static instance: TavernRuntimeContainer | undefined = undefined;
 
@@ -27,6 +31,8 @@ export class TavernRuntimeContainer {
   readonly prompt: PromptRuntime;
   readonly streaming: StreamingRuntime;
   readonly provider: ProviderRuntime;
+  readonly connections: ConnectionProfileRuntime;
+  private connectionLoadPromise: Promise<void> | undefined = undefined;
 
   private constructor(appFilesDir: string, files?: TavernFileStore) {
     this.events = new EventBus();
@@ -39,6 +45,7 @@ export class TavernRuntimeContainer {
     this.prompt = new PromptRuntime(this.events);
     this.streaming = new StreamingRuntime(this.events);
     this.provider = new ProviderRuntime(this.events, this.streaming);
+    this.connections = new ConnectionProfileRuntime(this.events, this.files, this.rootPath, this.userId);
   }
 
   static configure(appFilesDir: string, files?: TavernFileStore): TavernRuntimeContainer {
@@ -59,5 +66,32 @@ export class TavernRuntimeContainer {
     const messages: MessageRuntime = this.chats.messages(chatId);
     this.streaming.attachMessageRuntime(messages);
     return messages;
+  }
+
+  loadConnections(): Promise<void> {
+    if (this.connectionLoadPromise === undefined) {
+      this.connectionLoadPromise = this.connections.loadFromStore();
+    }
+    return this.connectionLoadPromise;
+  }
+
+  async readCharacterAvatar(character: CharacterRecord): Promise<string> {
+    const path = this.characterAvatarFilePath(character);
+    if (!(await this.files.exists(path))) {
+      return '';
+    }
+    return this.files.readText(path);
+  }
+
+  async writeCharacterAvatar(character: CharacterRecord, avatarContent: string): Promise<void> {
+    const content = avatarContent.trim();
+    if (content.length === 0) {
+      return;
+    }
+    await this.files.writeText(this.characterAvatarFilePath(character), content, true);
+  }
+
+  private characterAvatarFilePath(character: CharacterRecord): string {
+    return `${this.rootPath}/users/${this.userId}/characters/${character.avatarPath}`;
   }
 }

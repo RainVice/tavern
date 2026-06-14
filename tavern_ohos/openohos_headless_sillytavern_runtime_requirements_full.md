@@ -1056,6 +1056,22 @@ MiniMax
 nanoGPT
 ```
 
+OpenAI-compatible chat streaming 必须内置基于 `openai_ohos` 的默认实现：
+
+```text
+OpenAIOhosProviderStreamSource
+```
+
+要求：
+
+- `ProviderRuntime` 继续只依赖 `ProviderStreamSource` 抽象，不直接持有具体网络 client。
+- `OpenAIOhosProviderStreamSource` 使用 `openai_ohos` 的请求层发送 `/chat/completions` SSE。
+- `apiKey`、`baseURL`、默认 headers、超时、组织 ID、项目 ID 和自定义 transport 复用 `openai_ohos` 的 client options。
+- 适配器负责把 `ProviderStreamRequest` 映射为 OpenAI Chat Completions streaming 请求体。
+- 适配器负责把 `openai_ohos` 解析出的 SSE event 转回 `ProviderStreamSink` 需要的 OpenAI-compatible SSE 文本。
+- 外部仍可实现自定义 `ProviderStreamSource`，用于代理网关、非标准 provider、WebSocket、离线模型、测试替身或宿主统一网络治理。
+- 其他请求体构造类 Runtime，例如 embedding、图片、Whisper、TTS，可继续由宿主发送网络请求并写回结果。
+
 ### 16.2 Provider Capability
 
 每个 provider/model 必须声明：

@@ -41,12 +41,28 @@
       "value": "输入消息"
     },
     {
+      "name": "conversation_waiting_reply",
+      "value": "正在回复..."
+    },
+    {
       "name": "character_card",
       "value": "角色卡"
     },
     {
       "name": "world_book",
       "value": "世界书"
+    },
+    {
+      "name": "add_world_book",
+      "value": "添加世界书"
+    },
+    {
+      "name": "world_book_empty_title",
+      "value": "暂无世界书"
+    },
+    {
+      "name": "world_book_empty_description",
+      "value": "创建世界书后，可以在这里管理设定条目"
     },
     {
       "name": "add_character_card",
@@ -83,6 +99,10 @@
     {
       "name": "default_model_provider",
       "value": "默认提供商"
+    },
+    {
+      "name": "no_default_model_provider",
+      "value": "请先设置默认模型提供商"
     },
     {
       "name": "add_model_provider",
@@ -139,6 +159,10 @@
     {
       "name": "model_list_empty",
       "value": "请至少添加一个模型"
+    },
+    {
+      "name": "model_provider_save_failed",
+      "value": "保存模型提供商失败"
     },
     {
       "name": "character_card_name",
@@ -199,6 +223,10 @@
     {
       "name": "character_card_name_empty",
       "value": "请输入角色名称"
+    },
+    {
+      "name": "character_card_save_failed",
+      "value": "保存角色卡失败"
     }
   ]
 }

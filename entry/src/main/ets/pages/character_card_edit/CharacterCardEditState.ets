@@ -1,6 +1,6 @@
 @ObservedV2
 export class CharacterCardEditState {
-  @Trace id: number = 0
+  @Trace id: string = ''
   @Trace name: string = ''
   @Trace avatarUrl: string = ''
   @Trace description: string = ''

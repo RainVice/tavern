@@ -4,8 +4,7 @@
   "dependencies": {
     "@pura/harmony-utils": "^1.4.0",
     "@pura/picker_utils": "^1.0.2",
-    "@hzw/zrouter": "^1.9.0",
-    "rdbstore": "^1.0.7"
+    "@hzw/zrouter": "^1.9.0"
   },
   "devDependencies": {
     "@ohos/hypium": "1.0.25",

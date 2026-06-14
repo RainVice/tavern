@@ -1,15 +1,13 @@
-import { ModelDefinition } from "../../db/entity/ModelProviderEntity"
-
 @ObservedV2
 export class ModelProviderEditState {
-  @Trace id?: number = undefined
+  @Trace id: string = ''
   @Trace name: string = ''
-  @Trace apiKey: string = ''
-  @Trace baseUrl: string = ''
-  @Trace modelList: Array<ModelDefinition> = []
+  @Trace secretRef: string = ''
+  @Trace serverUrl: string = ''
+  @Trace modelList: Array<string> = []
   @Trace isDefault: boolean = false
 
   isShowGetModel(): boolean {
-    return this.apiKey !== '' && this.baseUrl !== ''
+    return this.secretRef !== '' && this.serverUrl !== ''
   }
 }

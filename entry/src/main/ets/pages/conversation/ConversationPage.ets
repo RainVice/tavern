@@ -3,9 +3,11 @@ import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignK
 import { AppUtil } from '@pura/harmony-utils'
 import { FullPercent } from 'common'
 import { RouterName, RVRouter } from 'router'
-import { ConversationPageParam, ConversationState } from './ConversationState'
+import type { ConversationPageParam } from './ConversationState'
+import { ConversationState } from './ConversationState'
 import { ConversationViewModel } from './ConversationViewModel'
 import { LengthMetrics } from '@kit.ArkUI'
+import type { ChatMessage } from 'tavern_ohos'
 
 @Route({ name: RouterName.Conversation })
 @ComponentV2
@@ -21,24 +23,18 @@ export struct ConversationPage {
     HdsNavDestination() {
       Stack({ alignContent: Alignment.Bottom }) {
         List({ space: 12 }) {
-          ListItem() {
-            EmptyConversation()
-          }
-
-          ListItem() {
-            EmptyConversation()
-          }
-
-          ListItem() {
-            EmptyConversation()
-          }
-
-          ListItem() {
-            EmptyConversation()
-          }
-
-          ListItem() {
-            EmptyConversation()
+          if (this.state.messages.length === 0) {
+            ListItem() {
+              EmptyConversation()
+            }
+          } else {
+            Repeat<ChatMessage>(this.state.messages)
+              .each((obj: RepeatItem<ChatMessage>) => {
+                ListItem() {
+                  MessageBubble({ message: obj.item })
+                }
+              })
+              .key((item: ChatMessage) => item.id + '_' + item.text.length)
           }
         }
         .contentStartOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
@@ -61,11 +57,16 @@ export struct ConversationPage {
         scrollEffectOpts: { scrollEffectType: ScrollEffectType.GRADIENT_BLUR }
       }
     })
-    .hideBackButton(true)
+    .hideBackButton(false)
   }
 
   @Builder
   private inputBar() {
+    this.inputBarContent(this.state.inputText)
+  }
+
+  @Builder
+  private inputBarContent(inputText: string) {
     Row({ space: 4 }) {
       Button() {
         SymbolGlyph($r("sys.symbol.plus"))
@@ -73,7 +74,7 @@ export struct ConversationPage {
       }.padding(8)
       .backgroundColor(Color.Transparent)
 
-      TextArea({ text: this.state.inputText, placeholder: $r("app.string.conversation_input_placeholder") })
+      TextArea({ text: inputText, placeholder: $r("app.string.conversation_input_placeholder") })
         .barState(BarState.Off)
         .padding(0)
         .borderRadius(0)
@@ -89,7 +90,7 @@ export struct ConversationPage {
           .fontColor([$r("sys.color.font_on_primary")])
       }
       .padding(8)
-      .enabled(this.state.inputText.length > 0)
+      .enabled(inputText.trim().length > 0)
       .onClick(() => this.vm.onSend())
     }
     .alignItems(VerticalAlign.Center)
@@ -114,6 +115,45 @@ export struct ConversationPage {
 
   public static startWithParam(param: ConversationPageParam, onPop?: () => void) {
     RVRouter.pushWithParam(RouterName.Conversation, param, onPop)
+  }
+}
+
+@ComponentV2
+struct MessageBubble {
+  @Param @Require message: ChatMessage
+
+  build() {
+    this.content()
+  }
+
+  @Builder
+  private content() {
+    Row() {
+      if (this.message.isUser) {
+        Blank().layoutWeight(1)
+      }
+      Column({ space: 6 }) {
+        Text(this.message.name.length > 0 ? this.message.name : MessageBubble.roleName(this.message))
+          .fontSize(11)
+          .fontColor($r("sys.color.font_tertiary"))
+        Text(this.message.text.length > 0 ? this.message.text : $r("app.string.conversation_waiting_reply"))
+          .fontSize(15)
+          .fontColor(this.message.isUser ? $r("sys.color.font_on_primary") : $r("sys.color.font_primary"))
+          .padding(12)
+          .backgroundColor(this.message.isUser ? $r("sys.color.font_emphasize") : $r("sys.color.comp_background_tertiary"))
+          .borderRadius(16)
+      }
+      .alignItems(this.message.isUser ? HorizontalAlign.End : HorizontalAlign.Start)
+      .constraintSize({ maxWidth: '78%' })
+      if (!this.message.isUser) {
+        Blank().layoutWeight(1)
+      }
+    }
+    .width(FullPercent)
+  }
+
+  private static roleName(message: ChatMessage): string {
+    return message.isUser ? '你' : '助手'
   }
 }
 

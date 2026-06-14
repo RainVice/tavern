@@ -1,6 +1,6 @@
-import { CharacterCard } from "../../db/entity/CharacterCardEntity";
+import type { CharacterRecord } from 'tavern_ohos';
 
 @ObservedV2
 export class CharacterCardListState {
-  @Trace cards: CharacterCard[] = []
+  @Trace cards: Array<CharacterRecord> = []
 }

@@ -1,4 +1,5 @@
 export * from './OpenAI';
+export * from './core/OpenAIRequestClient';
 export * from './core/Types';
 export * from './core/OpenAIAPIError';
 export * from './core/OpenAISSEParser';

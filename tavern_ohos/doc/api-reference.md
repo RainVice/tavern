@@ -16,6 +16,7 @@ import {
   MessageRuntime,
   WorldInfoRuntime,
   PromptRuntime,
+  OpenAIOhosProviderStreamSource,
   ProviderRuntime,
   type RuntimeEvent,
 } from 'tavern_ohos';
@@ -29,7 +30,7 @@ import {
 | 存储 | `TavernFileStore`、`SandboxTavernFileStore`、`InMemoryFileStore`、`JsonStore`、`JsonlStore` |
 | 角色与聊天 | `CharacterRuntime`、`CharacterCodecRuntime`、`AvatarRuntime`、`ChatRuntime`、`MessageRuntime`、`SwipeRuntime`、`BookmarkRuntime`、`BranchRuntime` |
 | Prompt | `PromptRuntime`、`WorldInfoRuntime`、`AuthorNoteRuntime`、`PromptTemplateRuntime`、`InstructRuntime`、`RegexRuntime`、`TokenizerRuntime`、`PromptCompressionRuntime` |
-| 生成和 Provider | `ProviderRuntime`、`StreamingRuntime`、`ReasoningRuntime`、`ConnectionProfileRuntime`、`SecretRuntime`、`NetworkService`、`NetworkPolicyRuntime` |
+| 生成和 Provider | `ProviderRuntime`、`OpenAIOhosProviderStreamSource`、`StreamingRuntime`、`ReasoningRuntime`、`ConnectionProfileRuntime`、`SecretRuntime`、`NetworkService`、`NetworkPolicyRuntime` |
 | 知识和检索 | `DataBankRuntime`、`EmbeddingRuntime`、`VectorRuntime`、`RagRuntime`、`SearchRuntime`、`MemoryRuntime` |
 | 媒体 | `ImageGenerationRuntime`、`ImageRuntime`、`ImageMetadataRuntime`、`ImageCaptionRuntime`、`ASRRuntime`、`TTSRuntime`、`GalleryRuntime`、`ThumbnailRuntime`、`BackgroundRuntime` |
 | 扩展和 UI | `PluginRuntime`、`CommandRuntime`、`QuickReplyRuntime`、`ToolCallingRuntime`、`UIBridgeRuntime`、`MacroRuntime` |
@@ -348,7 +349,7 @@ new PromptRuntime(events: EventBus)
 
 ### ProviderStreamSource
 
-宿主实现：
+`ProviderRuntime.startOpenAICompatibleStream()` 通过该接口取得流式内容。SDK 内置 `OpenAIOhosProviderStreamSource`；宿主也可以自定义实现。
 
 ```ts
 interface ProviderStreamSource {
@@ -361,6 +362,61 @@ interface ProviderStreamSource {
 - `onChunk(chunk)`：传入 SSE 原文。
 - `onError(message)`：报告错误。
 - `onDone()`：报告完成。
+
+### OpenAIOhosProviderStreamSource
+
+构造：
+
+```ts
+new OpenAIOhosProviderStreamSource(options: OpenAIOhosProviderStreamSourceOptions)
+```
+
+`OpenAIOhosProviderStreamSourceOptions` 继承 `openai_ohos` 的 `OpenAIClientOptions`，常用字段：
+
+| 字段 | 说明 |
+|---|---|
+| `apiKey` | OpenAI 或兼容服务 API key；会生成 `Authorization: Bearer <apiKey>` |
+| `baseURL` | API 根地址；默认由 `openai_ohos` 使用 `https://api.openai.com/v1` |
+| `organization` | 可选组织 ID |
+| `project` | 可选项目 ID |
+| `timeout` / `readTimeout` / `connectTimeout` | 超时设置 |
+| `maxRetries` | 非流式请求层的重试次数；streaming 由底层 transport 管理 |
+| `defaultHeaders` | 每次请求附加的默认 header |
+| `transport` | 自定义 `openai_ohos` transport，常用于测试或替换网络栈 |
+
+行为：
+
+1. `start(request, sink)` 会把 `ProviderStreamRequest` 转成 OpenAI Chat Completions 请求体。
+2. 请求路径固定为 `/chat/completions`。
+3. `stream` 固定为 `true`，即使调用方传入其它值也按流式处理。
+4. `messages`、`temperature`、`maxTokens` 和 `stop` 会复制到请求体，避免外部数组复用导致运行中突变。
+5. `openai_ohos` 解析出的 `OpenAISSEEvent` 会重新序列化成 `ProviderStreamSink.onChunk()` 需要的 SSE 文本。
+6. `ProviderStreamHandle.close()` 会关闭 `openai_ohos` 返回的底层 stream。
+
+示例：
+
+```ts
+const source = new OpenAIOhosProviderStreamSource({
+  apiKey: 'sk-...',
+  baseURL: 'https://api.openai.com/v1',
+});
+
+await provider.startOpenAICompatibleStream({
+  taskId: 'generation-1',
+  chatId: 'chat-1',
+  messageId: 'message-1',
+  request: {
+    provider: 'openai-compatible',
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: '你好' }],
+    temperature: 0.7,
+    maxTokens: 512,
+    stop: [],
+    stream: true,
+  },
+  source: source,
+});
+```
 
 ## 九、连接、密钥和网络 API
 
@@ -1038,6 +1094,6 @@ interface ProviderStreamSource {
 
 ## 十八、版本和能力边界
 
-当前 SDK 中“请求体构造”“响应解析”“事件分发”“本地数据管理”由 SDK 负责；真实 HTTP 请求、系统权限、安全存储、文件选择器和 UI 渲染由宿主负责。
+当前 SDK 中“请求体构造”“OpenAI-compatible chat streaming 默认发送”“响应解析”“事件分发”“本地数据管理”由 SDK 负责；系统权限、安全存储、文件选择器、UI 渲染，以及内置适配器未覆盖的 provider 请求发送由宿主负责。
 
-OpenAI 相关请求当前不是 SDK 直接发出。`ProviderRuntime` 和其他 provider Runtime 只提供请求体、流式解析和任务状态。
+OpenAI-compatible chat streaming 可由 `OpenAIOhosProviderStreamSource` 通过 `openai_ohos` 直接发出。`ProviderRuntime` 仍保留 `ProviderStreamSource` 抽象，方便宿主替换为自定义网络、代理、离线模型或测试替身。Embedding、图片、Whisper、TTS 等 Runtime 当前仍主要提供请求体、任务状态和结果写回接口。
