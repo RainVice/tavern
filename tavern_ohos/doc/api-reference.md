@@ -10,6 +10,8 @@
 
 ```ts
 import {
+  ChatMessageRoles,
+  ConnectionApiTypes,
   EventBus,
   CharacterRuntime,
   ChatRuntime,
@@ -17,10 +19,28 @@ import {
   WorldInfoRuntime,
   PromptRuntime,
   OpenAIOhosProviderStreamSource,
+  ProviderIds,
   ProviderRuntime,
   type RuntimeEvent,
 } from 'tavern_ohos';
 ```
+
+### 公开契约常量
+
+公开 API 中常见的 `apiType`、`providerId`、`role`、`scope`、`kind`、`status`、`format`、`permission`、`tokenizer`、`reasoningFormat` 都有包入口常量。调用方应优先使用这些常量，而不是手写字符串。
+
+| 字段类别 | 常量对象示例 |
+|---|---|
+| 连接类型 | `ConnectionApiTypes.OPENAI`、`ConnectionApiTypes.OPENAI_COMPATIBLE` |
+| Provider | `ProviderIds.OPENAI`、`ProviderIds.OPENAI_COMPATIBLE` |
+| 消息角色 | `ChatMessageRoles.USER`、`ChatMessageRoles.ASSISTANT` |
+| 作用域 | `TavernScopes.CHAT`、`TavernScopes.PROFILE` |
+| 密钥引用 | `SecretRefs.create(ProviderIds.OPENAI, 'primary')` |
+| 状态 | `RuntimeTaskStatuses.RUNNING`、`AsyncTaskStatuses.PENDING` |
+| 媒体和格式 | `MediaFormats.PNG`、`ImageMetadataFormats.WEBP` |
+| 权限 | `RuntimePermissions.NETWORK`、`SecretPermissions.READ_SECRET` |
+
+开放类型仍保留扩展能力，例如私有 provider 或插件自定义作用域；内置值由常量对象提供。
 
 ### Runtime 分类
 
@@ -406,9 +426,9 @@ await provider.startOpenAICompatibleStream({
   chatId: 'chat-1',
   messageId: 'message-1',
   request: {
-    provider: 'openai-compatible',
+    provider: ProviderIds.OPENAI_COMPATIBLE,
     model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: '你好' }],
+    messages: [{ role: ChatMessageRoles.USER, content: '你好' }],
     temperature: 0.7,
     maxTokens: 512,
     stop: [],
@@ -429,7 +449,7 @@ await provider.startOpenAICompatibleStream({
 | `createProfile(params)` | 创建连接配置 | `connectionProfile.created` |
 | `updateProfile(profileId, params)` | 更新连接配置 | `connectionProfile.updated` |
 | `getProfile(profileId)` | 读取配置 | 无 |
-| `listProfiles(apiType)` | 按类型列出配置，空字符串表示全部 | 无 |
+| `listProfiles(apiType)` | 按类型列出配置，例如 `ConnectionApiTypes.OPENAI`；空字符串表示全部 | 无 |
 | `deleteProfile(profileId)` | 删除配置 | `connectionProfile.deleted` |
 | `setActiveProfile(scope, scopeId, profileId)` | 设置作用域激活配置 | `connectionProfile.activeChanged` |
 | `resolveActiveProfile(scope, scopeId)` | 解析激活配置 | 无 |

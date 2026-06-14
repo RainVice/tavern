@@ -31,8 +31,14 @@ ArkTS 中从包入口导入：
 
 ```ts
 import {
+  ChatMessageRoles,
+  ConnectionApiTypes,
   EventBus,
+  ProviderIds,
+  ReasoningFormats,
   SandboxTavernFileStore,
+  TavernScopes,
+  TokenizerStrategies,
   CharacterRuntime,
   ChatRuntime,
   MessageRuntime,
@@ -43,6 +49,26 @@ import {
   type EventSubscription,
   type TavernFileStore,
 } from 'tavern_ohos';
+```
+
+### 公开契约常量
+
+示例中的 `apiType`、`providerId`、`role`、`scope`、`status`、`format` 等字段都可以从包入口导入常量对象，不需要宿主自己猜字符串。开放字符串类型仍允许宿主扩展私有 provider 或插件作用域，但内置值建议始终使用常量。
+
+```ts
+import {
+  ChatMessageRoles,
+  ConnectionApiTypes,
+  ProviderIds,
+  SecretRefs,
+  TavernScopes,
+} from 'tavern_ohos';
+
+const apiType = ConnectionApiTypes.OPENAI;
+const providerId = ProviderIds.OPENAI;
+const scope = TavernScopes.CHAT;
+const role = ChatMessageRoles.USER;
+const secretRef = SecretRefs.create(providerId, 'primary');
 ```
 
 ### 2. 创建应用级运行时容器
@@ -349,8 +375,8 @@ const chat = await container.chats.createChat({
 });
 
 const messages = container.chats.messages(chat.id);
-await messages.addMessage({ role: 'user', name: 'User', text: '你好' });
-await messages.addMessage({ role: 'assistant', name: 'Alice', text: '你好。' });
+await messages.addMessage({ role: ChatMessageRoles.USER, name: 'User', text: '你好' });
+await messages.addMessage({ role: ChatMessageRoles.ASSISTANT, name: 'Alice', text: '你好。' });
 ```
 
 ### 场景二：展示聊天列表
@@ -605,7 +631,7 @@ OpenAI-compatible chat streaming 可直接使用 SDK 内置的 `OpenAIOhosProvid
 
 ```ts
 const request = container.provider.buildTextCompletionRequest({
-  apiType: 'openai',
+  apiType: ConnectionApiTypes.OPENAI,
   model: 'gpt-4o-mini',
   prompt: promptText,
   temperature: 0.7,
@@ -636,11 +662,13 @@ const request = container.provider.buildTextCompletionRequest({
 
 ```ts
 import {
+  ChatMessageRoles,
   OpenAIOhosProviderStreamSource,
+  ProviderIds,
 } from 'tavern_ohos';
 
 const messages = container.chats.messages('chat-1');
-const assistant = await messages.addMessage({ role: 'assistant', name: 'Alice', text: '' });
+const assistant = await messages.addMessage({ role: ChatMessageRoles.ASSISTANT, name: 'Alice', text: '' });
 container.streaming.attachMessageRuntime(messages);
 
 const source = new OpenAIOhosProviderStreamSource({
@@ -656,9 +684,9 @@ await container.provider.startOpenAICompatibleStream({
   chatId: 'chat-1',
   messageId: assistant.id,
   request: {
-    provider: 'openai-compatible',
+    provider: ProviderIds.OPENAI_COMPATIBLE,
     model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: '你好' }],
+    messages: [{ role: ChatMessageRoles.USER, content: '你好' }],
     temperature: 0.7,
     maxTokens: 512,
     stop: [],
@@ -745,7 +773,16 @@ class HttpSseSource implements ProviderStreamSource {
 7. 用 `toProviderRequest()` 得到 provider 请求元数据。
 
 ```ts
-import { ConnectionProfileRuntime, SecretRuntime, NetworkService } from 'tavern_ohos';
+import {
+  ConnectionApiTypes,
+  ConnectionProfileRuntime,
+  NetworkService,
+  ProviderIds,
+  ReasoningFormats,
+  SecretRuntime,
+  TavernScopes,
+  TokenizerStrategies,
+} from 'tavern_ohos';
 
 const connections = new ConnectionProfileRuntime(container.events);
 const secrets = new SecretRuntime(container.events);
@@ -753,8 +790,8 @@ const network = new NetworkService(connections, secrets);
 
 const secret = secrets.createSecret({
   id: 'openai-key',
-  providerId: 'openai',
-  scope: 'profile',
+  providerId: ProviderIds.OPENAI,
+  scope: TavernScopes.PROFILE,
   scopeId: 'profile-openai',
   label: 'OpenAI API Key',
   value: 'sk-...',
@@ -764,7 +801,7 @@ const secret = secrets.createSecret({
 connections.createProfile({
   id: 'profile-openai',
   name: 'OpenAI',
-  apiType: 'openai',
+  apiType: ConnectionApiTypes.OPENAI,
   model: 'gpt-4o-mini',
   serverUrl: 'https://api.openai.com/v1',
   secretRef: secret.secretRef,
@@ -772,9 +809,9 @@ connections.createProfile({
   systemPromptPresetId: '',
   contextTemplateId: '',
   instructTemplateId: '',
-  tokenizer: 'openai',
+  tokenizer: TokenizerStrategies.OPENAI,
   stopStrings: [],
-  reasoningFormat: '',
+  reasoningFormat: ReasoningFormats.NONE,
   toolCallingEnabled: false,
   proxyUrl: '',
   additionalHeaders: [],

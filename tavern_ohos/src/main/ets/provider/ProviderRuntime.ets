@@ -1,4 +1,5 @@
 import { EventBus } from '../runtime/EventBus';
+import type { ConnectionApiType } from '../contracts/PublicContracts';
 import { StreamingRuntime } from '../streaming/StreamingRuntime';
 import { OpenAICompatibleNormalizer } from './OpenAICompatibleNormalizer';
 import type {
@@ -18,21 +19,26 @@ import type {
 import { ProviderSSEParser } from './ProviderSSEParser';
 
 /**
- * OpenAI 兼容流式请求的 Sink 实现，将原始数据块通过 SSE 解析后转发给 ProviderRuntime。
+ * 封装Provider 请求相关状态和行为。
  */
 class OpenAIProviderStreamSink implements ProviderStreamSink {
-  /** ProviderRuntime 实例，用于处理流式数据块和任务状态更新。 */
+  /**
+   * 运行时实例，由当前实例内部维护。
+   */
   private runtime: ProviderRuntime;
-  /** 当前流式任务标识。 */
+  /**
+   * 任务标识。
+   */
   private taskId: string;
-  /** SSE 解析器，用于将原始数据块解析为 SSE 事件。 */
+  /**
+   * parser 值，由当前实例内部维护。
+   */
   private parser: ProviderSSEParser;
 
   /**
-   * 初始化 Sink，关联运行时、任务和解析器。
-   * @param runtime ProviderRuntime 实例，负责状态管理和事件发布。
-   * @param taskId 当前流式任务的唯一标识。
-   * @param parser 用于解析 SSE 事件的解析器实例。
+   * 注入Provider 请求运行时依赖并初始化实例状态。
+   * @param runtime 运行时实例。
+   * @param taskId 目标任务标识。
    */
   constructor(runtime: ProviderRuntime, taskId: string, parser: ProviderSSEParser) {
     this.runtime = runtime;
@@ -41,22 +47,23 @@ class OpenAIProviderStreamSink implements ProviderStreamSink {
   }
 
   /**
-   * 接收到原始数据块后，推入 SSE 解析器并将解析出的事件提交给运行时处理。
+   * 执行 onChunk 的内部处理步骤，供当前模块复用。
+
    */
   async onChunk(chunk: string): Promise<void> {
     await this.runtime.acceptOpenAICompatibleChunk(this.taskId, this.parser, chunk);
   }
 
   /**
-   * 流式请求发生错误时，通知运行时将该任务标记为失败。
-   * @param message 错误描述信息。
+   * 执行 onError 的内部处理步骤，供当前模块复用。
+   * @param message 消息记录。
    */
   async onError(message: string): Promise<void> {
     await this.runtime.failStream(this.taskId, message);
   }
 
   /**
-   * 流式请求正常结束时，刷新 SSE 解析器中的剩余数据并完成流处理。
+   * 执行 onDone 的内部处理步骤，供当前模块复用。
    */
   async onDone(): Promise<void> {
     await this.runtime.finishOpenAICompatibleStream(this.taskId, this.parser);
@@ -64,24 +71,33 @@ class OpenAIProviderStreamSink implements ProviderStreamSink {
 }
 
 /**
- * 提供 Provider 流式请求的无 UI 运行时能力，负责任务生命周期管理、数据读写和事件发布。
+ * 提供Provider 请求相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
  */
 export class ProviderRuntime {
-  /** 事件总线，用于广播生成任务的状态变化。 */
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
-  /** StreamingRuntime 实例，管理底层流式数据写入和会话生命周期。 */
+  /**
+   * streaming 值，由当前实例内部维护。
+   */
   private streaming: StreamingRuntime;
-  /** OpenAI 兼容格式的响应归一化器，将原始 JSON 转换为统一的数据块结构。 */
+  /**
+   * normalizer 值，由当前实例内部维护。
+   */
   private normalizer: OpenAICompatibleNormalizer = new OpenAICompatibleNormalizer();
-  /** 所有活跃的流式任务，以 taskId 为键。 */
+  /**
+   * tasks 列表，由当前实例内部维护。
+   */
   private tasks: Map<string, ProviderStreamTask> = new Map<string, ProviderStreamTask>();
-  /** 所有活跃流式请求的句柄，以 taskId 为键，用于关闭/中止连接。 */
+  /**
+   * handles 列表，由当前实例内部维护。
+   */
   private handles: Map<string, ProviderStreamHandle> = new Map<string, ProviderStreamHandle>();
 
   /**
-   * 注入运行时依赖并初始化实例状态。
-   * @param events 事件总线实例，用于发布生成任务事件。
-   * @param streaming StreamingRuntime 实例，管理流式数据写入。
+   * 注入Provider 请求运行时依赖并初始化实例状态。
+   * @param events 事件总线。
    */
   constructor(events: EventBus, streaming: StreamingRuntime) {
     this.events = events;
@@ -89,9 +105,8 @@ export class ProviderRuntime {
   }
 
   /**
-   * 启动一个 OpenAI 兼容的流式生成请求，创建任务记录并连接数据源。
-   * @param params 启动流式请求所需的参数，包括请求体、数据源和标识信息。
-   * @returns 创建后的流式任务状态快照。
+   * 启动Open AICompatible Stream 值流程，并记录初始任务或会话状态。
+   * @param params 创建、更新或执行操作所需的参数对象。
    */
   async startOpenAICompatibleStream(params: ProviderStreamStartParams): Promise<ProviderStreamTask> {
     const now = Date.now();
@@ -127,10 +142,9 @@ export class ProviderRuntime {
   }
 
   /**
-   * 中止指定的 Provider 流式任务，关闭网络连接并更新任务状态。
-   * @param taskId 要中止的任务标识。
-   * @param reason 中止原因说明。
-   * @returns 中止后的任务状态快照。
+   * 执行 abortProviderStream 的内部处理步骤，供当前模块复用。
+   * @param taskId 目标任务标识。
+   * @param reason 失败、中止或恢复操作的原因说明。
    */
   abortProviderStream(taskId: string, reason: string): ProviderStreamTask {
     const handle = this.handles.get(taskId);
@@ -149,20 +163,20 @@ export class ProviderRuntime {
   }
 
   /**
-   * 获取指定任务的快照副本。
+   * 读取指定任务，不存在时抛出错误。
    * @param taskId 目标任务标识。
-   * @returns 任务状态的只读副本。
+   * @returns 更新或读取后的记录副本。
    */
   getTask(taskId: string): ProviderStreamTask {
     return this.copyTask(this.requireTask(taskId));
   }
 
   /**
-   * 为指定模型构建 OpenAI 兼容的能力声明。
+   * 执行 openAICompatibleCapability 的内部处理步骤，供当前模块复用。
    * @param model 模型名称。
-   * @param maxContext 模型的最大上下文窗口大小。
-   * @param supportsReasoning 该模型是否支持推理过程输出。
-   * @returns 该模型的能力描述对象。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   openAICompatibleCapability(model: string, maxContext: number, supportsReasoning: boolean): ProviderCapability {
     return {
@@ -187,9 +201,9 @@ export class ProviderRuntime {
   }
 
   /**
-   * 根据构建参数生成文本补全请求。根据 apiType 区分 Ollama 和其他后端，分别构建不同的请求格式。
-   * @param params 文本补全的构建参数。
-   * @returns 构建好的文本补全请求，包含 API 路由和请求体。
+   * 根据入参构建Text Completion Request 值，仅生成数据结构，不直接执行外部请求。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
    */
   buildTextCompletionRequest(params: ProviderTextCompletionBuildParams): ProviderTextCompletionRequest {
     const apiType = params.apiType.toLowerCase();
@@ -200,33 +214,33 @@ export class ProviderRuntime {
   }
 
   /**
-   * 接收并处理一个 OpenAI 兼容的数据块：推入 SSE 解析器并消费解析出的事件。
-   * @param taskId 当前流式任务标识。
-   * @param parser 该任务关联的 SSE 解析器。
-   * @param chunk 原始数据块字符串。
+   * 执行 acceptOpenAICompatibleChunk 的内部处理步骤，供当前模块复用。
+   * @param taskId 目标任务标识。
+
+
    */
   async acceptOpenAICompatibleChunk(taskId: string, parser: ProviderSSEParser, chunk: string): Promise<void> {
-    // 将数据块推入 SSE 解析器，获取解析后的事件列表
+    // 事件总线。
     const events = parser.push(chunk);
     await this.consumeEvents(taskId, events);
   }
 
   /**
-   * 结束流式处理：刷新 SSE 解析器中的残留数据，并标记流任务完成。
-   * @param taskId 当前流式任务标识。
-   * @param parser 该任务关联的 SSE 解析器。
+   * 执行 finishOpenAICompatibleStream 的内部处理步骤，供当前模块复用。
+   * @param taskId 目标任务标识。
+
    */
   async finishOpenAICompatibleStream(taskId: string, parser: ProviderSSEParser): Promise<void> {
-    // 刷新 SSE 解析器中剩余的数据，获取最后一批事件
+    // 事件总线。
     const events = parser.flush();
     await this.consumeEvents(taskId, events);
     this.completeStream(taskId);
   }
 
   /**
-   * 将流式任务标记为失败，保存错误信息并发布失败事件。
+   * 标记Stream 值失败，并保存错误信息。
    * @param taskId 目标任务标识。
-   * @param message 错误描述信息。
+   * @param message 消息记录。
    */
   async failStream(taskId: string, message: string): Promise<void> {
     const task = this.requireTask(taskId);
@@ -239,23 +253,11 @@ export class ProviderRuntime {
     task.updatedAt = Date.now();
     this.publish('generation.failed', task);
   }
-
-  /**
-   * 依次消费解析后的 SSE 事件列表。
-   * @param taskId 当前任务标识。
-   * @param events SSE 事件列表。
-   */
   private async consumeEvents(taskId: string, events: Array<ProviderSSEEvent>): Promise<void> {
     for (let index = 0; index < events.length; index += 1) {
       await this.consumeEvent(taskId, events[index]);
     }
   }
-
-  /**
-   * 消费单个 SSE 事件：处理终止标记、归一化数据块并写入流会话。
-   * @param taskId 当前任务标识。
-   * @param event 单个 SSE 事件。
-   */
   private async consumeEvent(taskId: string, event: ProviderSSEEvent): Promise<void> {
     if (event.data === '[DONE]') {
       this.completeStream(taskId);
@@ -272,15 +274,12 @@ export class ProviderRuntime {
     if (task.status !== 'running') {
       return;
     }
-    // 将推理过程增量写入流会话
     if (normalized.reasoningDelta.length > 0) {
       await this.streaming.applyDelta(task.sessionId, normalized.reasoningDelta, true);
     }
-    // 将文本增量写入流会话
     if (normalized.textDelta.length > 0) {
       await this.streaming.applyDelta(task.sessionId, normalized.textDelta, false);
     }
-    // 记录结束原因
     if (normalized.finishReason.length > 0) {
       task.finishReason = normalized.finishReason;
       task.updatedAt = Date.now();
@@ -288,7 +287,7 @@ export class ProviderRuntime {
   }
 
   /**
-   * 将流式任务标记为完成，通知流会话结束并发布完成事件。
+   * 标记Stream 值完成，并写入最终结果。
    * @param taskId 目标任务标识。
    */
   private completeStream(taskId: string): ProviderStreamTask {
@@ -304,9 +303,8 @@ export class ProviderRuntime {
   }
 
   /**
-   * 按 taskId 查找任务，不存在时抛出错误。
+   * 读取必须存在的Task 值，缺失时抛出错误。
    * @param taskId 目标任务标识。
-   * @returns 内部存储的任务对象引用。
    */
   private requireTask(taskId: string): ProviderStreamTask {
     const task = this.tasks.get(taskId);
@@ -317,9 +315,9 @@ export class ProviderRuntime {
   }
 
   /**
-   * 通过事件总线发布生成任务相关事件，传递任务状态的快照副本。
-   * @param eventName 事件名称，如 "generation.started"、"generation.failed" 等。
-   * @param task 当前任务对象。
+   * 发布Provider 请求事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+
    */
   private publish(eventName: string, task: ProviderStreamTask): void {
     const payload: ProviderGenerationPayload = {
@@ -329,7 +327,7 @@ export class ProviderRuntime {
   }
 
   /**
-   * 创建任务对象的浅拷贝，防止外部代码直接修改内部状态。
+   * 复制Task 值，避免外部修改内部状态。
    */
   private copyTask(task: ProviderStreamTask): ProviderStreamTask {
     return {
@@ -348,12 +346,12 @@ export class ProviderRuntime {
   }
 
   /**
-   * 构建 OpenAI 兼容的文本补全请求，组装请求体中的采样参数。
-   * @param apiType API 类型标识。
-   * @param params 文本补全的构建参数。
-   * @returns 构建好的文本补全请求。
+   * 根据入参构建Open AIText Completion Request 值，仅生成数据结构，不直接执行外部请求。
+
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
    */
-  private buildOpenAITextCompletionRequest(apiType: string, params: ProviderTextCompletionBuildParams): ProviderTextCompletionRequest {
+  private buildOpenAITextCompletionRequest(apiType: ConnectionApiType, params: ProviderTextCompletionBuildParams): ProviderTextCompletionRequest {
     const body: ProviderTextCompletionBody = {
       model: params.model,
       prompt: params.prompt,
@@ -371,12 +369,12 @@ export class ProviderRuntime {
   }
 
   /**
-   * 构建 Ollama 文本补全请求，Ollama 使用 options 子对象承载采样参数并默认启用 raw 模式。
-   * @param apiType API 类型标识。
-   * @param params 文本补全的构建参数。
-   * @returns 构建好的 Ollama 文本补全请求。
+   * 根据入参构建Ollama Text Completion Request 值，仅生成数据结构，不直接执行外部请求。
+
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 构建好的请求、Prompt 或中间数据。
    */
-  private buildOllamaTextCompletionRequest(apiType: string, params: ProviderTextCompletionBuildParams): ProviderTextCompletionRequest {
+  private buildOllamaTextCompletionRequest(apiType: ConnectionApiType, params: ProviderTextCompletionBuildParams): ProviderTextCompletionRequest {
     const stop = params.stop.slice();
     const options: ProviderTextCompletionOptions = {
       temperature: params.temperature,
@@ -410,12 +408,7 @@ export class ProviderRuntime {
       body: body,
     };
   }
-
-  /**
-   * 根据 API 类型返回文本补全的请求路径。
-   * 不同后端（dreamgen、mancer、llamacpp、openrouter）使用不同的路径格式。
-   */
-  private textCompletionPath(apiType: string): string {
+  private textCompletionPath(apiType: ConnectionApiType): string {
     if (apiType === 'dreamgen') {
       return '/api/openai/v1/completions';
     }
@@ -432,12 +425,12 @@ export class ProviderRuntime {
   }
 
   /**
-   * 规范化文本补全的停止字符串列表。generic 类型的 API 限制最多 4 个停止词。
-   * @param apiType API 类型标识。
-   * @param stop 原始停止字符串列表。
-   * @returns 规范化后的停止字符串列表副本。
+   * 规范化Text Completion Stops 列表，保证后续比较和存储使用一致格式。
+
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
-  private normalizeTextCompletionStops(apiType: string, stop: Array<string>): Array<string> {
+  private normalizeTextCompletionStops(apiType: ConnectionApiType, stop: Array<string>): Array<string> {
     if (apiType !== 'generic') {
       return stop.slice();
     }
@@ -448,12 +441,6 @@ export class ProviderRuntime {
     }
     return result;
   }
-
-  /**
-   * 将可选的采样参数字段（topP、presencePenalty、frequencyPenalty、seed）写入请求体。
-   * @param body 目标请求体，会被就地修改。
-   * @param params 构建参数，从中读取可选字段。
-   */
   private applyOptionalSamplerFields(body: ProviderTextCompletionBody, params: ProviderTextCompletionBuildParams): void {
     if (params.topP !== undefined) {
       body.top_p = params.topP;

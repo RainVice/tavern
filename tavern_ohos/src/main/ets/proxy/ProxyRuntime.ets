@@ -1,4 +1,5 @@
 import { EventBus } from '../runtime/EventBus';
+import type { ProxyResolutionMode } from '../contracts/PublicContracts';
 import type {
   ProxyConfiguredPayload,
   ProxyResolutionRecord,
@@ -11,7 +12,7 @@ import type {
  */
 export class ProxyRuntime {
   /**
-   * 事件总线，用于发布代理配置变更和解析完成事件。
+   * 事件总线。
    */
   private events: EventBus;
   private settings: ProxySettings = {
@@ -23,16 +24,15 @@ export class ProxyRuntime {
   };
 
   /**
-   * 初始化当前运行时实例，设置默认禁用代理配置。
-   * @param events 事件总线实例，用于发布 proxy.configured 和 proxy.resolved 事件。
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 应用代理配置，更新内部设置并发布配置变更事件。由 UI 配置页面在用户保存代理设置时调用。
-   * @param settings 新的代理配置参数，将替换运行时内部配置并通知监听方。
+   * 执行 configure 的内部处理步骤，供当前模块复用。
    */
   configure(settings: ProxySettings): ProxySettings {
     this.settings = this.cloneSettings(settings);
@@ -44,17 +44,15 @@ export class ProxyRuntime {
   }
 
   /**
-   * 获取当前代理配置的深拷贝。由网络请求模块在发送 HTTP 请求前调用以获取代理信息。
-   * @returns 当前代理设置副本。
+   * 读取Settings 列表，不存在时通常抛出错误或返回空值。
+   * @returns 更新或读取后的记录副本。
    */
   getSettings(): ProxySettings {
     return this.cloneSettings(this.settings);
   }
 
   /**
-   * 根据当前代理配置解析目标 URL，决定直连还是走代理，并发布解析结果事件。
-   * 依次检查：代理是否启用、代理 URL 是否配置、URL 格式是否合法、是否命中 bypass 规则。
-   * 在网络请求发送前由 HTTP 客户端或请求调度模块调用。
+   * 根据当前上下文解析目标对象，返回实际可用值。
    */
   resolve(targetUrl: string): ProxyResolutionRecord {
     let resolution: ProxyResolutionRecord;
@@ -102,7 +100,7 @@ export class ProxyRuntime {
   }
   private makeResolution(
     targetUrl: string,
-    mode: string,
+    mode: ProxyResolutionMode,
     proxyUrl: string,
     bypassed: boolean,
     keepAlive: boolean,
@@ -121,8 +119,9 @@ export class ProxyRuntime {
   }
 
   /**
-   * 检查请求目标 URL 是否匹配 bypass 名单中的任意规则（精确匹配、通配符前缀匹配）。
-   * @returns 匹配 bypass 规则时返回 true，否则返回 false。
+   * 检查Bypass是否满足当前规则。
+
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   private matchesBypass(targetUrl: string): boolean {
     const host = this.extractHost(targetUrl);
@@ -149,9 +148,9 @@ export class ProxyRuntime {
   }
 
   /**
-   * 检查字符串是否为格式合法的 URL（包含协议 scheme 且能提取出主机名）。
-   * @param value 待检查的 URL 字符串。
-   * @returns URL 格式合法时返回 true，否则返回 false。
+   * 判断Valid Url 值是否满足条件。
+   * @param value 要保存或比较的字段值。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   private isValidUrl(value: string): boolean {
     const schemeIndex = value.indexOf('://');
@@ -163,8 +162,8 @@ export class ProxyRuntime {
   }
 
   /**
-   * 从 URL 中提取主机部分（去除协议前缀、路径、查询参数和片段）。
-   * @param value 完整的 URL 字符串。
+   * 解析或导入主机数据，转换为当前 SDK 可使用的结构。
+   * @param value 要保存或比较的字段值。
    */
   private extractHost(value: string): string {
     const schemeIndex = value.indexOf('://');
@@ -192,8 +191,8 @@ export class ProxyRuntime {
   }
 
   /**
-   * 从主机字符串中提取 hostname（去除端口号部分）。
-   * @param host 包含端口号的主机字符串。
+   * 解析或导入Hostname数据，转换为当前 SDK 可使用的结构。
+   * @param host 目标主机名。
    */
   private extractHostname(host: string): string {
     const colonIndex = host.indexOf(':');

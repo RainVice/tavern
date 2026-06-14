@@ -1,97 +1,97 @@
 import { EventBus } from './EventBus';
+import type {
+  RuntimeTaskStatus,
+  RuntimeTaskType,
+} from '../contracts/PublicContracts';
 
 /**
  * 描述运行时基础设施持久化或内存索引中的一条记录。
- * 在任务管理流程中，用于追踪异步操作的进度和状态。
  */
 export interface TaskRecord {
   /**
-   * 任务唯一标识，由 createTask 自动生成（格式为 "task-{计数器}"）。
+   * 标识。
    */
   id: string;
   /**
-   * 任务类型（如 "export" / "import" / "generation" 等），用于区分不同的任务类别。
+   * type 值，由当前实例内部维护。
    */
-  type: string;
+  type: RuntimeTaskType;
   /**
-   * 任务标题，用于 UI 展示的任务名称。
+   * 标题，由当前实例内部维护。
    */
   title: string;
   /**
-   * 任务状态（如 pending / running / completed / failed）。
+   * 状态值，由当前实例内部维护。
    */
-  status: string;
+  status: RuntimeTaskStatus;
   /**
-   * 进度百分比（0-100），由 updateTask 更新。
+   * progress 列表，由当前实例内部维护。
    */
   progress: number;
   /**
-   * 消息内容，用于 UI 展示任务的当前状态描述。
+   * 消息数据。
    */
   message: string;
   /**
-   * 任务结果，由 completeTask 在完成后写入。
+   * 处理结果。
    */
   result: string;
   /**
-   * 错误信息，由 failTask 在失败时记录。
+   * 错误信息，由当前实例内部维护。
    */
   error: string;
   /**
-   * 创建时间戳。
+   * created At 值，由当前实例内部维护。
    */
   createdAt: number;
   /**
-   * 最近更新时间戳。
+   * updated At 值，由当前实例内部维护。
    */
   updatedAt: number;
 }
 
 /**
- * 描述任务更新事件发布时携带的数据结构。
- * TaskRuntime 在任务状态变更时发布 task.updated 事件，通知宿主 UI 更新任务展示。
+ * 描述运行时基础设施事件发布时携带的数据结构。
  */
 export interface TaskUpdatePayload {
   /**
-   * 已更新的任务记录。
+   * task 值，由当前实例内部维护。
    */
   task: TaskRecord;
 }
 
 /**
- * 提供任务管理相关的运行时能力，负责任务状态管理、进度跟踪和事件发布。
- * 在需要追踪长时间运行的后台操作（如数据导入/导出、批量处理等）时使用。
+ * 提供运行时基础设施相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
  */
 export class TaskRuntime {
   /**
-   * 事件总线实例，用于发布任务更新事件。
+   * 事件总线。
    */
   private eventBus: EventBus;
   /**
-   * 按 ID 保存的任务映射表。
+   * tasks 列表，由当前实例内部维护。
    */
   private tasks: Map<string, TaskRecord> = new Map<string, TaskRecord>();
   /**
-   * 任务自增 ID 计数器。
+   * next 标识。
    */
   private nextId: number = 1;
 
   /**
-   * 初始化 TaskRuntime 实例。
-   * @param eventBus 事件总线实例。
+   * 初始化当前运行时实例。
+   * @param eventBus 事件总线。
    */
   constructor(eventBus: EventBus) {
     this.eventBus = eventBus;
   }
 
   /**
-   * 创建新任务。
-   * 在后台操作开始时由调用方（如导入/导出流程）调用，用于初始化任务记录。
-   * @param type 任务类型。
-   * @param title 任务标题。
-   * @returns 新建的任务记录。
+   * 创建新的任务记录，写入存储并返回副本。
+
+   * @param title 标题。
+   * @returns 更新或读取后的记录副本。
    */
-  createTask(type: string, title: string): TaskRecord {
+  createTask(type: RuntimeTaskType, title: string): TaskRecord {
     const now = Date.now();
     const task: TaskRecord = {
       id: `task-${this.nextId}`,
@@ -112,15 +112,14 @@ export class TaskRuntime {
   }
 
   /**
-   * 更新任务状态、进度和消息。
-   * 在任务执行过程中由调用方定期调用，用于向宿主 UI 报告最新进度。
+   * 更新指定任务，写回存储并按需发布变更事件。
    * @param taskId 目标任务标识。
-   * @param status 新状态。
-   * @param progress 进度值（0-100）。
-   * @param message 消息内容。
-   * @returns 更新后的任务记录。
+   * @param status 状态值。
+
+   * @param message 消息记录。
+   * @returns 更新或读取后的记录副本。
    */
-  updateTask(taskId: string, status: string, progress: number, message: string): TaskRecord {
+  updateTask(taskId: string, status: RuntimeTaskStatus, progress: number, message: string): TaskRecord {
     const task = this.requireTask(taskId);
     task.status = status;
     task.progress = this.clampProgress(progress);
@@ -131,10 +130,9 @@ export class TaskRuntime {
   }
 
   /**
-   * 标记任务为完成并写入结果。
-   * 在后台操作成功结束时由调用方调用。
+   * 标记Task 值完成，并写入最终结果。
    * @param taskId 目标任务标识。
-   * @param result 任务结果。
+   * @param result 返回结果。
    */
   completeTask(taskId: string, result: string): TaskRecord {
     const task = this.requireTask(taskId);
@@ -148,10 +146,9 @@ export class TaskRuntime {
   }
 
   /**
-   * 标记任务为失败并记录错误信息。
-   * 在后台操作失败时由调用方调用。
+   * 标记Task 值失败，并保存错误信息。
    * @param taskId 目标任务标识。
-   * @param error 错误描述。
+   * @param error 错误信息。
    */
   failTask(taskId: string, error: string): TaskRecord {
     const task = this.requireTask(taskId);
@@ -163,17 +160,17 @@ export class TaskRuntime {
   }
 
   /**
-   * 获取指定任务记录。
+   * 读取指定任务，不存在时抛出错误。
    * @param taskId 目标任务标识。
-   * @returns 任务记录副本。
+   * @returns 更新或读取后的记录副本。
    */
   getTask(taskId: string): TaskRecord {
     return this.copyTask(this.requireTask(taskId));
   }
 
   /**
-   * 列出所有任务记录。
-   * @returns 任务记录副本数组。
+   * 读取Tasks列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   listTasks(): Array<TaskRecord> {
     const result = new Array<TaskRecord>();
@@ -185,7 +182,7 @@ export class TaskRuntime {
   }
 
   /**
-   * 确保指定任务存在，缺失时抛出错误。
+   * 读取必须存在的Task 值，缺失时抛出错误。
    * @param taskId 目标任务标识。
    */
   private requireTask(taskId: string): TaskRecord {
@@ -197,7 +194,8 @@ export class TaskRuntime {
   }
 
   /**
-   * 发布任务更新事件通知宿主或其他 Runtime。
+   * 发布运行时基础设施事件，把状态变化通知给宿主或其他 Runtime。
+
    */
   private publishUpdate(task: TaskRecord): void {
     const payload: TaskUpdatePayload = {
@@ -207,7 +205,7 @@ export class TaskRuntime {
   }
 
   /**
-   * 深度复制 TaskRecord，防止外部代码修改内部状态。
+   * 复制Task 值，避免外部修改内部状态。
    */
   private copyTask(task: TaskRecord): TaskRecord {
     return {

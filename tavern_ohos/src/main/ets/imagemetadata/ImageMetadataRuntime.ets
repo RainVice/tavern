@@ -1,68 +1,64 @@
-import type { ImageFormat, ImageMetadata, ImageMetadataChunk, MetadataExtractResult, MetadataWriteParams } from './ImageMetadataModels';
+import type { ImageFormat, ImageMetadata, ImageMetadataChunk, ImageMetadataChunkType, MetadataExtractResult, MetadataWriteParams } from './ImageMetadataModels';
 
 /**
- * 描述 PNG 图片数据块在二进制文件中的位置和大小。
+ * 描述图片元数据模块在运行时交换的数据结构。
  */
 interface PngChunkInfo {
   /**
-   * 数据块在文件中的起始偏移量（字节）。
+   * offset 值，由当前实例内部维护。
    */
   offset: number;
   /**
-   * 数据块中数据部分的长度（字节，不含 type 和 CRC）。
+   * length 值，由当前实例内部维护。
    */
   length: number;
   /**
-   * 数据块类型标识，如 IHDR、tEXt、IEND。
+   * type 值，由当前实例内部维护。
    */
-  type: string;
+  type: ImageMetadataChunkType;
   /**
-   * 数据块中实际数据内容的起始偏移量。
+   * data Offset 值，由当前实例内部维护。
    */
   dataOffset: number;
   /**
-   * 数据块总长度（length + 12 字节头部）。
+   * total Length 值，由当前实例内部维护。
    */
   totalLength: number;
 }
 
 /**
- * 描述 WebP RIFF chunk 在文件中的位置和大小。
+ * 描述 WebP RIFF chunk 在文件中的位置。
  */
 interface WebpChunkInfo {
   /**
-   * chunk 在文件中的起始偏移量（字节）。
+   * offset 值，由当前实例内部维护。
    */
   offset: number;
   /**
-   * chunk 数据部分的长度（字节）。
+   * length 值，由当前实例内部维护。
    */
   length: number;
   /**
-   * chunk 类型标识，如 VP8、EXIF。
+   * type 值，由当前实例内部维护。
    */
-  type: string;
+  type: ImageMetadataChunkType;
   /**
-   * chunk 中实际数据内容的起始偏移量。
+   * data Offset 值，由当前实例内部维护。
    */
   dataOffset: number;
   /**
-   * chunk 总长度（含填充）。
+   * total Length 值，由当前实例内部维护。
    */
   totalLength: number;
 }
 
 /**
  * 提供图片元数据相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
- * 支持从 PNG 和 WebP 图片中提取嵌入式元数据（包括角色卡数据），以及将角色卡 JSON 写回图片文件。
- * 外部调用方（如角色卡导入/导出流程、图片信息查看页）通过此类完成元数据操作。
  */
 export class ImageMetadataRuntime {
   /**
-   * 通过读取文件头部特征字节判断图片格式（PNG/WebP/JPEG）。
-   * 由 extractMetadata() 等方法内部调用，作为元数据提取流程的第一步——确定解析策略。
-   * @param data 原始图片二进制数据，来自文件读取或外部输入。
-   * @returns 识别的图片格式类型，'unknown' 表示无法识别。
+   * 识别输入数据的Format 值，供导入流程选择后续解析方式。
+   * @param data 导入或恢复使用的序列化数据。
    */
   detectFormat(data: ArrayBuffer): ImageFormat {
     const bytes = new Uint8Array(data);
@@ -74,10 +70,8 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 从图片二进制数据中提取完整元数据，包括格式、数据块列表和角色卡标记。
-   * 由 extractCharacterCard() 内部调用，或单独用于图片信息展示场景（如查看图片的 chunk 结构）。
-   * @param data 原始图片二进制数据，支持 PNG 和 WebP 两种格式。
-   * @returns 包含格式、数据块信息（rawChunks）和角色卡标记（hasCharacterCard）的元数据对象。
+   * 解析或导入元数据数据，转换为当前 SDK 可使用的结构。
+   * @param data 导入或恢复使用的序列化数据。
    */
   extractMetadata(data: ArrayBuffer): ImageMetadata {
     const format = this.detectFormat(data);
@@ -108,15 +102,13 @@ export class ImageMetadataRuntime {
         }
       }
     }
-    // 简单尺寸估计（暂未实现实际解析，返回 0）
+    // 简单尺寸估计
     return { format, width: 0, height: 0, hasCharacterCard: hasCard, rawChunks: chunks };
   }
 
   /**
-   * 从图片二进制数据中提取角色卡 JSON 字符串和元数据。
-   * 由角色卡导入流程（如从 PNG/WebP 图片导入角色）调用，从图片的 tEXt 或 EXIF chunk 中解析角色卡数据。
-   * @param data 原始图片二进制数据（PNG 或 WebP 格式），通常来自文件读取或剪贴板。
-   * @returns 包含完整元数据和角色卡 JSON 字符串的结果对象，调用方可根据 characterCardJson 是否为空判断是否成功。
+   * 解析或导入角色卡数据，转换为当前 SDK 可使用的结构。
+   * @param data 导入或恢复使用的序列化数据。
    */
   extractCharacterCard(data: ArrayBuffer): MetadataExtractResult {
     const metadata = this.extractMetadata(data);
@@ -133,10 +125,8 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 将角色卡 JSON 写入图片元数据，返回包含角色卡的新图片二进制数据。
-   * 由角色卡导出/保存流程（如导出角色为 PNG/WebP 图片）调用，将角色卡数据嵌入图片元数据区。
-   * @param params 写入参数，包括图片格式、角色卡 JSON 字符串和源图片数据，决定写入算法和输出。
-   * @returns 包含角色卡元数据的图片二进制数据，可用于写入文件系统或导出到外部。
+   * 写入Metadata 值，持久化当前运行时状态。
+   * @param params 创建、更新或执行操作所需的参数对象。
    */
   writeMetadata(params: MetadataWriteParams): ArrayBuffer {
     if (params.sourceData === undefined) {
@@ -152,11 +142,9 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 将角色卡 JSON 写入 PNG 图片的 IEND 块之前，生成新的 PNG 二进制数据。
-   * 由 writeMetadata() 在 format 为 png 时内部调用，在 IEND chunk 前插入 chara 关键字 tEXt 块。
-   * @param data 源 PNG 图片二进制数据。
-   * @param characterCardJson 角色卡 JSON 字符串，将被 Base64 编码后写入 tEXt 块。
-   * @returns 包含角色卡元数据的新 PNG 二进制数据，可直接写入文件。
+   * 写入Png Character Card 值，持久化当前运行时状态。
+   * @param data 导入或恢复使用的序列化数据。
+   * @param characterCardJson character Card JSON 字符串。
    */
   writePngCharacterCard(data: ArrayBuffer, characterCardJson: string): ArrayBuffer {
     const bytes = new Uint8Array(data);
@@ -193,11 +181,9 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 将角色卡 JSON 写入 WebP 图片的 EXIF chunk 中，生成新的 WebP 二进制数据。
-   * 由 writeMetadata() 在 format 为 webp 时内部调用，在 RIFF 容器末尾追加 EXIF chunk。
-   * @param data 源 WebP 图片二进制数据。
-   * @param characterCardJson 角色卡 JSON 字符串，将被 Base64 编码后写入 EXIF chunk 的 data 区。
-   * @returns 包含角色卡元数据的新 WebP 二进制数据。
+   * 写入 WebP 角色卡 metadata。
+   * @param data 导入或恢复使用的序列化数据。
+   * @param characterCardJson character Card JSON 字符串。
    */
   writeWebpCharacterCard(data: ArrayBuffer, characterCardJson: string): ArrayBuffer {
     const bytes = new Uint8Array(data);
@@ -229,10 +215,9 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 判断图片二进制数据是否为受支持的图片格式（非 unknown）。
-   * 由角色卡导入流程在开始提取元数据前调用，快速校验输入数据是否有效。
-   * @param data 原始图片二进制数据。
-   * @returns 是有效图片格式时返回 true，可用于前置校验。
+   * 判断Valid Image 值是否满足条件。
+   * @param data 导入或恢复使用的序列化数据。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   isValidImage(data: ArrayBuffer): boolean {
     return this.detectFormat(data) !== 'unknown';
@@ -288,10 +273,10 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 判断 PNG tEXt 块的关键字是否为角色卡标识（chara 或 ccv3）。
-   * @param bytes PNG 文件完整二进制数据。
-   * @param chunk 待检查的 PNG 数据块信息。
-   * @returns 是角色卡文本块时返回 true。
+   * 判断Character Card Text Chunk 值是否满足条件。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   private isCharacterCardTextChunk(bytes: Uint8Array, chunk: PngChunkInfo): boolean {
     if (chunk.type !== 'tEXt') {
@@ -306,9 +291,7 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 从 PNG 图片的 tEXt 块中提取角色卡 JSON 字符串。
-   * @param bytes PNG 文件完整二进制数据。
-   * @returns 角色卡 JSON 字符串，未找到时返回空字符串。
+   * 解析或导入JSON数据，转换为当前 SDK 可使用的结构。
    */
   private extractPngCharacterCardJson(bytes: Uint8Array): string {
     const chunks = this.scanPngChunks(bytes);
@@ -377,10 +360,10 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 创建 PNG tEXt 文本块二进制数据，包含关键字和 Base64 编码的文本内容。
-   * @param keyword tEXt 块关键字，如 chara。
-   * @param text Base64 编码的文本数据。
-   * @returns 完整的 PNG tEXt 块二进制数据（含长度、类型、CRC）。
+   * 创建新的文本Chunk记录，写入存储并返回副本。
+
+   * @param text 文本内容。
+   * @returns 更新或读取后的记录副本。
    */
   private createTextChunk(keyword: string, text: string): Uint8Array {
     const keywordBytes = this.asciiStringToBytes(keyword);
@@ -430,10 +413,9 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 从大端 Uint8Array 中读取 4 字节无符号整数。
-   * @param bytes 二进制数据源。
-   * @param offset 读取起始偏移量（字节）。
-   * @returns 4 字节大端无符号整数值。
+   * 读取Uint32 值，并转换为运行时使用的数据结构。
+
+   * @param offset 分页起始偏移量。
    */
   private readUint32(bytes: Uint8Array, offset: number): number {
     return bytes[offset] * 16777216 + bytes[offset + 1] * 65536 + bytes[offset + 2] * 256 + bytes[offset + 3];
@@ -443,10 +425,10 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 将 4 字节大端无符号整数写入 Uint8Array 的指定偏移位置。
-   * @param bytes 目标二进制数组。
-   * @param offset 写入起始偏移量（字节）。
-   * @param value 要写入的 4 字节大端无符号整数值。
+   * 写入Uint32 值，持久化当前运行时状态。
+
+   * @param offset 分页起始偏移量。
+   * @param value 要保存或比较的字段值。
    */
   private writeUint32(bytes: Uint8Array, offset: number, value: number): void {
     bytes[offset] = Math.floor(value / 16777216) & 0xff;
@@ -462,11 +444,9 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 在指定范围内的字节数组中查找第一个空字节（0x00）的位置。
-   * @param bytes 二进制数据源。
-   * @param offset 搜索起始偏移量。
-   * @param length 搜索范围长度（字节）。
-   * @returns 空字节的位置索引，未找到时返回 -1。
+   * 在当前集合中查找Null Byte 值，未命中时返回空值或默认位置。
+
+   * @param offset 分页起始偏移量。
    */
   private findNullByte(bytes: Uint8Array, offset: number, length: number): number {
     const end = offset + length;
@@ -477,13 +457,6 @@ export class ImageMetadataRuntime {
     }
     return -1;
   }
-  /**
-   * 从 Uint8Array 的指定范围提取 ASCII 字符串。
-   * @param bytes 二进制数据源。
-   * @param offset 提取起始偏移量。
-   * @param length 提取长度（字节数）。
-   * @returns 提取的 ASCII 字符串。
-   */
   private bytesToAscii(bytes: Uint8Array, offset: number, length: number): string {
     let result = '';
     const end = offset + length;
@@ -492,11 +465,6 @@ export class ImageMetadataRuntime {
     }
     return result;
   }
-  /**
-   * 将 ASCII 字符串转换为字节数组。
-   * @param value 要转换的 ASCII 字符串。
-   * @returns 对应的 Uint8Array 字节数组。
-   */
   private asciiStringToBytes(value: string): Uint8Array {
     const bytes = new Uint8Array(value.length);
     for (let index = 0; index < value.length; index += 1) {
@@ -504,11 +472,6 @@ export class ImageMetadataRuntime {
     }
     return bytes;
   }
-  /**
-   * 将 UTF-8 字符串转换为字节数组（支持代理对编码）。
-   * @param value 要转换的 UTF-8 字符串。
-   * @returns 对应的 Uint8Array 字节数组。
-   */
   private stringToUtf8Bytes(value: string): Uint8Array {
     const output = new Array<number>();
     for (let index = 0; index < value.length; index += 1) {
@@ -640,11 +603,9 @@ export class ImageMetadataRuntime {
   }
 
   /**
-   * 从 Uint8Array 的指定位置复制一段字节。
-   * @param bytes 源二进制数组。
-   * @param offset 复制起始偏移量。
-   * @param length 复制长度（字节数）。
-   * @returns 复制出的新 Uint8Array。
+   * 复制Bytes 列表，避免外部修改内部状态。
+
+   * @param offset 分页起始偏移量。
    */
   private copyBytes(bytes: Uint8Array, offset: number, length: number): Uint8Array {
     const result = new Uint8Array(length);
@@ -653,11 +614,6 @@ export class ImageMetadataRuntime {
     }
     return result;
   }
-  /**
-   * 拼接多个 Uint8Array 为一个连续的字节数组。
-   * @param parts 待拼接的 Uint8Array 数组。
-   * @returns 拼接后的完整 Uint8Array。
-   */
   private concatBytes(parts: Array<Uint8Array>): Uint8Array {
     let length = 0;
     for (let index = 0; index < parts.length; index += 1) {

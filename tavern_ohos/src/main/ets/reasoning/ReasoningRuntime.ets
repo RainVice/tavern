@@ -15,29 +15,28 @@ import type {
  */
 export class ReasoningRuntime {
   /**
-   * 事件总线，用于发布推理增量、更新事件。
+   * 事件总线。
    */
   private events: EventBus;
   /**
-   * 推理记录字典，键为消息标识，值为推理记录——每条 LLM 回复消息对应一条推理记录。
+   * 记录副本列表，由当前实例内部维护。
    */
   private records: Map<string, ReasoningRecord> = new Map<string, ReasoningRecord>();
   /**
-   * 当前流式订阅对象，用于在停止时取消订阅。
+   * stream Subscription 值，由当前实例内部维护。
    */
   private streamSubscription: EventSubscription | null = null;
 
   /**
-   * 初始化当前运行时实例，清空推理记录字典。
-   * @param events 事件总线，用于订阅 stream.delta 事件和发布 reasoning.* 系列事件。
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 开始监听流式 delta 事件，自动累积推理内容到对应消息的推理记录中。
-   * 在流式请求启动前由外部模块调用，开启后每个 stream.delta 事件中的推理内容会自动追加到该消息的推理快照。
+   * 启动Streaming Accumulator 值流程，并记录初始任务或会话状态。
    */
   startStreamingAccumulator(): void {
     if (this.streamSubscription !== null) {
@@ -55,7 +54,7 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 停止监听流式 delta 事件，并清理订阅引用。在流式请求结束或取消时由外部模块调用。
+   * 执行 stopStreamingAccumulator 的内部处理步骤，供当前模块复用。
    */
   stopStreamingAccumulator(): void {
     if (this.streamSubscription === null) {
@@ -66,9 +65,8 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 将流式 delta 内容追加到指定消息的推理记录快照中，并发布 delta 更新事件。
-   * 被流式事件订阅回调自动调用，也可由外部模块手动追加推理内容。
-   * @param messageId 目标消息标识，与 stream.delta 事件中的 messageId 对应。
+   * 执行 applyDelta 的内部处理步骤，供当前模块复用。
+   * @param messageId 目标消息标识。
    */
   applyDelta(messageId: string, delta: string): ReasoningRecord {
     const record = this.ensureRecord(messageId);
@@ -87,7 +85,7 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 编辑指定消息的推理内容快照，替换为新的内容并发布更新事件。由 UI 编辑操作触发，用于手动修改推理内容。
+   * 执行 editReasoning 的内部处理步骤，供当前模块复用。
    * @param messageId 目标消息标识。
    */
   editReasoning(messageId: string, snapshot: string): ReasoningRecord {
@@ -99,10 +97,9 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 设置指定消息的推理元数据和签名。在推理完成后由外部模块调用，将模型返回的元数据写入记录。
+   * 设置元数据，用于切换运行时状态或保存配置。
    * @param messageId 目标消息标识。
-   * @param metadataJson 关联的元数据 JSON 字符串。
-   * @param signature 推理签名，用于验证或标识推理来源。
+   * @param metadataJson metadata JSON 字符串。
    */
   setMetadata(messageId: string, metadataJson: string, signature: string): ReasoningRecord {
     const record = this.ensureRecord(messageId);
@@ -114,10 +111,10 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 设置推理内容在 UI 中的可见状态。由 UI 切换折叠/展开时调用，控制推理内容的显示与隐藏。
+   * 设置可见性，用于切换运行时状态或保存配置。
    * @param messageId 目标消息标识。
-   * @param visible 是否在 UI 中显示推理内容。
-   * @returns 更新后的推理记录副本。
+   * @param visible 是否显示对应 UI。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   setVisibility(messageId: string, visible: boolean): ReasoningRecord {
     const record = this.ensureRecord(messageId);
@@ -128,9 +125,10 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 设置是否将推理内容包含在发送给 LLM 的提示词中。用于多轮对话中决定是否传递前一轮的推理链给下一轮请求。
+   * 设置提示词Policy，用于切换运行时状态或保存配置。
    * @param messageId 目标消息标识。
-   * @returns 更新后的推理记录副本。
+
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   setPromptPolicy(messageId: string, includeInPrompt: boolean): ReasoningRecord {
     const record = this.ensureRecord(messageId);
@@ -141,7 +139,7 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 获取指定消息的推理快照文本副本。在需要查看或处理推理内容的场景下调用。
+   * 复制Reasoning 值，避免外部修改内部状态。
    * @param messageId 目标消息标识。
    */
   copyReasoning(messageId: string): string {
@@ -149,8 +147,7 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 将指定消息的推理内容格式化为 <reasoning> 标签包裹的文本，用于拼接到提示词中。
-   * 在组装发送给 LLM 的消息时调用，以决定是否将推理链传递到下一轮对话。
+   * 生成提示词输出，供请求发送、导出或界面展示使用。
    * @param messageId 目标消息标识。
    */
   formatForPrompt(messageId: string): string {
@@ -162,17 +159,17 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 按消息标识查询推理记录的深拷贝。由外部模块（如 UI 渲染或消息组装流程）获取推理内容时调用。
+   * 读取指定Reasoning，不存在时抛出错误。
    * @param messageId 目标消息标识。
-   * @returns 推理记录副本。
+   * @returns 更新或读取后的记录副本。
    */
   getReasoning(messageId: string): ReasoningRecord {
     return this.copyRecord(this.ensureRecord(messageId));
   }
 
   /**
-   * 返回所有推理记录的深拷贝列表。用于批量操作或数据导出时的枚举。
-   * @returns 所有推理记录副本的数组。
+   * 读取Reasoning列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   listReasoning(): Array<ReasoningRecord> {
     const result = new Array<ReasoningRecord>();
@@ -203,8 +200,8 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 发布推理内容更新事件到事件总线。
-   * @param record 待发布的推理记录（将被深拷贝后发布）。
+   * 发布推理内容事件，把状态变化通知给宿主或其他 Runtime。
+   * @param record 记录副本。
    */
   private publishUpdated(record: ReasoningRecord): void {
     const payload: ReasoningUpdatedPayload = {
@@ -215,8 +212,8 @@ export class ReasoningRuntime {
   }
 
   /**
-   * 深拷贝推理记录对象，防止外部修改内部存储的原始记录。
-   * @param record 待拷贝的推理记录。
+   * 复制Record 值，避免外部修改内部状态。
+   * @param record 记录副本。
    */
   private copyRecord(record: ReasoningRecord): ReasoningRecord {
     return {

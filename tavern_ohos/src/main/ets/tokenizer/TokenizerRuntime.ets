@@ -18,29 +18,28 @@ import type {
 
 /**
  * 提供token 统计相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
- * 在消息发送给 AI 模型前的准备流程中，负责计算 token 消耗、管理上下文预算、按预算裁剪消息列表。
  */
 export class TokenizerRuntime {
   /**
-   * 事件总线实例，用于发布 token 统计和预算事件。
+   * 事件总线。
    */
   private events: EventBus;
   /**
-   * 按 ID 保存的分词器配置映射表，注册各种 AI 模型对应的 token 估算配置。
+   * profiles 列表，由当前实例内部维护。
    */
   private profiles: Map<string, TokenizerProfile> = new Map<string, TokenizerProfile>();
   /**
-   * 模型 ID 到配置 ID 的绑定关系表，用于通过模型名称快速查找对应的分词器配置。
+   * model Bindings 列表，由当前实例内部维护。
    */
   private modelBindings: Map<string, string> = new Map<string, string>();
   /**
-   * token 计数缓存，加速重复文本的统计，减少不必要的计算开销。
+   * count Cache 值，由当前实例内部维护。
    */
   private countCache: Map<string, number> = new Map<string, number>();
 
   /**
-   * 初始化 TokenizerRuntime 实例。
-   * @param events 事件总线实例。
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
    */
   constructor(events: EventBus) {
     this.events = events;
@@ -48,10 +47,8 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 注册一个新的分词器配置。
-   * 在支持新的 AI 模型时由宿主或内置初始化流程调用。
-   * @param params 配置参数。
-   * @returns 注册后的配置记录。
+   * 注册Profile 值，使其可被后续运行时流程使用。
+   * @param params 创建、更新或执行操作所需的参数对象。
    */
   registerProfile(params: TokenizerProfileCreateParams): TokenizerProfile {
     const now = Date.now();
@@ -76,10 +73,9 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 绑定模型到指定的分词器配置。
-   * 在初始化内置模型绑定或用户自定义模型映射时调用。
-   * @param modelId 模型标识（如 "claude-3-5-sonnet" 或 "gpt-4"）。
-   * @param profileId 分词器配置标识（如 "claude" 或 "openai-cl100k"）。
+   * 把token 统计对象绑定到指定作用域，后续读取会按该绑定解析。
+   * @param modelId 目标模型标识。
+   * @param profileId 目标连接或预设配置标识。
    */
   bindModel(modelId: string, profileId: string): void {
     this.requireProfile(profileId);
@@ -87,19 +83,17 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 获取指定模型或配置的分词器配置。
-   * 在查询上下文窗口大小或 token 估算参数时由调用方使用。
-   * @param profileIdOrModelId 配置 ID 或模型 ID。
-   * @returns 解析后的配置记录副本。
+   * 读取指定连接配置，不存在时抛出错误。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
+   * @returns 更新或读取后的记录副本。
    */
   getProfile(profileIdOrModelId: string): TokenizerProfile {
     return this.copyProfile(this.requireProfile(this.resolveProfileId(profileIdOrModelId)));
   }
 
   /**
-   * 列出所有已注册的分词器配置（按 ID 排序）。
-   * 在 UI 展示配置列表或调试时调用。
-   * @returns 配置记录副本数组。
+   * 读取Profiles列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   listProfiles(): Array<TokenizerProfile> {
     const result = new Array<TokenizerProfile>();
@@ -112,9 +106,8 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 列出所有可选的分词器选项。
-   * 在 UI 展示 tokenizer 选择器时调用，供用户手动选择或自动匹配。
-   * @returns 分词器选项数组。
+   * 读取TokenizerOptions列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   listTokenizerOptions(): Array<TokenizerOption> {
     return [
@@ -143,16 +136,17 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 自动选择最优的分词器配置：根据 API 类型、提供商和模型名称推断。
-   * 在消息发送前由消息组装流程调用，确保使用的 tokenizer 与当前 AI 模型匹配。
-   * @param input 选择输入（API / 提供商 / 模型信息）。
-   * @returns 选择结果（选项、配置 ID、原因等）。
+   * 读取或解析分词器，调用方应处理不存在或不匹配的情况。
+   * @param input 待处理的输入对象。
    */
   selectBestTokenizer(input: TokenizerSelectionInput): TokenizerSelectionResult {
     const api = this.normalize(input.api);
     const provider = this.normalize(input.provider === undefined ? '' : input.provider);
+    // 模型名称。
     const model = this.normalize(input.model === undefined ? '' : input.model);
+    // profile 标识。
     let profileId = this.resolveProfileIdFromText(`${provider} ${model}`);
+    // 原因说明。
     let reason = 'model';
     let remote = false;
 
@@ -190,12 +184,9 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 为指定选择输入和文本统计 token 数（带 padding 补偿）。
-   * 在需要同时对选择 tokenizer 和计数的便捷场景中调用。
-   * @param input 选择输入。
-   * @param text 要统计的文本。
-   * @param padding 额外补偿的 token 数。
-   * @returns 计数结果。
+   * 统计选中文本，用于预算、分页或状态汇总。
+   * @param input 待处理的输入对象。
+   * @param text 文本内容。
    */
   countTextForSelection(input: TokenizerSelectionInput, text: string, padding: number = 0): TokenCountResult {
     const selection = this.selectBestTokenizer(input);
@@ -210,22 +201,20 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 清空 token 计数缓存。
-   * 在配置变更或需要强制重新计算时由宿主调用。
+   * 删除或清理Cache，并同步维护相关索引或状态。
    */
   clearCache(): void {
     this.countCache.clear();
   }
 
   /**
-   * 统计指定文本的 token 数，结果会缓存并发布 tokenizer.counted 事件。
-   * 在消息组装或预算计算流程中，对每段文本调用以估算其 token 消耗。
-   * @param profileIdOrModelId 配置 ID 或模型 ID。
-   * @param text 要统计的文本。
-   * @returns 计数结果。
+   * 统计文本，用于预算、分页或状态汇总。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
+   * @param text 文本内容。
    */
   countText(profileIdOrModelId: string, text: string): TokenCountResult {
     const profile = this.getProfile(profileIdOrModelId);
+    // 键名。
     const key = `${profile.id}:${profile.strategy}:${text}`;
     const cached = this.countCache.get(key);
     const fromCache = cached !== undefined;
@@ -248,11 +237,10 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 统计多条消息的总 token 数，每条消息加上 messageOverhead。
-   * 在 token 预算计算流程中调用，用于估算当前上下文的总 token 消耗。
-   * @param profileIdOrModelId 配置 ID 或模型 ID。
+   * 统计Messages 列表，用于预算、分页或状态汇总。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
    * @param messages 消息列表。
-   * @returns 分消息的 token 计数结果。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   countMessages(profileIdOrModelId: string, messages: Array<TokenMessage>): TokenMessageCountResult {
     const profile = this.getProfile(profileIdOrModelId);
@@ -276,12 +264,11 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 构建 token 预算结果：计算可用提示词 token 数并判断是否超限。
-   * 在消息发送前由消息组装流程调用，用于判断是否需要裁剪消息。
-   * @param profileIdOrModelId 配置 ID 或模型 ID。
+   * 根据入参构建Budget 值，仅生成数据结构，不直接执行外部请求。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
    * @param messages 消息列表。
-   * @param completionReserve 为回复预留的 token 数。
-   * @returns 预算计算结果。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   buildBudget(profileIdOrModelId: string, messages: Array<TokenMessage>, completionReserve: number): TokenBudgetResult {
     const profile = this.getProfile(profileIdOrModelId);
@@ -305,12 +292,11 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 按预算裁剪消息列表：从最早的非系统消息开始移除，直到满足预算。
-   * 在消息发送前的最终流程中调用，确保发送给 AI 模型的消息长度在上下文窗口内。
-   * @param profileIdOrModelId 配置 ID 或模型 ID。
+   * 按预算裁剪Messages To Budget 值，避免超出上下文限制。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
    * @param messages 消息列表。
-   * @param completionReserve 为回复预留的 token 数。
-   * @returns 裁剪结果（预算结果 + 剩余消息 + 移除数量）。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   trimMessagesToBudget(profileIdOrModelId: string, messages: Array<TokenMessage>, completionReserve: number): TokenTrimResult {
     let remaining = this.copyMessages(messages);
@@ -333,10 +319,9 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 根据配置策略统计文本的 token 数。
-   * @param profile 分词器配置。
-   * @param text 要统计的文本。
-   * @returns token 数量。
+   * 统计指定配置，用于预算、分页或状态汇总。
+
+   * @param text 文本内容。
    */
   private countWithProfile(profile: TokenizerProfile, text: string): number {
     if (text.length === 0) {
@@ -349,9 +334,8 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 按空格分词统计单词数。
-   * @param text 要统计的文本。
-   * @returns 单词数量。
+   * 统计Words 列表，用于预算、分页或状态汇总。
+   * @param text 文本内容。
    */
   private countWords(text: string): number {
     const normalized = text.trim();
@@ -379,9 +363,9 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 查找最早一条可以被移除的非系统消息。
+   * 在当前集合中查找Oldest Removable Message 值，未命中时返回空值或默认位置。
    * @param messages 消息列表。
-   * @returns 可移除消息的索引，无可移除项时返回 -1。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   private findOldestRemovableMessage(messages: Array<TokenMessage>): number {
     for (let index = 0; index < messages.length - 1; index += 1) {
@@ -393,9 +377,9 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 深度复制消息列表，防止外部代码修改内部状态。
+   * 复制Messages 列表，避免外部修改内部状态。
    * @param messages 消息列表。
-   * @returns 消息列表的副本。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   private copyMessages(messages: Array<TokenMessage>): Array<TokenMessage> {
     const result = new Array<TokenMessage>();
@@ -409,7 +393,7 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 深度复制 TokenizerProfile，防止外部代码修改内部状态。
+   * 复制Profile 值，避免外部修改内部状态。
    */
   private copyProfile(profile: TokenizerProfile): TokenizerProfile {
     return {
@@ -425,8 +409,8 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 深度复制 TokenCountResult，防止外部代码修改内部状态。
-   * @param result 计数结果。
+   * 复制Count Result 值，避免外部修改内部状态。
+   * @param result 返回结果。
    */
   private copyCountResult(result: TokenCountResult): TokenCountResult {
     return {
@@ -439,8 +423,8 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 深度复制 TokenBudgetResult，防止外部代码修改内部状态。
-   * @param result 预算结果。
+   * 复制Budget Result 值，避免外部修改内部状态。
+   * @param result 返回结果。
    */
   private copyBudgetResult(result: TokenBudgetResult): TokenBudgetResult {
     return {
@@ -455,8 +439,7 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 注册所有内置的分词器配置（GPT-2、Llama、Claude 等）。
-   * 在构造函数中自动调用，确保 TokenizerRuntime 初始化时即包含常用模型的估算参数。
+   * 注册Default Profiles 列表，使其可被后续运行时流程使用。
    */
   private registerDefaultProfiles(): void {
     this.registerBuiltinProfile({
@@ -612,8 +595,8 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 注册内置配置到配置映射表中。
-   * @param params 配置参数。
+   * 注册Builtin Profile 值，使其可被后续运行时流程使用。
+   * @param params 创建、更新或执行操作所需的参数对象。
    */
   private registerBuiltinProfile(params: TokenizerProfileCreateParams): void {
     const profile: TokenizerProfile = {
@@ -630,23 +613,23 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 绑定内置模型 ID 到对应的配置。
-   * @param modelId 模型标识。
-   * @param profileId 配置标识。
+   * 把token 统计对象绑定到指定作用域，后续读取会按该绑定解析。
+   * @param modelId 目标模型标识。
+   * @param profileId 目标连接或预设配置标识。
    */
   private bindBuiltinModel(modelId: string, profileId: string): void {
     this.modelBindings.set(modelId, profileId);
   }
 
   /**
-   * 创建一个 TokenizerOption 结构。
-   * @param id 选项编号。
-   * @param key 选项键名。
-   * @param name 显示名称。
-   * @param profileId 关联的配置标识。
-   * @param canEncode 是否支持本地编码。
-   * @param remote 是否为远程 tokenizer。
-   * @returns 分词器选项。
+   * 创建新的分词器选项记录，写入存储并返回副本。
+   * @param id 唯一标识。
+   * @param key 键名。
+   * @param name 显示名称或注册名称。
+   * @param profileId 目标连接或预设配置标识。
+
+
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   private createTokenizerOption(id: number, key: string, name: string, profileId: string, canEncode: boolean, remote: boolean): TokenizerOption {
     return {
@@ -660,10 +643,10 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 查找匹配的 TokenizerOption：优先精确匹配 profileId + remote，再匹配 profileId。
-   * @param profileId 配置标识。
-   * @param remote 是否为远程。
-   * @returns 匹配的选项，兜底返回第一个。
+   * 在当前集合中查找Tokenizer Option 值，未命中时返回空值或默认位置。
+   * @param profileId 目标连接或预设配置标识。
+
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   private findTokenizerOption(profileId: string, remote: boolean): TokenizerOption {
     const options = this.listTokenizerOptions();
@@ -681,9 +664,8 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 根据文本内容（提供商+模型名称）解析出最适合的配置 ID。
-   * @param text 包含提供商和模型信息的文本。
-   * @returns 配置 ID，无法匹配时返回空字符串。
+   * 根据当前上下文解析Profile Id From Text 值，返回实际可用值。
+   * @param text 文本内容。
    */
   private resolveProfileIdFromText(text: string): string {
     const normalized = this.normalize(text);
@@ -733,18 +715,16 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 把输入字符串转为小写，用于不区分大小写的比较。
-   * @param value 原始字符串。
-   * @returns 小写化后的字符串。
+   * 规范化目标对象，保证后续比较和存储使用一致格式。
+   * @param value 要保存或比较的字段值。
    */
   private normalize(value: string): string {
     return value.toLowerCase();
   }
 
   /**
-   * 解析配置 ID：如果输入是已知的模型绑定，返回绑定的配置 ID，否则原样返回。
-   * @param profileIdOrModelId 配置 ID 或模型 ID。
-   * @returns 解析后的配置 ID。
+   * 根据当前上下文解析Profile 标识，返回实际可用值。
+   * @param profileIdOrModelId 目标分词器配置或模型标识。
    */
   private resolveProfileId(profileIdOrModelId: string): string {
     const binding = this.modelBindings.get(profileIdOrModelId);
@@ -752,8 +732,8 @@ export class TokenizerRuntime {
   }
 
   /**
-   * 确保指定配置存在，缺失时抛出错误。
-   * @param profileId 配置标识。
+   * 读取必须存在的Profile 值，缺失时抛出错误。
+   * @param profileId 目标连接或预设配置标识。
    */
   private requireProfile(profileId: string): TokenizerProfile {
     const profile = this.profiles.get(profileId);

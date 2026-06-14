@@ -1,11 +1,10 @@
 import {
   HdsListItem,
-  HdsListItemCard,
   hdsMaterial,
   HdsNavDestination,
   PrefixIcon,
   ScrollEffectType,
-  SuffixSwitch,
+  SuffixSwitch
 } from '@kit.UIDesignKit';
 import { FullPercent, hdsAttribute, symbolGlyphAttribute, symbolModifier, symbolSpanAttribute } from 'common';
 import { RouterName, RVRouter } from 'router';
@@ -29,7 +28,16 @@ export struct ModelProviderEditPage {
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.providerNameInput() }, } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.baseUrlInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.apiKeyInput() } } })
-        HdsListItem({ customItemBuilder: () => this.defaultItem() })
+        HdsListItem({
+          hdsListItemCard: {
+            prefixItem: new PrefixIcon({ iconValue: { symbol: $r("sys.symbol.checkmark") } }),
+            textItem: { primaryText: { text: $r("app.string.default_model_provider") }, },
+            suffixItem: new SuffixSwitch({
+              isCheck: this.state.isDefault,
+              onChange: (isCheck: boolean) => this.state.isDefault = isCheck
+            })
+          }
+        })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.modelListInput() } } })
       }
       .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
@@ -93,20 +101,6 @@ export struct ModelProviderEditPage {
   @Builder
   private modelListInput() {
     ModelListInput({ state: this.state, vm: this.vm })
-  }
-
-  @Builder
-  private defaultItem() {
-    HdsListItemCard({
-      prefixItem: new PrefixIcon({ iconValue: { symbol: $r("sys.symbol.checkmark") } }),
-      textItem: { primaryText: { text: $r("app.string.default_model_provider") }, },
-      suffixItem: new SuffixSwitch({
-        isCheck: this.state.isDefault,
-        onChange: (isCheck: boolean) => {
-          this.state.isDefault = isCheck
-        }
-      })
-    })
   }
 
   public static start(onPop?: () => void) {

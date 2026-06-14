@@ -1,4 +1,9 @@
 import { EventBus } from '../runtime/EventBus';
+import type {
+  ProviderId,
+  SecretRef,
+  TavernScope,
+} from '../contracts/PublicContracts';
 import { safePathSegment } from '../shared/PathSafety';
 import { JsonStore } from '../storage/JsonStore';
 import type { TavernFileStore } from '../storage/TavernFileStore';
@@ -22,23 +27,36 @@ interface SecretStorageSnapshot {
 
 /**
  * 提供密钥引用相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
- * 在对话流程中由 ProviderRuntime 调用以获取 API 密钥（readActiveSecret / readSecret），
- * 由 UI 层调用以管理密钥（createSecret / updateSecret / deleteSecret / rotateSecret）。
  */
 export class SecretRuntime {
+  /**
+   * 事件总线。
+   */
   private events: EventBus;
+  /**
+   * 文件存储适配器；未传入时仅使用内存态。
+   */
   private files: TavernFileStore | undefined = undefined;
+  /**
+   * 数据根路径。
+   */
   private rootPath: string = 'tavern-data';
+  /**
+   * 用户标识。
+   */
   private userId: string = 'default';
+  /**
+   * 记录副本列表，由当前实例内部维护。
+   */
   private records: Map<string, SecretRecord> = new Map<string, SecretRecord>();
+  /**
+   * values 列表，由当前实例内部维护。
+   */
   private values: Map<string, SecretValueRecord> = new Map<string, SecretValueRecord>();
 
   /**
    * 初始化当前运行时实例。
-   * @param events 事件总线实例，用于发布密钥创建、更新、删除、轮换等事件。
-   * @param files 文件存储适配器，非必选；传入时支持 saveToStore / loadFromStore 持久化，未传入时仅使用内存态。
-   * @param rootPath 数据根路径，默认为 "tavern-data"，用于拼接文件存储路径。
-   * @param userId 用户标识，默认为 "default"，用于拼接文件存储路径以隔离多用户数据。
+   * @param events 事件总线。
    */
   constructor(events: EventBus, files?: TavernFileStore, rootPath: string = 'tavern-data', userId: string = 'default') {
     this.events = events;
@@ -49,7 +67,6 @@ export class SecretRuntime {
 
   /**
    * 从 SDK 内部文件存储恢复密钥记录和值。
-   * 由宿主在应用启动时调用，从持久化文件中加载之前保存的密钥索引和明文值。
    */
   async loadFromStore(): Promise<void> {
     const store = new JsonStore<SecretStorageSnapshot>(this.requireFiles(), this.storagePath());
@@ -68,8 +85,6 @@ export class SecretRuntime {
 
   /**
    * 把当前密钥记录和值写入 SDK 内部文件存储。
-   * 由宿主在密钥发生变更后调用（如 createSecret / updateSecret / deleteSecret 后），
-   * 持久化当前内存中的全部密钥索引和明文值。
    */
   async saveToStore(): Promise<void> {
     const records = this.cloneRecords(Array.from(this.records.values()));
@@ -83,13 +98,13 @@ export class SecretRuntime {
   }
 
   /**
-   * 创建新密钥，写入内存索引，若 active 为 true 则停用同作用域下其他密钥。
-   * 由 UI 层在用户添加新 API 密钥时调用，创建后通过 "secret.created" 事件通知宿主。
-   * @param params 密钥创建参数，包含标识、provider、作用域、标签、值和激活状态，来自 UI 表单输入。
-   * @returns 新创建密钥记录的副本。
+   * 创建新的密钥记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
    */
   createSecret(params: SecretCreateParams): SecretRecord {
     const now = Date.now();
+    // 密钥引用。
     const secretRef = this.makeSecretRef(params.providerId, params.id);
     if (this.records.has(secretRef)) {
       throw new Error(`Secret already exists: ${secretRef}`);
@@ -119,14 +134,13 @@ export class SecretRuntime {
   }
 
   /**
-   * 更新密钥的标签和激活状态，若 active 更改为 true 则停用同作用域下其他密钥。
-   * 由 UI 层在用户编辑密钥信息时调用，更新后通过 "secret.updated" 事件通知宿主。
-   * @param secretRef 要更新的密钥引用标识，由用户选择的具体目标密钥决定。
-   * @param label 新的显示标签，由用户在 UI 编辑框中输入。
-   * @param active 新的激活状态，由用户在 UI 开关控件中选择。
-   * @returns 更新后的密钥记录副本。
+   * 更新指定密钥，写回存储并按需发布变更事件。
+   * @param secretRef 密钥引用。
+   * @param label 展示标签。
+
+   * @returns 条件命中时返回 true，否则返回 false。
    */
-  updateSecret(secretRef: string, label: string, active: boolean): SecretRecord {
+  updateSecret(secretRef: SecretRef, label: string, active: boolean): SecretRecord {
     const record = this.requireRecord(secretRef);
     if (active) {
       this.deactivateProviderScope(record.providerId, record.scope, record.scopeId);
@@ -139,11 +153,10 @@ export class SecretRuntime {
   }
 
   /**
-   * 删除指定密钥及其明文值，并从内存中移除，发布删除事件。
-   * 由 UI 层在用户删除密钥时调用。
-   * @param secretRef 要删除的密钥引用标识，由用户选择的具体目标密钥决定。
+   * 删除指定密钥，并清理相关索引或资源引用。
+   * @param secretRef 密钥引用。
    */
-  deleteSecret(secretRef: string): void {
+  deleteSecret(secretRef: SecretRef): void {
     const record = this.requireRecord(secretRef);
     this.records.delete(secretRef);
     this.values.delete(secretRef);
@@ -155,25 +168,24 @@ export class SecretRuntime {
   }
 
   /**
-   * 轮换密钥：停用旧密钥并用新密钥替换，发布轮换事件。
-   * 由 UI 层或自动安全策略在需要刷新密钥时调用（如检测到密钥泄露或定期更换）。
-   * 新密钥自动激活，旧密钥被停用但保留在索引中供审计。
-   * @param providerId provider 唯一标识，用于定位当前激活的旧密钥。
-   * @param scope 密钥作用域，用于定位当前激活的旧密钥。
-   * @param scopeId 作用域下的具体对象标识，用于定位当前激活的旧密钥。
-   * @param id 新密钥的唯一标识，由调用方提供以区别于旧密钥。
-   * @param value 新密钥的明文值，替换旧密钥的鉴权令牌。
-   * @param label 新密钥的显示标签，用于在 UI 中标识新密钥的用途。
+   * 执行 rotateSecret 的内部处理步骤，供当前模块复用。
+   * @param providerId 目标模型服务标识。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param id 唯一标识。
+   * @param value 要保存或比较的字段值。
+   * @param label 展示标签。
    */
   rotateSecret(
-    providerId: string,
-    scope: string,
+    providerId: ProviderId,
+    scope: TavernScope,
     scopeId: string,
     id: string,
     value: string,
     label: string,
   ): SecretRecord {
     const previousSecretRef = this.findActiveSecretRef(providerId, scope, scopeId);
+    // 调用参数。
     const params: SecretCreateParams = {
       id: id,
       providerId: providerId,
@@ -194,13 +206,11 @@ export class SecretRuntime {
   }
 
   /**
-   * 读取指定密钥引用的明文值，需通过访问权限检查。
-   * 由 ProviderRuntime 在构建 API 鉴权请求时调用，读取指定密钥的明文以设置 Authorization header。
-   * @param secretRef 要读取的密钥引用标识，通常来自 readActiveSecret 或其他查找结果。
-   * @param options 访问权限选项，包含调用方权限列表，需包含 "secret:read" 权限。
-   * @returns 密钥明文值；无权访问或不存在时返回空字符串。
+   * 读取Secret 值，并转换为运行时使用的数据结构。
+   * @param secretRef 密钥引用。
+   * @param options 控制本次调用行为的选项。
    */
-  readSecret(secretRef: string, options: SecretAccessOptions): string {
+  readSecret(secretRef: SecretRef, options: SecretAccessOptions): string {
     if (!this.canRead(options)) {
       return '';
     }
@@ -212,16 +222,14 @@ export class SecretRuntime {
   }
 
   /**
-   * 读取指定作用域下处于激活状态的密钥明文值。
-   * 由 ProviderRuntime 在构建 API 请求时调用，自动查找当前作用域的活跃密钥。
-   * 按 providerId + scope + scopeId 查找激活密钥，然后通过 readSecret 获取明文值。
-   * @param providerId provider 标识，用于定位具体 provider 在指定作用域下的密钥。
-   * @param scope 密钥作用域（如 "global"），用于进一步限定查找范围。
-   * @param scopeId 作用域下的具体对象标识，用于精确定位。
-   * @param options 访问权限选项，传递到 readSecret 进行权限校验。
-   * @returns 激活密钥的明文值；未找到或无权访问时返回空字符串。
+   * 读取Active Secret 值，并转换为运行时使用的数据结构。
+   * @param providerId 目标模型服务标识。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param options 控制本次调用行为的选项。
    */
-  readActiveSecret(providerId: string, scope: string, scopeId: string, options: SecretAccessOptions): string {
+  readActiveSecret(providerId: ProviderId, scope: TavernScope, scopeId: string, options: SecretAccessOptions): string {
+    // 密钥引用。
     const secretRef = this.findActiveSecretRef(providerId, scope, scopeId);
     if (secretRef.length === 0) {
       return '';
@@ -230,12 +238,11 @@ export class SecretRuntime {
   }
 
   /**
-   * 获取指定 provider 下所有密钥的脱敏状态记录列表。
-   * 由 UI 层在密钥管理界面初始化或刷新时调用，获取脱敏后的密钥列表以安全展示在 UI 上。
-   * @param providerId 要查询的 provider 标识；传入空字符串则返回所有 provider 的密钥。
-   * @returns 脱敏密钥状态记录列表副本。
+   * 读取SecretStates列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param providerId 目标模型服务标识。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
-  listSecretStates(providerId: string): Array<SecretStateRecord> {
+  listSecretStates(providerId: ProviderId): Array<SecretStateRecord> {
     const result = new Array<SecretStateRecord>();
     const records = Array.from(this.records.values());
     for (let index = 0; index < records.length; index += 1) {
@@ -248,9 +255,8 @@ export class SecretRuntime {
   }
 
   /**
-   * 导出密钥索引记录（不含明文值），用于备份或迁移。
-   * 由宿主在触发密钥导出操作时调用，返回脱敏后的密钥元信息列表。
-   * @returns 密钥导出记录列表副本，包含脱敏值。
+   * 导出密钥索引，用于备份、迁移或与 SillyTavern 数据互通。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   exportIndex(): Array<SecretExportRecord> {
     const result = new Array<SecretExportRecord>();
@@ -274,10 +280,8 @@ export class SecretRuntime {
   }
 
   /**
-   * 对密钥明文进行脱敏处理：短密钥完全遮蔽，长密钥仅保留末尾 3 位。
-   * 由 toState 在生成 SecretStateRecord 和 SecretExportRecord 时调用，用于前端安全展示。
-   * @param value 密钥明文，来自 values 映射中的 SecretValueRecord.value。
-   * @returns 脱敏后的字符串。
+   * 执行 maskValue 的内部处理步骤，供当前模块复用。
+   * @param value 要保存或比较的字段值。
    */
   maskValue(value: string): string {
     const threshold = 10;
@@ -293,11 +297,10 @@ export class SecretRuntime {
   }
 
   /**
-   * 查找指定密钥引用对应的记录，不存在时抛出异常。
-   * @param secretRef 密钥引用标识。
-   * @returns 匹配的密钥记录。
+   * 读取必须存在的Record 值，缺失时抛出错误。
+   * @param secretRef 密钥引用。
    */
-  private requireRecord(secretRef: string): SecretRecord {
+  private requireRecord(secretRef: SecretRef): SecretRecord {
     const record = this.records.get(secretRef);
     if (record === undefined) {
       throw new Error(`Secret not found: ${secretRef}`);
@@ -325,9 +328,9 @@ export class SecretRuntime {
   }
 
   /**
-   * 检查调用方权限列表中是否包含 "secret:read" 权限。
-   * @param options 访问权限选项。
-   * @returns 包含 "secret:read" 权限时返回 true。
+   * 检查Read是否满足当前规则。
+   * @param options 控制本次调用行为的选项。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   private canRead(options: SecretAccessOptions): boolean {
     for (let index = 0; index < options.permissions.length; index += 1) {
@@ -339,8 +342,8 @@ export class SecretRuntime {
   }
 
   /**
-   * 将密钥记录转换为对外展示的脱敏状态记录，遮蔽明文值。
-   * @param record 原始密钥记录。
+   * 把密钥记录转换为可展示的脱敏状态。
+   * @param record 记录副本。
    */
   private toState(record: SecretRecord): SecretStateRecord {
     const value = this.values.get(record.secretRef);
@@ -361,12 +364,12 @@ export class SecretRuntime {
   }
 
   /**
-   * 停用指定 provider 和作用域下的所有密钥，用于新密钥激活时。
-   * @param providerId provider 标识。
-   * @param scope 作用域。
+   * 更新模型服务Scope状态，必要时写回存储并发布对应事件。
+   * @param providerId 目标模型服务标识。
+   * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
    */
-  private deactivateProviderScope(providerId: string, scope: string, scopeId: string): void {
+  private deactivateProviderScope(providerId: ProviderId, scope: TavernScope, scopeId: string): void {
     const records = Array.from(this.records.values());
     for (let index = 0; index < records.length; index += 1) {
       const record = records[index];
@@ -378,13 +381,12 @@ export class SecretRuntime {
   }
 
   /**
-   * 查找指定作用域下的激活密钥引用，未找到时返回空字符串。
-   * @param providerId provider 标识。
-   * @param scope 作用域。
+   * 在当前集合中查找Active Secret Ref 值，未命中时返回空值或默认位置。
+   * @param providerId 目标模型服务标识。
+   * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
-   * @returns 激活密钥的引用标识；不存在时返回空字符串。
    */
-  private findActiveSecretRef(providerId: string, scope: string, scopeId: string): string {
+  private findActiveSecretRef(providerId: ProviderId, scope: TavernScope, scopeId: string): SecretRef {
     const records = Array.from(this.records.values());
     for (let index = 0; index < records.length; index += 1) {
       const record = records[index];
@@ -394,14 +396,15 @@ export class SecretRuntime {
     }
     return '';
   }
-  private makeSecretRef(providerId: string, id: string): string {
+  private makeSecretRef(providerId: ProviderId, id: string): SecretRef {
     return `secret:${providerId}:${id}`;
   }
 
   /**
-   * 发布密钥相关事件，通知宿主或其他 Runtime。
-   * @param eventName 事件名称（如 "secret.created"、"secret.updated"）。
-   * @param secret 发生变化的密钥记录。
+   * 发布密钥引用事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+
+   */
   private publishSecretEvent(eventName: string, secret: SecretRecord): void {
     const payloadSecret = this.cloneRecord(secret);
     const payload: SecretEventPayload = {
@@ -411,8 +414,8 @@ export class SecretRuntime {
   }
 
   /**
-   * 深拷贝密钥记录，防止外部修改内部状态。
-   * @param record 待拷贝的密钥记录。
+   * 复制Record 值，避免外部修改内部状态。
+   * @param record 记录副本。
    */
   private cloneRecord(record: SecretRecord): SecretRecord {
     return {

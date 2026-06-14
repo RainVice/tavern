@@ -1,15 +1,19 @@
 import type { VectorHit } from '../vector/VectorModels';
+import type {
+  ChatMessageRole,
+  TavernScope,
+} from '../contracts/PublicContracts';
 
 /**
  * 描述RAG 检索模块在运行时交换的数据结构。
  */
 export interface RagChatMessage {
   /**
-   * 消息角色（如 user、assistant、system），用于标识消息来源以便提取用户查询。
+   * role 值，由当前实例内部维护。
    */
-  role: string;
+  role: ChatMessageRole;
   /**
-   * 消息文本内容，RAG 查询构建时从此字段提取用户输入或对话上下文。
+   * 内容。
    */
   content: string;
 }
@@ -19,31 +23,31 @@ export interface RagChatMessage {
  */
 export interface RagRetrievalInput {
   /**
-   * 查询文本，用于构建 RAG 检索的输入。可为用户最后一条消息或近期对话摘要。
+   * 查询条件。
    */
   query: string;
   /**
-   * 查询文本的向量嵌入表示，由 Embedding 模块生成，用于向量相似度检索。
+   * query Embedding 值，由当前实例内部维护。
    */
   queryEmbedding: Array<number>;
   /**
-   * 检索范围：目标向量集合的标识列表，限定搜索仅在指定的集合内进行。
+   * collection 标识列表。
    */
   collectionIds: Array<string>;
   /**
-   * 检索返回的最相似结果数，控制检索精度和后续拼接的上下文量。
+   * top K 值，由当前实例内部维护。
    */
   topK: number;
   /**
-   * 向量相似度过滤阈值，低于该值的命中将被丢弃，用于保证检索结果的相关性。
+   * score Threshold 值，由当前实例内部维护。
    */
   scoreThreshold: number;
   /**
-   * 检索作用域（如 global、character 等），用于配合向量数据库的作用域过滤机制。
+   * 作用域。
    */
-  scope: string;
+  scope: TavernScope;
   /**
-   * 将检索结果拼接后使用的 Prompt 模板，其中 ${text} 会被替换为拼接文本——用于生成最终的 RAG 提示词。
+   * prompt Template 值，由当前实例内部维护。
    */
   promptTemplate: string;
 }
@@ -53,31 +57,31 @@ export interface RagRetrievalInput {
  */
 export interface RagChunk {
   /**
-   * 该文本片段所属向量集合标识，用于追踪检索结果来源。
+   * collection 标识。
    */
   collectionId: string;
   /**
-   * 该文本片段在向量库中的标识，用于关联原始向量记录。
+   * vector 标识。
    */
   vectorId: string;
   /**
-   * 该文本片段所属文档标识，用于关联该片段的原始文档来源。
+   * document 标识。
    */
   documentId: string;
   /**
-   * 作用域标识，用于标识该片段的业务归属范围（如角色或全局）。
+   * 作用域。
    */
-  scope: string;
+  scope: TavernScope;
   /**
-   * 检索命中的文本内容，将被拼接后注入生成 Prompt。
+   * 文本内容。
    */
   text: string;
   /**
-   * 与查询向量的相似度得分，用于排序和过滤检索结果。
+   * score 值，由当前实例内部维护。
    */
   score: number;
   /**
-   * 关联的元数据 JSON 字符串，携带该片段的额外属性供调用方使用。
+   * metadata JSON 字符串。
    */
   metadataJson: string;
 }
@@ -87,23 +91,23 @@ export interface RagChunk {
  */
 export interface RagRetrievalResult {
   /**
-   * 原始查询文本，用于关联检索输入与输出。
+   * 查询条件。
    */
   query: string;
   /**
-   * 检索命中的文本片段列表，按相似度降序排列。
+   * chunks 列表，由当前实例内部维护。
    */
   chunks: Array<RagChunk>;
   /**
-   * 各命中片段对应的相似度得分列表，与 chunks 按索引一一对应。
+   * scores 列表，由当前实例内部维护。
    */
   scores: Array<number>;
   /**
-   * 将命中文本拼接后应用 Prompt 模板生成的最终提示文本，用于注入 LLM 请求。
+   * prompt Text 值，由当前实例内部维护。
    */
   promptText: string;
   /**
-   * 调试追踪信息，格式为 "collectionId:vectorId:score" 的换行拼接——用于调试和日志。
+   * debug Trace 值，由当前实例内部维护。
    */
   debugTrace: string;
 }
@@ -113,19 +117,19 @@ export interface RagRetrievalResult {
  */
 export interface RagRetrievedPayload {
   /**
-   * 原始查询文本，用于通知监听方本次检索的输入。
+   * 查询条件。
    */
   query: string;
   /**
-   * 检索命中的文本片段列表副本，用于通知监听方检索到的上下文内容。
+   * chunks 列表，由当前实例内部维护。
    */
   chunks: Array<RagChunk>;
   /**
-   * 各命中片段对应的相似度得分列表副本，用于通知监听方检索结果的质量。
+   * scores 列表，由当前实例内部维护。
    */
   scores: Array<number>;
   /**
-   * 应用 Prompt 模板后生成的提示文本，用于通知监听方最终注入 LLM 的内容。
+   * prompt Text 值，由当前实例内部维护。
    */
   promptText: string;
 }
@@ -135,7 +139,7 @@ export interface RagRetrievedPayload {
  */
 export interface RagVectorHitSource {
   /**
-   * 向量检索的原始命中结果，提供从 RAG 上下文访问底层向量命中数据的入口。
+   * hit 值，由当前实例内部维护。
    */
   hit: VectorHit;
 }

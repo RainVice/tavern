@@ -8,112 +8,101 @@ import type {
 
 /**
  * 提供UI 桥接相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
- * 在 Runtime 需要与宿主 UI 交互（弹窗、输入框、确认框、选择器、文件选择、Toast、加载动画、进度条、媒体预览等）时使用。
  */
 export class UIBridgeRuntime {
   /**
-   * 事件总线实例，用于发布 UI 请求和响应事件。
+   * 事件总线。
    */
   private events: EventBus;
   /**
-   * 按 ID 保存的 UI 请求映射表。
+   * requests 列表，由当前实例内部维护。
    */
   private requests: Map<string, UIRequestRecord> = new Map<string, UIRequestRecord>();
   /**
-   * 请求自增 ID 计数器。
+   * counter 值，由当前实例内部维护。
    */
   private counter: number = 0;
 
   /**
-   * 初始化 UIBridgeRuntime 实例。
-   * @param events 事件总线实例，由宿主在初始化时注入。
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 发起弹窗请求。
-   * 在需要向用户展示信息提示时由 Runtime 调用。
-   * @param title 弹窗标题。
-   * @param message 弹窗消息。
-   * @returns 新建的 UI 请求记录。
+   * 执行 requestPopup 的内部处理步骤，供当前模块复用。
+   * @param title 标题。
+   * @param message 消息记录。
    */
   requestPopup(title: string, message: string): UIRequestRecord {
     return this.createRequest('popup', title, message, '', '', false, '', true, '', '', '', 0, 0, false);
   }
 
   /**
-   * 发起输入框请求。
-   * 在需要用户输入文本时由 Runtime 调用。
+   * 执行 requestInput 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param message 提示消息。
-   * @param defaultValue 默认输入值。
+   * @param message 消息记录。
+   * @param defaultValue 未输入时使用的默认值。
    */
   requestInput(title: string, message: string, defaultValue: string): UIRequestRecord {
     return this.createRequest('input', title, message, defaultValue, '', false, '', true, '', '', '', 0, 0, false);
   }
 
   /**
-   * 发起确认对话框请求。
-   * 在需要用户确认操作时由 Runtime 调用。
+   * 执行 requestConfirm 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param message 确认消息。
+   * @param message 消息记录。
    */
   requestConfirm(title: string, message: string): UIRequestRecord {
     return this.createRequest('confirm', title, message, '', '', false, '', true, '', '', '', 0, 0, false);
   }
 
   /**
-   * 发起选择列表请求。
-   * 在需要用户从列表中选择时由 Runtime 调用。
+   * 执行 requestSelect 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param options 可选项列表。
+   * @param options 控制本次调用行为的选项。
    * @param multiple 是否允许多选。
-   * @returns 新建的 UI 请求记录。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   requestSelect(title: string, options: Array<string>, multiple: boolean): UIRequestRecord {
     return this.createRequest('select', title, '', '', this.optionsJson(options), multiple, '', true, '', '', '', 0, 0, false);
   }
 
   /**
-   * 发起文件选择器请求。
-   * 在需要用户选择文件时由 Runtime 调用。
+   * 执行 requestFilePicker 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param extensions 允许的文件扩展名列表。
+
    * @param multiple 是否允许多选。
-   * @returns 新建的 UI 请求记录。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   requestFilePicker(title: string, extensions: Array<string>, multiple: boolean): UIRequestRecord {
     return this.createRequest('file_picker', title, '', '', this.optionsJson(extensions), multiple, '', true, '', '', '', 0, 0, false);
   }
 
   /**
-   * 发起 Toast 消息请求。
-   * 在需要向用户展示简短提示消息时由 Runtime 调用。
-   * @param message 消息内容。
-   * @param severity 严重级别（如 "info" / "warning" / "error"）。
+   * 执行 requestToast 的内部处理步骤，供当前模块复用。
+   * @param message 消息记录。
    */
   requestToast(message: string, severity: string): UIRequestRecord {
     return this.createRequest('toast', message, message, '', '', false, severity, true, '', '', '', 0, 0, false);
   }
 
   /**
-   * 发起加载动画请求。
-   * 在需要显示或隐藏加载状态时由 Runtime 调用。
+   * 执行 requestLoader 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param visible 是否显示加载 UI。
-   * @returns 新建的 UI 请求记录。
+   * @param visible 是否显示对应 UI。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   requestLoader(title: string, visible: boolean): UIRequestRecord {
     return this.createRequest('loader', title, '', '', '', false, '', visible, '', '', '', 0, 0, false);
   }
 
   /**
-   * 发起进度条请求。
-   * 在需要展示操作进度时由 Runtime 调用。
+   * 执行 requestProgress 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param current 当前进度值。
+   * @param current 当前处理路径或状态。
    * @param total 总进度值。
    */
   requestProgress(title: string, current: number, total: number): UIRequestRecord {
@@ -121,10 +110,9 @@ export class UIBridgeRuntime {
   }
 
   /**
-   * 发起媒体预览请求。
-   * 在需要展示图片或视频时由 Runtime 调用。
+   * 执行 requestMediaPreview 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param mediaType 媒体类型（如 "image" / "video"）。
+   * @param mediaType 媒体类型。
    * @param mediaUri 媒体资源 URI。
    */
   requestMediaPreview(title: string, mediaType: string, mediaUri: string): UIRequestRecord {
@@ -132,53 +120,47 @@ export class UIBridgeRuntime {
   }
 
   /**
-   * 发起音频播放请求。
-   * 在需要播放语音或音频时由 Runtime 调用。
+   * 执行 requestAudioPlayback 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param mediaUri 音频资源 URI。
+   * @param mediaUri 媒体资源 URI。
    * @param autoPlay 是否自动播放。
-   * @returns 新建的 UI 请求记录。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   requestAudioPlayback(title: string, mediaUri: string, autoPlay: boolean): UIRequestRecord {
     return this.createRequest('audio_playback', title, '', '', '', false, '', true, 'audio', mediaUri, '', 0, 0, autoPlay);
   }
 
   /**
-   * 发起剪贴板操作请求。
-   * 在需要复制文本到剪贴板时由 Runtime 调用。
+   * 执行 requestClipboard 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param value 要复制到剪贴板的值。
+   * @param value 要保存或比较的字段值。
    */
   requestClipboard(title: string, value: string): UIRequestRecord {
     return this.createRequest('clipboard', title, '', value, '', false, '', true, '', '', '', 0, 0, false);
   }
 
   /**
-   * 发起导航请求。
-   * 在需要跳转到指定页面时由 Runtime 调用。
+   * 执行 requestNavigation 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param target 导航目标路径。
+   * @param target 目标对象。
    */
   requestNavigation(title: string, target: string): UIRequestRecord {
     return this.createRequest('navigation', title, '', '', '', false, '', true, '', '', target, 0, 0, false);
   }
 
   /**
-   * 发起权限请求弹窗。
-   * 在需要请求用户授权时由 Runtime 调用。
+   * 执行 requestPermission 的内部处理步骤，供当前模块复用。
    * @param title 标题。
-   * @param message 权限说明消息。
+   * @param message 消息记录。
    */
   requestPermission(title: string, message: string): UIRequestRecord {
     return this.createRequest('permission', title, message, '', '', false, '', true, '', '', '', 0, 0, false);
   }
 
   /**
-   * 宿主响应 UI 请求，标记为已处理并发布 ui.resolved 事件。
-   * 在宿主 UI 处理完交互（用户已操作弹窗/输入框等）后调用，通知发起方获取用户输入结果。
+   * 执行 respond 的内部处理步骤，供当前模块复用。
    * @param requestId 目标请求标识。
-   * @param response 宿主返回的响应。
-   * @returns 更新后的请求记录。
+   * @param response 宿主返回的响应对象。
    */
   respond(requestId: string, response: UIRequestResponse): UIRequestRecord {
     const request = this.requireRequest(requestId);
@@ -193,17 +175,17 @@ export class UIBridgeRuntime {
   }
 
   /**
-   * 获取指定请求的记录。
+   * 读取指定请求，不存在时抛出错误。
    * @param requestId 目标请求标识。
-   * @returns 请求记录副本。
+   * @returns 更新或读取后的记录副本。
    */
   getRequest(requestId: string): UIRequestRecord {
     return this.cloneRequest(this.requireRequest(requestId));
   }
 
   /**
-   * 列出所有 UI 请求记录。
-   * @returns 请求记录副本数组。
+   * 读取请求列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   listRequests(): Array<UIRequestRecord> {
     const result = new Array<UIRequestRecord>();
@@ -215,8 +197,8 @@ export class UIBridgeRuntime {
   }
 
   /**
-   * 获取所有未处理的（pending）请求。
-   * @returns 未处理的请求记录副本列表。
+   * 读取Pending Requests 列表，不存在时通常抛出错误或返回空值。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   getPendingRequests(): Array<UIRequestRecord> {
     const result = new Array<UIRequestRecord>();
@@ -230,7 +212,7 @@ export class UIBridgeRuntime {
   }
 
   /**
-   * 清理所有已处理的（resolved）请求。
+   * 删除或清理Resolved，并同步维护相关索引或状态。
    */
   clearResolved(): void {
     const keys = Array.from(this.requests.keys());
@@ -243,22 +225,22 @@ export class UIBridgeRuntime {
   }
 
   /**
-   * 创建新的 UI 请求记录并发布 ui.requested 事件。
-   * @param requestType 请求类型。
+   * 创建新的请求记录，写入存储并返回副本。
+
    * @param title 标题。
-   * @param message 消息。
-   * @param defaultValue 默认值。
-   * @param optionsJson 选项 JSON。
-   * @param multiple 是否多选。
-   * @param severity 严重级别。
-   * @param visible 是否可见。
+   * @param message 消息记录。
+   * @param defaultValue 未输入时使用的默认值。
+   * @param optionsJson options JSON 字符串。
+   * @param multiple 是否允许多选。
+
+   * @param visible 是否显示对应 UI。
    * @param mediaType 媒体类型。
-   * @param mediaUri 媒体 URI。
-   * @param target 导航目标。
-   * @param progressCurrent 当前进度。
-   * @param progressTotal 总进度。
+   * @param mediaUri 媒体资源 URI。
+   * @param target 目标对象。
+
+
    * @param autoPlay 是否自动播放。
-   * @returns 新建的请求记录。
+   * @returns 更新或读取后的记录副本。
    */
   private createRequest(
     requestType: string,
@@ -308,7 +290,7 @@ export class UIBridgeRuntime {
   }
 
   /**
-   * 确保指定请求存在，缺失时抛出错误。
+   * 读取必须存在的Request 值，缺失时抛出错误。
    * @param requestId 目标请求标识。
    */
   private requireRequest(requestId: string): UIRequestRecord {
@@ -331,8 +313,8 @@ export class UIBridgeRuntime {
   }
 
   /**
-   * 深度复制 UIRequestResponse，防止外部代码修改内部状态。
-   * @param response 待复制的响应对象。
+   * 复制Response 值，避免外部修改内部状态。
+   * @param response 宿主返回的响应对象。
    */
   private cloneResponse(response: UIRequestResponse): UIRequestResponse {
     const cloned: UIRequestResponse = {
@@ -347,8 +329,8 @@ export class UIBridgeRuntime {
   }
 
   /**
-   * 深度复制 UIRequestRecord，防止外部代码修改内部状态。
-   * @param request 待复制的请求记录。
+   * 复制Request 值，避免外部修改内部状态。
+   * @param request 待处理的请求对象。
    */
   private cloneRequest(request: UIRequestRecord): UIRequestRecord {
     return {

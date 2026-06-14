@@ -1,4 +1,5 @@
 import { EventBus } from '../runtime/EventBus';
+import type { TavernScope } from '../contracts/PublicContracts';
 import { safePathSegment } from '../shared/PathSafety';
 import { JsonStore } from '../storage/JsonStore';
 import type { TavernFileStore } from '../storage/TavernFileStore';
@@ -22,53 +23,42 @@ interface PersonaStorageSnapshot {
 
 /**
  * 提供用户人格相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
- * 调用方（如聊天系统、Prompt 组装器）通过此运行时管理用户身份的选择、绑定和 Prompt 数据提供。
  */
 export class PersonaRuntime {
   /**
-   * 事件总线，用于在用户人格创建、更新、删除、切换时发布事件，通知监听方（如 UI 层）刷新显示。
+   * 事件总线。
    */
   private events: EventBus;
   /**
-   * 文件存储适配器；未传入时仅使用内存态，不进行持久化。
+   * 文件存储适配器；未传入时仅使用内存态。
    */
   private files: TavernFileStore | undefined = undefined;
   /**
-   * 数据持久化的根路径，决定了人格数据在文件系统中的存储位置。
+   * 数据根路径。
    */
   private rootPath: string = 'tavern-data';
   /**
-   * 当前用户的标识，用于在文件系统中隔离不同用户的人格数据。
+   * 用户标识。
    */
   private userId: string = 'default';
   /**
-   * 用户人格记录的内存索引，键为人格 ID。
-   * 用于所有人格 CRUD 操作和 Prompt 数据构建。
+   * personas 列表，由当前实例内部维护。
    */
   private personas: Map<string, PersonaRecord> = new Map<string, PersonaRecord>();
   /**
-   * 用户人格与作用域的绑定索引，键为 scope:scopeId。
-   * 用于 bindPersona 和 buildPromptDataForScope 中的作用域解析。
+   * bindings 列表，由当前实例内部维护。
    */
   private bindings: Map<string, PersonaBindingRecord> = new Map<string, PersonaBindingRecord>();
   /**
-   * 当前选中的用户人格标识，用于 getSelectedPersona 和 selectPersona 切换。
+   * selected Persona 标识。
    */
   private selectedPersonaId: string = '';
 
   /**
    * 初始化当前运行时实例。
-   * @param events 事件总线实例，用于发送用户人格变更事件。
-   * @param files 可选的文件存储适配器，提供后将支持持久化。未传入时仅使用内存态。
-   * @param rootPath 数据持久化根路径，用于构建存储文件路径。
-   * @param userId 当前用户标识，用于隔离不同用户的人格数据。
+   * @param events 事件总线。
    */
-  constructor(
-    events: EventBus,
-    files?: TavernFileStore,
-    rootPath: string = 'tavern-data',
-    userId: string = 'default',
-  ) {
+  constructor(events: EventBus, files?: TavernFileStore, rootPath: string = 'tavern-data', userId: string = 'default') {
     this.events = events;
     this.files = files;
     this.rootPath = rootPath;
@@ -76,14 +66,10 @@ export class PersonaRuntime {
   }
 
   /**
-   * 从文件存储中恢复用户人格记录、绑定关系和选中状态。
-   * 调用方在应用启动时调用，确保运行时状态与持久化数据一致。
+   * 从 SDK 内部文件存储恢复用户人格、选中状态和绑定关系。
    */
   async loadFromStore(): Promise<void> {
-    const store = new JsonStore<PersonaStorageSnapshot>(
-      this.requireFiles(),
-      this.storagePath(),
-    );
+    const store = new JsonStore<PersonaStorageSnapshot>(this.requireFiles(), this.storagePath());
     const snapshot = await store.read(this.defaultStorageSnapshot());
     this.personas.clear();
     this.bindings.clear();
@@ -93,17 +79,13 @@ export class PersonaRuntime {
     }
     for (let index = 0; index < snapshot.bindings.length; index += 1) {
       const binding = this.cloneBinding(snapshot.bindings[index]);
-      this.bindings.set(
-        this.bindingKey(binding.scope, binding.scopeId),
-        binding,
-      );
+      this.bindings.set(this.bindingKey(binding.scope, binding.scopeId), binding);
     }
     this.selectedPersonaId = snapshot.selectedPersonaId;
   }
 
   /**
-   * 将当前内存中的用户人格记录、绑定关系和选中状态写入文件存储。
-   * 调用方在人格管理操作（创建、更新、删除、绑定、切换）完成后调用，确保数据持久化。
+   * 把当前用户人格、选中状态和绑定关系写入 SDK 内部文件存储。
    */
   async saveToStore(): Promise<void> {
     const personas = this.clonePersonas(Array.from(this.personas.values()));
@@ -115,17 +97,13 @@ export class PersonaRuntime {
       bindings: bindings,
       selectedPersonaId: selectedPersonaId,
     };
-    await new JsonStore<PersonaStorageSnapshot>(
-      this.requireFiles(),
-      this.storagePath(),
-    ).write(snapshot);
+    await new JsonStore<PersonaStorageSnapshot>(this.requireFiles(), this.storagePath()).write(snapshot);
   }
 
   /**
-   * 创建新的用户人格记录，存入内存并发布创建事件。
-   * 调用方（如 UI 界面）在用户添加新人格时调用。
-   * @param params 创建用户人格的参数。
-   * @returns 创建的用户人格记录副本。
+   * 创建新的用户人格记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
    */
   createPersona(params: PersonaCreateParams): PersonaRecord {
     const persona = this.toRecord(params, Date.now());
@@ -135,11 +113,10 @@ export class PersonaRuntime {
   }
 
   /**
-   * 更新指定用户人格的字段，存入内存并发布更新事件。
-   * 调用方（如 UI 界面）在用户编辑人格信息时调用。
+   * 更新指定Persona，写回存储并按需发布变更事件。
    * @param personaId 目标用户人格标识。
-   * @param params 更新后的参数字段，将替换目标人格的完整数据。
-   * @returns 更新后的用户人格记录副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
    */
   updatePersona(personaId: string, params: PersonaCreateParams): PersonaRecord {
     this.requirePersona(personaId);
@@ -151,19 +128,17 @@ export class PersonaRuntime {
   }
 
   /**
-   * 按 ID 读取用户人格记录，不存在时抛出异常。
-   * 调用方在获取某人格详情时使用。
+   * 读取指定Persona，不存在时抛出错误。
    * @param personaId 目标用户人格标识。
-   * @returns 用户人格记录副本。
+   * @returns 更新或读取后的记录副本。
    */
   getPersona(personaId: string): PersonaRecord {
     return this.clonePersona(this.requirePersona(personaId));
   }
 
   /**
-   * 返回当前所有用户人格记录的副本列表。
-   * 调用方（如 UI 列表界面）在展示所有人格时使用。
-   * @returns 用户人格记录列表副本。
+   * 读取Personas列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   listPersonas(): Array<PersonaRecord> {
     const result = new Array<PersonaRecord>();
@@ -175,8 +150,7 @@ export class PersonaRuntime {
   }
 
   /**
-   * 删除指定用户人格，清理相关绑定，若为当前选中则清空选中状态。
-   * 调用方（如 UI 界面）在用户删除人格时调用。
+   * 删除指定Persona，并清理相关索引或资源引用。
    * @param personaId 目标用户人格标识。
    */
   deletePersona(personaId: string): void {
@@ -193,10 +167,8 @@ export class PersonaRuntime {
   }
 
   /**
-   * 切换当前选中的用户人格，发布变更事件。
-   * 调用方（如聊天界面）在用户切换发送者身份时调用。
-   * @param personaId 要选中的用户人格标识。
-   * @returns 选中的用户人格记录副本。
+   * 读取或解析Persona，调用方应处理不存在或不匹配的情况。
+   * @param personaId 目标用户人格标识。
    */
   selectPersona(personaId: string): PersonaRecord {
     const persona = this.requirePersona(personaId);
@@ -212,27 +184,20 @@ export class PersonaRuntime {
   }
 
   /**
-   * 读取当前选中的用户人格记录，未选中时抛出异常。
-   * 调用方（如 Prompt 组装器）在获取当前用户身份以构建系统提示时使用。
-   * @returns 当前选中的用户人格记录副本。
+   * 读取指定SelectedPersona，不存在时抛出错误。
+   * @returns 更新或读取后的记录副本。
    */
   getSelectedPersona(): PersonaRecord {
     return this.clonePersona(this.requirePersona(this.selectedPersonaId));
   }
 
   /**
-   * 将用户人格绑定到指定作用域，后续可通过作用域解析出对应的人格。
-   * 调用方（如聊天管理器）在特定聊天或角色需要固定使用某人格时调用。
-   * @param scope 绑定作用域（如 chat、character）。
+   * 把用户人格对象绑定到指定作用域，后续读取会按该绑定解析。
+   * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
-   * @param personaId 要绑定的用户人格标识。
-   * @returns 创建的绑定记录副本。
+   * @param personaId 目标用户人格标识。
    */
-  bindPersona(
-    scope: string,
-    scopeId: string,
-    personaId: string,
-  ): PersonaBindingRecord {
+  bindPersona(scope: TavernScope, scopeId: string, personaId: string): PersonaBindingRecord {
     this.requirePersona(personaId);
     const binding: PersonaBindingRecord = {
       scope: scope,
@@ -240,21 +205,17 @@ export class PersonaRuntime {
       personaId: personaId,
       updatedAt: Date.now(),
     };
-    this.bindings.set(
-      this.bindingKey(scope, scopeId),
-      this.cloneBinding(binding),
-    );
+    this.bindings.set(this.bindingKey(scope, scopeId), this.cloneBinding(binding));
     return this.cloneBinding(binding);
   }
 
   /**
-   * 按作用域读取绑定的用户人格记录，未找到绑定时抛出异常。
-   * 调用方在需要获取特定作用域下关联的用户人格时使用。
-   * @param scope 绑定作用域。
+   * 读取指定BoundPersona，不存在时抛出错误。
+   * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
-   * @returns 绑定的用户人格记录副本。
+   * @returns 更新或读取后的记录副本。
    */
-  getBoundPersona(scope: string, scopeId: string): PersonaRecord {
+  getBoundPersona(scope: TavernScope, scopeId: string): PersonaRecord {
     const binding = this.bindings.get(this.bindingKey(scope, scopeId));
     if (binding === undefined) {
       throw new Error(`Persona binding not found: ${scope}/${scopeId}`);
@@ -263,11 +224,9 @@ export class PersonaRuntime {
   }
 
   /**
-   * 根据用户人格构建 Prompt 所需的摘要数据。
-   * 调用方（如 PromptRuntime 的 buildPrompt）在组装系统提示时调用，
-   * 用于将用户人格信息注入到 Prompt 中。
+   * 根据入参构建Prompt Data 值，仅生成数据结构，不直接执行外部请求。
    * @param personaId 目标用户人格标识。
-   * @returns 用户人格 Prompt 摘要数据。
+   * @returns 构建好的请求、Prompt 或中间数据。
    */
   buildPromptData(personaId: string): PersonaPromptData {
     const persona = this.requirePersona(personaId);
@@ -285,16 +244,12 @@ export class PersonaRuntime {
   }
 
   /**
-   * 按作用域构建 Prompt 所需的用户人格摘要数据，无绑定时回退到当前选中人格。
-   * 调用方（如 PromptRuntime）在按聊天/角色获取用户人格时调用，优先使用绑定，无绑定则使用全局选中。
-   * @param scope 绑定作用域。
+   * 根据入参构建Prompt Data For Scope 值，仅生成数据结构，不直接执行外部请求。
+   * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
-   * @returns 用户人格 Prompt 摘要数据。
+   * @returns 构建好的请求、Prompt 或中间数据。
    */
-  buildPromptDataForScope(
-    scope: string,
-    scopeId: string,
-  ): PersonaPromptData {
+  buildPromptDataForScope(scope: TavernScope, scopeId: string): PersonaPromptData {
     const binding = this.bindings.get(this.bindingKey(scope, scopeId));
     if (binding !== undefined) {
       return this.buildPromptData(binding.personaId);
@@ -306,9 +261,9 @@ export class PersonaRuntime {
   }
 
   /**
-   * 导出指定用户人格，用于备份或与外部工具互通。
+   * 导出用户人格，用于备份、迁移或与 SillyTavern 数据互通。
    * @param personaId 目标用户人格标识。
-   * @returns 用户人格导出数据。
+   * @returns 可持久化或可传输的导出内容。
    */
   exportPersona(personaId: string): PersonaExportData {
     const persona = this.clonePersona(this.requirePersona(personaId));
@@ -319,11 +274,10 @@ export class PersonaRuntime {
   }
 
   /**
-   * 从外部数据导入用户人格，分配新的 ID 并写入内存。
-   * 调用方在从备份恢复或迁移人格时使用。
-   * @param data 导入的用户人格数据。
-   * @param newId 导入后使用的新标识，避免与现有人格 ID 冲突。
-   * @returns 导入后的用户人格记录副本。
+   * 从外部数据导入Persona 值，转换为当前运行时的数据结构。
+   * @param data 导入或恢复使用的序列化数据。
+   * @param newId 目标新记录标识。
+   * @returns 更新或读取后的记录副本。
    */
   importPersona(data: PersonaExportData, newId: string): PersonaRecord {
     if (this.personas.has(newId)) {
@@ -338,14 +292,10 @@ export class PersonaRuntime {
   }
 
   /**
-   * 将创建参数转换为用户人格持久化记录，补充 updatedAt 时间戳。
-   * @param params 创建参数。
-   * @param updatedAt 更新时间戳。
+   * 把创建参数规范化为用户人格记录。
+   * @param params 创建、更新或执行操作所需的参数对象。
    */
-  private toRecord(
-    params: PersonaCreateParams,
-    updatedAt: number,
-  ): PersonaRecord {
+  private toRecord(params: PersonaCreateParams, updatedAt: number): PersonaRecord {
     const persona: PersonaRecord = {
       id: params.id,
       name: params.name,
@@ -362,10 +312,8 @@ export class PersonaRuntime {
   }
 
   /**
-   * 按 ID 查找用户人格，不存在时抛出异常。
-   * 由 getPersona、updatePersona、deletePersona、selectPersona、bindPersona、buildPromptData 等内部调用。
+   * 读取必须存在的Persona 值，缺失时抛出错误。
    * @param personaId 目标用户人格标识。
-   * @returns 匹配的用户人格记录引用。
    */
   private requirePersona(personaId: string): PersonaRecord {
     const persona = this.personas.get(personaId);
@@ -396,7 +344,7 @@ export class PersonaRuntime {
   }
 
   /**
-   * 深拷贝 PersonaRecord。
+   * 复制Persona 值，避免外部修改内部状态。
    */
   private clonePersona(persona: PersonaRecord): PersonaRecord {
     const cloned: PersonaRecord = {
@@ -414,9 +362,7 @@ export class PersonaRuntime {
     return cloned;
   }
 
-  private clonePersonas(
-    personas: Array<PersonaRecord>,
-  ): Array<PersonaRecord> {
+  private clonePersonas(personas: Array<PersonaRecord>): Array<PersonaRecord> {
     const cloned = new Array<PersonaRecord>();
     for (let index = 0; index < personas.length; index += 1) {
       cloned.push(this.clonePersona(personas[index]));
@@ -425,7 +371,7 @@ export class PersonaRuntime {
   }
 
   /**
-   * 深拷贝 PersonaBindingRecord。
+   * 复制Binding 值，避免外部修改内部状态。
    */
   private cloneBinding(binding: PersonaBindingRecord): PersonaBindingRecord {
     return {
@@ -436,9 +382,7 @@ export class PersonaRuntime {
     };
   }
 
-  private cloneBindings(
-    bindings: Array<PersonaBindingRecord>,
-  ): Array<PersonaBindingRecord> {
+  private cloneBindings(bindings: Array<PersonaBindingRecord>): Array<PersonaBindingRecord> {
     const cloned = new Array<PersonaBindingRecord>();
     for (let index = 0; index < bindings.length; index += 1) {
       cloned.push(this.cloneBinding(bindings[index]));
@@ -447,9 +391,8 @@ export class PersonaRuntime {
   }
 
   /**
-   * 删除与指定用户人格相关的所有绑定记录。
-   * 在 deletePersona 中调用，确保人格删除后其绑定关系也被清理。
-   * @param personaId 用户人格标识。
+   * 移除用户人格绑定，用于解除注册、绑定或索引关系。
+   * @param personaId 目标用户人格标识。
    */
   private removeBindingsForPersona(personaId: string): void {
     const keys = Array.from(this.bindings.keys());
@@ -462,18 +405,18 @@ export class PersonaRuntime {
   }
 
   /**
-   * 生成绑定记录键：scope:scopeId。
-   * 用于 bindings Map 的键生成。
+   * 把用户人格对象绑定到指定作用域，后续读取会按该绑定解析。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
    */
-  private bindingKey(scope: string, scopeId: string): string {
+  private bindingKey(scope: TavernScope, scopeId: string): string {
     return `${scope}:${scopeId}`;
   }
 
   /**
-   * 发布用户人格事件，携带人格记录副本。
-   * 在 createPersona、updatePersona、importPersona 中调用。
-   * @param eventName 事件名称。
-   * @param persona 关联的用户人格记录。
+   * 发布用户人格事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要订阅或发布的事件名。
+
    */
   private publishUpdated(eventName: string, persona: PersonaRecord): void {
     const payloadPersona = this.clonePersona(persona);

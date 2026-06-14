@@ -3,30 +3,25 @@ import type { ExpressionChangedPayload, ExpressionClassification, ExpressionExpo
 
 /**
  * 提供表情状态相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
- * 表情状态用于在聊天过程中跟踪角色的当前表情（如高兴、悲伤、愤怒等），
- * UI 层可根据这些状态更新角色立绘和聊天气泡表现。
  */
 export class ExpressionRuntime {
   /**
-   * 事件总线，用于在角色表情变更时向 UI 层或其他模块广播 ExpressionChangedPayload 事件。
+   * 事件总线。
    */
   private events: EventBus; private states: Map<string,ExpressionState>=new Map(); private counter=0;
-
   /**
-   * 初始化运行时实例，注入事件总线依赖。
-   * @param events 事件总线实例，用于在 setExpression 时发布 'expression.changed' 事件。
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
    */
   constructor(events: EventBus) { this.events=events; }
-
   /**
-   * 设置某一角色的表情状态，生成唯一标识并发布变更事件。
-   * 通常在收到 AI 消息或用户手动切换角色表情时由宿主调用。
-   * @param characterId 目标角色标识，决定为哪个角色设置表情，用于在 states 中筛选该角色的表情记录。
-   * @param classification 表情分类（joy、sadness 等），用于语义化标记角色当前情绪，供 UI 层选择对应立绘 Sprite。
-   * @param label 表情展示标签，用于在 UI 上显示的表情描述文字（如"开心"、"生气"）。
-   * @param spriteName 立绘资源名称，用于渲染角色立绘时加载对应的精灵图（Sprite）资源。
-   * @param intensity 表情强度（数值越大表情越强烈），用于控制立绘的动画幅度或特效表现。
-   * @param messageId 关联的消息标识，标记该表情对应的消息上下文，用于追溯该表情是由哪条消息触发的。
+   * 设置表情状态，用于切换运行时状态或保存配置。
+   * @param characterId 目标角色标识。
+
+   * @param label 展示标签。
+   * @param spriteName 立绘名称。
+
+   * @param messageId 目标消息标识。
    */
   setExpression(characterId: string, classification: ExpressionClassification, label: string, spriteName: string, intensity: number, messageId: string): ExpressionState {
     this.counter+=1; const expressionId=`expr-${this.counter}`; const now=Date.now();
@@ -35,42 +30,34 @@ export class ExpressionRuntime {
     this.events.publish<ExpressionChangedPayload>('expression.changed', { state: this.copyState(state) });
     return this.copyState(state);
   }
-
   /**
-   * 查询指定角色当前最新的表情状态（按创建时间倒序），未找到时返回 undefined。
-   * 在 UI 层需要刷新角色立绘为当前表情时调用，获取该角色最后设置的表情。
-   * @param characterId 目标角色标识，用于在 states 中筛选该角色的所有表情记录。
-   * @returns 该角色最新的表情状态副本；如果尚未设置任何表情则返回 undefined。
+   * 读取指定CurrentExpression，不存在时抛出错误。
+   * @param characterId 目标角色标识。
+   * @returns 更新或读取后的记录副本。
    */
   getCurrentExpression(characterId: string): ExpressionState|undefined {
     const values=Array.from(this.states.values());
     for (let i=values.length-1;i>=0;i--) { if (values[i].characterId===characterId) return this.copyState(values[i]); }
     return undefined;
   }
-
   /**
-   * 列出指定角色的所有表情状态记录，按存入顺序返回副本。
-   * 在展示角色表情历史或调试时调用。
-   * @param characterId 目标角色标识，用于在 states 中筛选该角色的表情记录。
-   * @returns 该角色的表情状态列表，每个条目均为副本，修改返回值不影响内部状态。
+   * 读取Expressions列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param characterId 目标角色标识。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   listExpressions(characterId: string): Array<ExpressionState> {
     const result=new Array<ExpressionState>(); const values=Array.from(this.states.values());
     for (let i=0;i<values.length;i++) { if (values[i].characterId===characterId) result.push(this.copyState(values[i])); }
     return result;
   }
-
   /**
-   * 导出所有表情状态数据，用于备份、迁移或与 SillyTavern 数据互通。
-   * 通常在设置页面执行导出操作时由宿主调用。
-   * @returns 包含全部表情状态列表的可序列化导出对象。
+   * 导出数据，用于备份、迁移或与 SillyTavern 数据互通。
+   * @returns 可持久化或可传输的导出内容。
    */
   exportData(): ExpressionExportData { return { states: this.listAllStates() }; }
-
   /**
-   * 从外部数据导入表情状态，恢复到运行时状态列表中。
-   * 通常在设置页面对导入数据进行恢复时由宿主调用。
-   * @param data 待导入的表情状态导出数据，通常来自备份或迁移文件，其 states 数组会被逐一合并到运行时。
+   * 从外部数据导入Data 值，转换为当前运行时的数据结构。
+   * @param data 导入或恢复使用的序列化数据。
    */
   importData(data: ExpressionExportData): void {
     for (let i=0;i<data.states.length;i++) {
@@ -81,8 +68,8 @@ export class ExpressionRuntime {
   }
 
   /**
-   * 返回内部所有表情状态的副本列表，不进行角色筛选。
-   * @returns 全部表情状态副本列表。
+   * 读取AllStates列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   private listAllStates(): Array<ExpressionState> {
     const result = new Array<ExpressionState>();
@@ -94,7 +81,7 @@ export class ExpressionRuntime {
   }
 
   /**
-   * 深拷贝表情状态对象，防止外部代码修改内部状态。
+   * 复制State 值，避免外部修改内部状态。
    */
   private copyState(state: ExpressionState): ExpressionState {
     return {
@@ -111,8 +98,8 @@ export class ExpressionRuntime {
   }
 
   /**
-   * 从表情状态标识中解析出自增计数器值，用于导入时保持计数器不冲突。
-   * @param expressionId 表情状态标识，格式为 'expr-{数字}'。
+   * 解析Counter，非法输入会返回失败标记或空结果。
+   * @param expressionId 目标表情状态标识。
    */
   private parseCounter(expressionId: string): number {
     if (!expressionId.startsWith('expr-')) {

@@ -19,45 +19,41 @@ import type {
 
 /**
  * 提供背景图相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
- * 在聊天界面设置、主题配置和背景图库管理流程中被调用，用于背景图的导入、列表、激活、重命名和删除。
  */
 export class BackgroundRuntime {
   /**
-   * 文件存储适配器，用于读写背景图数据和索引文件。
+   * 文件存储适配器。
    */
   private files: TavernFileStore;
   /**
-   * 事件总线，用于发布背景图导入、重命名、删除等状态变更事件。
+   * 事件总线。
    */
   private events: EventBus;
   /**
-   * 资源运行时，用于管理背景图对应资源的导入、重命名和删除。
+   * assets 列表，由当前实例内部维护。
    */
   private assets: AssetRuntime;
   /**
-   * 缩略图运行时，用于为背景图生成和管理缩略图。
+   * thumbnails 列表，由当前实例内部维护。
    */
   private thumbnails: ThumbnailRuntime;
   /**
-   * 主题运行时，用于激活背景图时同步更新聊天界面的主题背景。
+   * themes 列表，由当前实例内部维护。
    */
   private themes: ThemeRuntime;
   /**
-   * 背景记录内存索引，以背景标识为键，用于快速查找和更新背景记录。
+   * 记录副本列表，由当前实例内部维护。
    */
   private records: Map<string, BackgroundRecord> = new Map<string, BackgroundRecord>();
   /**
-   * 背景图数据根路径，用于构建索引文件和资源文件的存储目录。
+   * 数据根路径。
    */
   private rootPath: string = 'tavern-data/users/default/assets/backgrounds';
 
   /**
-   * 注入背景图运行时依赖并初始化实例状态，由宿主在应用启动时通过依赖注入创建。
-   * @param files 文件存储适配器，用于读写背景图数据和索引文件。
-   * @param events 事件总线，用于发布背景图状态变更事件。
-   * @param assets 资源运行时，用于管理背景图对应的 Asset 资源。
-   * @param thumbnails 缩略图运行时，用于为背景图生成缩略图。
-   * @param themes 主题运行时，用于在激活背景图时更新主题状态。
+   * 注入背景图运行时依赖并初始化实例状态。
+   * @param files 文件存储适配器。
+   * @param events 事件总线。
    */
   constructor(files: TavernFileStore, events: EventBus, assets: AssetRuntime, thumbnails: ThumbnailRuntime, themes: ThemeRuntime) {
     this.files = files;
@@ -68,10 +64,9 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 从外部数据导入背景图：创建 Asset、生成缩略图、写入内存索引并持久化，发布导入事件。
-   * 在背景图管理页面中，用户从文件选择器导入背景图时触发。
-   * @param params 背景导入参数，包含标识、文件名、内容、MIME 类型、动画标记、文件夹信息和缩略图数据。
-   * @returns 导入完成后的完整背景记录，包含文件路径、缩略图路径和时间戳。
+   * 从外部数据导入Background 值，转换为当前运行时的数据结构。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
    */
   async importBackground(params: BackgroundImportParams): Promise<BackgroundRecord> {
     const now = Date.now();
@@ -110,7 +105,7 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 获取所有背景图的摘要列表及缩略图配置，用于 UI 渲染背景图选择面板。
+   * 读取Backgrounds列表，返回副本，调用方修改返回值不会直接改变内部状态。
    */
   async listBackgrounds(): Promise<BackgroundListResult> {
     const images = new Array<BackgroundListItem>();
@@ -130,8 +125,8 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 从所有背景记录中提取所有文件夹标识，去重排序后返回列表，用于 UI 渲染文件夹筛选器。
-   * @returns 去重并排序后的文件夹记录列表，每条记录以标识同时作为名称。
+   * 读取Folders列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   async listFolders(): Promise<Array<BackgroundFolderRecord>> {
     const folderIds = new Set<string>();
@@ -153,9 +148,8 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 激活指定文件名的背景图：校验记录存在性后通知主题运行时更新激活的背景图。
-   * 在聊天界面设置中，用户选择背景图作为聊天背景时触发。
-   * @param fileName 要激活的背景图文件名，用于查找对应的背景记录。
+   * 更新背景图状态，必要时写回存储并发布对应事件。
+   * @param fileName 文件名称。
    */
   async activateBackground(fileName: string): Promise<void> {
     this.requireRecordByFileName(fileName);
@@ -163,15 +157,13 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 重命名背景图：同步重命名关联的 Asset 和缩略图，更新内存索引并持久化，发布重命名事件。
-   * 在背景图管理页面中，用户修改背景图文件名时触发。
-   * @param backgroundId 要重命名的背景图标识，用于查找对应的背景记录。
-   * @param newFileName 新的文件名，用于更新存储路径和索引。
-   * @returns 重命名后的完整背景记录，包含更新后的文件名和路径。
+   * 更新背景图状态，必要时写回存储并发布对应事件。
+   * @param backgroundId 目标背景标识。
+   * @param newFileName 新记录文件名称。
    */
   async renameBackground(backgroundId: string, newFileName: string): Promise<BackgroundRecord> {
     const record = this.requireRecord(backgroundId);
-    // 记录旧文件名，用于失效旧的缩略图和构造重命名事件载荷。
+    // old File 名称。
     const oldFileName = record.fileName;
     await this.thumbnails.invalidateThumbnail('bg', oldFileName);
     const asset: AssetRecord = await this.assets.renameAsset(backgroundId, newFileName);
@@ -200,9 +192,8 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 删除指定背景图：从内存索引移除、删除关联 Asset、失效缩略图、清理主题引用，最后持久化并发布删除事件。
-   * 在背景图管理页面中，用户确认删除背景图时触发。
-   * @param backgroundId 要删除的背景图标识，用于查找对应的背景记录和关联资源。
+   * 删除指定背景图，并清理相关索引或资源引用。
+   * @param backgroundId 目标背景标识。
    */
   async deleteBackground(backgroundId: string): Promise<void> {
     const record = this.requireRecord(backgroundId);
@@ -221,8 +212,8 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 根据标识查找背景记录，不存在时抛出异常，供内部方法在需要确保记录存在时使用。
-   * @param backgroundId 要查找的背景图标识，用于在内存索引中定位记录。
+   * 读取必须存在的Record 值，缺失时抛出错误。
+   * @param backgroundId 目标背景标识。
    */
   private requireRecord(backgroundId: string): BackgroundRecord {
     const record = this.records.get(backgroundId);
@@ -233,8 +224,8 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 根据文件名遍历查找背景记录，不存在时抛出异常，供 activateBackground 确保激活前记录存在。
-   * @param fileName 要查找的背景图文件名，用于在内存索引中遍历匹配。
+   * 读取必须存在的Record By File 名称，缺失时抛出错误。
+   * @param fileName 文件名称。
    */
   private requireRecordByFileName(fileName: string): BackgroundRecord {
     let found: BackgroundRecord | undefined = undefined;
@@ -250,8 +241,8 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 获取所有背景记录的副本列表，按文件名排序，供内部持久化和列表展示使用。
-   * @returns 所有背景记录的副本，按文件名升序排列，调用方可安全修改返回值而不影响内部状态。
+   * 读取Records列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   private async listRecords(): Promise<Array<BackgroundRecord>> {
     const result = new Array<BackgroundRecord>();
@@ -270,8 +261,8 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 将背景导入参数转换为资源创建参数，用于委托 AssetRuntime 处理背景图资源的文件管理。
-   * @param params 背景导入参数，包含标识、类型、文件名、MIME 类型、内容和元数据。
+   * 把背景记录转换为资源导入参数列表。
+   * @param params 创建、更新或执行操作所需的参数对象。
    */
   private toAssetParams(params: BackgroundImportParams): AssetCreateParams {
     return {
@@ -285,9 +276,8 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 深度复制背景记录，防止外部代码意外修改内部状态，用于所有对外暴露背景记录的场景。
-   * @param record 要复制的原背景记录，原对象不会被修改。
-   * @returns 与原记录值相等的新记录对象，调用方可安全修改。
+   * 复制Record 值，避免外部修改内部状态。
+   * @param record 记录副本。
    */
   private copyRecord(record: BackgroundRecord): BackgroundRecord {
     return {
@@ -307,9 +297,9 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 浅复制字符串数组，防止外部代码修改内部数组内容，用于复制 folderIds 等字符串列表字段。
-   * @param values 要复制的源字符串数组，原数组不会被修改。
-   * @returns 元素相同的新数组，调用方可安全修改。
+   * 复制Strings 列表，避免外部修改内部状态。
+   * @param values 待处理的值列表。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   private copyStrings(values: Array<string>): Array<string> {
     const result = new Array<string>();

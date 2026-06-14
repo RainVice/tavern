@@ -5,6 +5,7 @@ import type {
   CommandPipelineResult,
 } from '../command/CommandModels';
 import { EventBus } from '../runtime/EventBus';
+import type { TavernScope } from '../contracts/PublicContracts';
 import { safePathSegment } from '../shared/PathSafety';
 import { JsonStore } from '../storage/JsonStore';
 import type { TavernFileStore } from '../storage/TavernFileStore';
@@ -30,11 +31,11 @@ interface QuickReplyStorageSnapshot {
  */
 export class QuickReplyRuntime {
   /**
-   * 事件总线，用于发布快捷回复执行和集合更新事件。
+   * 事件总线。
    */
   private events: EventBus;
   /**
-   * 命令运行时，用于执行快捷回复关联的命令。
+   * commands 列表，由当前实例内部维护。
    */
   private commands: CommandRuntime;
   /**
@@ -42,25 +43,21 @@ export class QuickReplyRuntime {
    */
   private files: TavernFileStore | undefined = undefined;
   /**
-   * 数据根路径，用于构造存储文件的路径前缀。
+   * 数据根路径。
    */
   private rootPath: string = 'tavern-data';
   /**
-   * 用户标识，用于构造用户专属存储子路径。
+   * 用户标识。
    */
   private userId: string = 'default';
   /**
-   * 已注册的快捷回复集合字典，键为集合标识，值为集合记录。
+   * sets 列表，由当前实例内部维护。
    */
   private sets: Map<string, QuickReplySetRecord> = new Map<string, QuickReplySetRecord>();
 
   /**
-   * 通过注入依赖初始化快捷回复运行时实例。
-   * @param events 事件总线实例，用于发布 quickReply.executed 和 quickReply.setUpdated 事件。
-   * @param commands 命令运行时实例，用于执行快捷回复项绑定的命令。
-   * @param files 可选的文件存储适配器，用于持久化快捷回复数据。
-   * @param rootPath 可选的数据根路径，用于构造存储路径。
-   * @param userId 可选的用户标识，用于构造用户专属存储子路径。
+   * 注入快捷回复运行时依赖并初始化实例状态。
+   * @param events 事件总线。
    */
   constructor(
     events: EventBus,
@@ -77,7 +74,7 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 从 SDK 内部文件存储恢复快捷回复集合。在应用启动时调用，将持久化的集合数据加载到内存。
+   * 从 SDK 内部文件存储恢复快捷回复集合。
    */
   async loadFromStore(): Promise<void> {
     const store = new JsonStore<QuickReplyStorageSnapshot>(this.requireFiles(), this.storagePath());
@@ -90,7 +87,7 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 把当前快捷回复集合写入 SDK 内部文件存储。在集合数据发生变更后调用，确保持久化。
+   * 把当前快捷回复集合写入 SDK 内部文件存储。
    */
   async saveToStore(): Promise<void> {
     const sets = this.cloneSets(Array.from(this.sets.values()));
@@ -102,9 +99,9 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 创建新的快捷回复集合并写入内存，返回新集合的深拷贝。由 UI 配置页面在用户创建新集合时调用。
-   * @param params 创建集合所需的参数（标识、名称、作用域、启用状态等）。
-   * @returns 新创建的快捷回复集合记录副本。
+   * 创建新的快捷回复集合记录，写入存储并返回副本。
+   * @param params 创建、更新或执行操作所需的参数对象。
+   * @returns 更新或读取后的记录副本。
    */
   createSet(params: QuickReplySetCreateParams): QuickReplySetRecord {
     if (this.sets.has(params.id)) {
@@ -124,17 +121,17 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 按集合标识查询快捷回复集合的深拷贝。由 UI 或外部模块在获取单个集合详情时调用。
+   * 读取指定Set，不存在时抛出错误。
    * @param setId 目标快捷回复集合标识。
-   * @returns 集合记录的深拷贝。
+   * @returns 更新或读取后的记录副本。
    */
   getSet(setId: string): QuickReplySetRecord {
     return this.cloneSet(this.requireSet(setId));
   }
 
   /**
-   * 返回所有快捷回复集合记录的深拷贝列表，调用方修改不影响内部状态。用于 UI 列表渲染或批量导出。
-   * @returns 所有快捷回复集合记录的副本数组。
+   * 读取Sets列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   listSets(): Array<QuickReplySetRecord> {
     const result = new Array<QuickReplySetRecord>();
@@ -146,7 +143,7 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 删除指定快捷回复集合及其包含的所有项。由 UI 配置页面在用户删除集合时调用。
+   * 删除指定Set，并清理相关索引或资源引用。
    * @param setId 目标快捷回复集合标识。
    */
   deleteSet(setId: string): void {
@@ -155,9 +152,9 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 向指定集合添加或更新快捷回复项，已存在同 ID 项则覆盖，否则追加。由 UI 配置页面在用户编辑快捷回复项时调用。
+   * 创建或写入Item，完成持久化后返回可供调用方使用的结果。
    * @param setId 目标快捷回复集合标识。
-   * @param params 快捷回复项的创建参数（标识、标签、标题、命令、可见性等）。
+   * @param params 创建、更新或执行操作所需的参数对象。
    */
   addItem(setId: string, params: QuickReplyItemCreateParams): QuickReplyItemRecord {
     const set = this.requireSet(setId);
@@ -183,11 +180,11 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 设置指定快捷回复项的可见状态并发布更新事件。由 UI 在切换项目可见性时调用。
+   * 设置快捷回复项可见状态，用于切换运行时状态或保存配置。
    * @param setId 目标快捷回复集合标识。
-   * @param itemId 目标快捷回复项标识。
-   * @param visible 是否在 UI 中显示该项。
-   * @returns 更新后的快捷回复项记录副本。
+   * @param itemId 目标内容项标识。
+   * @param visible 是否显示对应 UI。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   setItemVisible(setId: string, itemId: string, visible: boolean): QuickReplyItemRecord {
     const set = this.requireSet(setId);
@@ -198,9 +195,9 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 从指定集合中移除快捷回复项。由 UI 配置页面在用户删除项时调用。
+   * 移除内容项，用于解除注册、绑定或索引关系。
    * @param setId 目标快捷回复集合标识。
-   * @param itemId 目标快捷回复项标识。
+   * @param itemId 目标内容项标识。
    */
   removeItem(setId: string, itemId: string): void {
     const set = this.requireSet(setId);
@@ -213,12 +210,12 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 根据作用域匹配规则查询所有可见且已启用的快捷回复按钮列表。在用户打开快捷回复面板时调用，获取当前上下文下可用的按钮。
-   * @param scope 查询作用域类型，用于匹配集合的 scope 字段。
-   * @param scopeId 作用域下的具体对象标识，用于精确匹配集合的 scopeId。
-   * @returns 匹配条件的快捷回复按钮数据列表。
+   * 读取Buttons列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
-  listButtons(scope: string, scopeId: string): Array<QuickReplyButtonData> {
+  listButtons(scope: TavernScope, scopeId: string): Array<QuickReplyButtonData> {
     const buttons = new Array<QuickReplyButtonData>();
     const sets = Array.from(this.sets.values());
     for (let setIndex = 0; setIndex < sets.length; setIndex += 1) {
@@ -237,11 +234,10 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 执行指定集合中的快捷回复项，若项已禁用或不可见则返回跳过结果，否则执行命令并发布执行事件。
-   * 在用户点击快捷回复按钮或自动触发条件匹配时调用。
+   * 执行 executeItem 的内部处理步骤，供当前模块复用。
    * @param setId 目标快捷回复集合标识。
-   * @param itemId 目标快捷回复项标识。
-   * @param options 命令执行选项（如上下文变量），传递给 CommandRuntime 执行命令时使用。
+   * @param itemId 目标内容项标识。
+   * @param options 控制本次调用行为的选项。
    */
   async executeItem(
     setId: string,
@@ -284,16 +280,15 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 自动检查所有集合中配置了自动触发且 trigger 匹配的项，逐一执行并收集结果。
-   * 在特定事件（如消息到达）发生后由事件监听回调调用，用于自动执行符合条件的快捷回复。
-   * @param trigger 触发条件字符串，与项的 trigger 字段匹配。
-   * @param scope 查询作用域类型，用于过滤匹配的集合。
-   * @param scopeId 作用域下的具体对象标识，用于过滤匹配的集合。
-   * @param options 命令执行选项，传递给 CommandRuntime 执行命令时使用。
+   * 执行 executeAutoTrigger 的内部处理步骤，供当前模块复用。
+
+   * @param scope 绑定或查询使用的作用域。
+   * @param scopeId 作用域下的具体对象标识。
+   * @param options 控制本次调用行为的选项。
    */
   async executeAutoTrigger(
     trigger: string,
-    scope: string,
+    scope: TavernScope,
     scopeId: string,
     options: CommandExecuteOptions,
   ): Promise<Array<QuickReplyExecutionResult>> {
@@ -316,9 +311,9 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 导出指定快捷回复集合，生成可持久化或可传输的导出数据结构。由导出流程在用户备份或迁移数据时调用。
+   * 导出快捷回复集合，用于备份、迁移或与 SillyTavern 数据互通。
    * @param setId 目标快捷回复集合标识。
-   * @returns 包含集合完整数据的导出对象。
+   * @returns 可持久化或可传输的导出内容。
    */
   exportSet(setId: string): QuickReplyExportData {
     const set = this.cloneSet(this.requireSet(setId));
@@ -329,10 +324,10 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 从外部导出数据导入快捷回复集合，分配新标识后写入内存。由导入流程在用户从备份或其它实例恢复数据时调用。
-   * @param data 外部导入的序列化集合数据。
-   * @param newId 导入后使用的新集合标识，避免与现有集合冲突。
-   * @returns 导入后的集合记录副本。
+   * 从外部数据导入Set 值，转换为当前运行时的数据结构。
+   * @param data 导入或恢复使用的序列化数据。
+   * @param newId 目标新记录标识。
+   * @returns 更新或读取后的记录副本。
    */
   importSet(data: QuickReplyExportData, newId: string): QuickReplySetRecord {
     if (this.sets.has(newId)) {
@@ -359,7 +354,7 @@ export class QuickReplyRuntime {
     }
   }
   private pipelineToExecutionResult(pipeline: CommandPipelineResult): CommandExecutionResult {
-    // 提取管道中最后一步的命令名称用于结果标识。
+    // command 名称。
     let commandName = 'quick-reply';
     if (pipeline.steps.length > 0) {
       commandName = pipeline.steps[pipeline.steps.length - 1].commandName;
@@ -391,7 +386,7 @@ export class QuickReplyRuntime {
     };
     return result;
   }
-  private scopeMatches(set: QuickReplySetRecord, scope: string, scopeId: string): boolean {
+  private scopeMatches(set: QuickReplySetRecord, scope: TavernScope, scopeId: string): boolean {
     if (set.scope === 'global') {
       return scope === 'global';
     }
@@ -405,17 +400,18 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 判断快捷回复项是否为可执行状态（同时已启用且可见）。
-   * @param item 待检查的快捷回复项。
-   * @returns 项可执行时返回 true，否则返回 false。
+   * 判断Runnable Item 值是否满足条件。
+   * @param item 项目记录。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   private isRunnableItem(item: QuickReplyItemRecord): boolean {
     return item.enabled && item.visible;
   }
 
   /**
-   * 将快捷回复集合记录和项记录转换为界面按钮数据。
-   * @param item 待转换的快捷回复项。
+   * 把快捷回复项转换为界面按钮数据。
+
+   * @param item 项目记录。
    */
   private toButton(set: QuickReplySetRecord, item: QuickReplyItemRecord): QuickReplyButtonData {
     const button: QuickReplyButtonData = {
@@ -432,7 +428,7 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 按标识查询集合记录，不存在时抛出异常。
+   * 读取必须存在的Set 值，缺失时抛出错误。
    * @param setId 目标快捷回复集合标识。
    */
   private requireSet(setId: string): QuickReplySetRecord {
@@ -462,8 +458,9 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 按项标识在集合中查询快捷回复项，不存在时抛出异常。
-   * @param itemId 目标快捷回复项标识。
+   * 读取必须存在的Item 值，缺失时抛出错误。
+
+   * @param itemId 目标内容项标识。
    */
   private requireItem(set: QuickReplySetRecord, itemId: string): QuickReplyItemRecord {
     const index = this.findItemIndex(set, itemId);
@@ -474,8 +471,9 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 在集合中按项标识查找索引位置，未找到时返回 -1。
-   * @param itemId 目标快捷回复项标识。
+   * 在当前集合中查找Item Index 值，未命中时返回空值或默认位置。
+
+   * @param itemId 目标内容项标识。
    */
   private findItemIndex(set: QuickReplySetRecord, itemId: string): number {
     for (let index = 0; index < set.items.length; index += 1) {
@@ -487,7 +485,7 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 深拷贝集合记录及其内部所有项。
+   * 复制Set 值，避免外部修改内部状态。
    */
   private cloneSet(set: QuickReplySetRecord): QuickReplySetRecord {
     const items = new Array<QuickReplyItemRecord>();
@@ -514,8 +512,8 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 深拷贝快捷回复项记录。
-   * @param item 待拷贝的快捷回复项。
+   * 复制Item 值，避免外部修改内部状态。
+   * @param item 项目记录。
    */
   private cloneItem(item: QuickReplyItemRecord): QuickReplyItemRecord {
     const cloned: QuickReplyItemRecord = {
@@ -533,8 +531,8 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 深拷贝命令执行结果，防止外部修改。
-   * @param result 待拷贝的命令执行结果。
+   * 复制Command Result 值，避免外部修改内部状态。
+   * @param result 返回结果。
    */
   private cloneCommandResult(result: CommandExecutionResult): CommandExecutionResult {
     return {
@@ -547,7 +545,8 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 发布集合更新事件，通知宿主或其他 Runtime 集合状态已变化。
+   * 发布快捷回复事件，把状态变化通知给宿主或其他 Runtime。
+
    */
   private publishSetUpdated(set: QuickReplySetRecord): void {
     const payloadSet = this.cloneSet(set);

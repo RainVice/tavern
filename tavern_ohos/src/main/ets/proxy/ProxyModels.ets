@@ -1,25 +1,27 @@
+import type { ProxyResolutionMode } from '../contracts/PublicContracts';
+
 /**
  * 描述代理配置模块在运行时交换的数据结构。
  */
 export interface ProxySettings {
   /**
-   * 是否启用代理，用于控制对外部 LLM API 的请求是否通过代理服务器发送。
+   * enabled 值，由当前实例内部维护。
    */
   enabled: boolean;
   /**
-   * 代理服务器 URL 地址，指定所有代理请求的目标服务器。
+   * url 值，由当前实例内部维护。
    */
   url: string;
   /**
-   * 绕过代理的目标主机列表，匹配的主机直连不经过代理——用于内部地址或特定服务免代理访问。
+   * bypass 列表，由当前实例内部维护。
    */
   bypass: Array<string>;
   /**
-   * 是否启用 HTTP Keep-Alive 连接复用，开启后可减少与代理服务器的 TCP 握手开销。
+   * enable Keep Alive 值，由当前实例内部维护。
    */
   enableKeepAlive: boolean;
   /**
-   * 是否启用私有请求过滤，开启时对内部地址的请求会触发警告，用于安全审计场景。
+   * private Request Filter Enabled 值，由当前实例内部维护。
    */
   privateRequestFilterEnabled: boolean;
 }
@@ -29,31 +31,31 @@ export interface ProxySettings {
  */
 export interface ProxyResolutionRecord {
   /**
-   * 目标请求 URL，代理解析针对的原始请求地址。
+   * target Url 值，由当前实例内部维护。
    */
   targetUrl: string;
   /**
-   * 代理解析模式：'direct'（直连）或 'proxy'（通过代理），决定请求的实际发送路径。
+   * mode 值，由当前实例内部维护。
    */
-  mode: string;
+  mode: ProxyResolutionMode;
   /**
-   * 实际使用的代理服务器 URL，mode 为 proxy 时有效。
+   * proxy Url 值，由当前实例内部维护。
    */
   proxyUrl: string;
   /**
-   * 是否因 bypass 规则绕过代理，用于记录 bypass 匹配结果供调试和审计。
+   * bypassed 值，由当前实例内部维护。
    */
   bypassed: boolean;
   /**
-   * 是否启用 Keep-Alive 连接复用，记录最终连接配置供 HTTP 客户端使用。
+   * keep Alive 值，由当前实例内部维护。
    */
   keepAlive: boolean;
   /**
-   * 代理解析的原因说明（如 disabled、missing-proxy-url、bypass 等），用于日志和调试追踪。
+   * 原因说明，由当前实例内部维护。
    */
   reason: string;
   /**
-   * 代理解析的警告信息，无警告时为空字符串——如私有请求过滤被绕过时的安全提示。
+   * warning 值，由当前实例内部维护。
    */
   warning: string;
 }
@@ -63,7 +65,7 @@ export interface ProxyResolutionRecord {
  */
 export interface ProxyConfiguredPayload {
   /**
-   * 配置变更后的完整代理设置副本，用于通知监听方（如 UI 或网络模块）配置已更新。
+   * settings 列表，由当前实例内部维护。
    */
   settings: ProxySettings;
 }
@@ -73,7 +75,7 @@ export interface ProxyConfiguredPayload {
  */
 export interface ProxyResolvedPayload {
   /**
-   * 代理解析后的完整记录副本，用于通知监听方解析完成并携带路由决策详情。
+   * resolution 值，由当前实例内部维护。
    */
   resolution: ProxyResolutionRecord;
 }

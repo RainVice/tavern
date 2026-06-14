@@ -12,25 +12,24 @@ import type {
  */
 export class RegexRuntime {
   /**
-   * 事件总线，用于发布正则替换执行事件。
+   * 事件总线。
    */
   private events: EventBus;
   /**
-   * 已注册的正则脚本数组，按注册顺序依次执行。
+   * scripts 列表，由当前实例内部维护。
    */
   private scripts: Array<RegexScriptRecord> = new Array<RegexScriptRecord>();
 
   /**
-   * 初始化当前运行时实例，清空脚本列表。
-   * @param events 事件总线，用于发布 regex.applied 事件。
+   * 初始化当前运行时实例。
+   * @param events 事件总线。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 注册或更新一条正则脚本。同 ID 脚本覆盖更新，新 ID 追加注册。
-   * 由外部模块（如配置加载流程或插件系统）在初始化或运行时动态调用。
+   * 注册Script 值，使其可被后续运行时流程使用。
    */
   registerScript(script: RegexScriptRecord): RegexScriptRecord {
     const existingIndex = this.findScriptIndex(script.id);
@@ -44,7 +43,7 @@ export class RegexRuntime {
   }
 
   /**
-   * 取消注册指定标识的正则脚本，从列表中移除。由外部模块在脚本失效或用户删除时调用。
+   * 取消注册Script 值，避免后续流程继续调用。
    * @param scriptId 目标脚本标识。
    */
   unregisterScript(scriptId: string): void {
@@ -55,8 +54,8 @@ export class RegexRuntime {
   }
 
   /**
-   * 返回所有已注册正则脚本的深拷贝列表。用于 UI 配置展示或批量导出。
-   * @returns 正则脚本记录副本数组。
+   * 读取Scripts列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   listScripts(): Array<RegexScriptRecord> {
     const result = new Array<RegexScriptRecord>();
@@ -67,7 +66,7 @@ export class RegexRuntime {
   }
 
   /**
-   * 移除所有临时（ephemeral）标记的正则脚本。在会话结束或重启前调用，清理一次性脚本。
+   * 移除临时脚本列表，用于解除注册、绑定或索引关系。
    */
   removeEphemeralScripts(): void {
     const kept = new Array<RegexScriptRecord>();
@@ -81,10 +80,8 @@ export class RegexRuntime {
   }
 
   /**
-   * 对所有已注册且匹配输入条件的正则脚本依次执行替换。
-   * 每条成功替换（文本发生变更）的记录都会发布 applied 事件。
-   * 在 Prompt 组装流程的各个 placement 阶段被调用，用于对文本进行预处理或后处理。
-   * @param input 正则执行输入（文本、placement、作用域、深度等）。
+   * 执行 applyScripts 的内部处理步骤，供当前模块复用。
+   * @param input 待处理的输入对象。
    */
   applyScripts(input: RegexApplyInput): RegexApplyResult {
     let current = input.text;
@@ -166,7 +163,7 @@ export class RegexRuntime {
   }
 
   /**
-   * 在脚本数组中按标识查找索引位置，未找到时返回 -1。
+   * 在当前集合中查找Script Index 值，未命中时返回空值或默认位置。
    * @param scriptId 目标脚本标识。
    */
   private findScriptIndex(scriptId: string): number {

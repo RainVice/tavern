@@ -65,6 +65,7 @@ SDK 当前提供的是 headless runtime，不直接负责 UI 渲染。OpenAI-com
 
 ```ts
 import {
+  ChatMessageRoles,
   EventBus,
   SandboxTavernFileStore,
   CharacterRuntime,
@@ -78,6 +79,30 @@ import {
 ```
 
 如果宿主模块使用源码相对路径开发，也可以按工程配置从 `../tavern_ohos/Index` 引入；发布或模块化接入时建议使用包名导入。
+
+## 公开契约常量
+
+SDK 的公开入参不要求宿主猜字符串。凡是外部常传的 `apiType`、`providerId`、`role`、`scope`、`kind`、`status`、`format`、`permission`、`tokenizer`、`reasoningFormat` 等字段，都从包入口导出对应常量对象和类型：
+
+```ts
+import {
+  ChatMessageRoles,
+  ConnectionApiTypes,
+  ProviderIds,
+  ReasoningFormats,
+  SecretRefs,
+  TavernScopes,
+  TokenizerStrategies,
+  type ConnectionApiType,
+} from 'tavern_ohos';
+
+const apiType: ConnectionApiType = ConnectionApiTypes.OPENAI;
+const secretRef = SecretRefs.create(ProviderIds.OPENAI, 'primary');
+const scope = TavernScopes.PROFILE;
+const role = ChatMessageRoles.USER;
+```
+
+部分字段仍是开放字符串类型，例如 `ConnectionApiType`、`ProviderId`、`TavernScope`。这是为了允许宿主接入私有 provider、插件作用域或企业网关；内置值仍应优先使用 `ConnectionApiTypes`、`ProviderIds`、`TavernScopes` 等常量。
 
 ## 基础架构
 
@@ -217,12 +242,12 @@ const chat = await chats.createChat({
 
 const messages = new MessageRuntime(files, events, rootPath, userId, chat.id);
 await messages.addMessage({
-  role: 'user',
+  role: ChatMessageRoles.USER,
   name: 'User',
   text: '你好',
 });
 await messages.addMessage({
-  role: 'assistant',
+  role: ChatMessageRoles.ASSISTANT,
   name: character.name,
   text: character.firstMessage,
 });
@@ -283,13 +308,13 @@ await chats.deleteChat(copiedChat.id);
 const messages = chats.messages(chat.id);
 
 const userMessage = await messages.addMessage({
-  role: 'user',
+  role: ChatMessageRoles.USER,
   name: 'User',
   text: '你好',
 });
 
 const assistantMessage = await messages.addMessage({
-  role: 'assistant',
+  role: ChatMessageRoles.ASSISTANT,
   name: 'Alice',
   text: '你好，有什么可以帮你？',
 });
@@ -591,7 +616,7 @@ const messages: Array<ChatMessage> = [
     id: 'msg-1',
     index: 0,
     name: 'User',
-    role: 'user',
+    role: ChatMessageRoles.USER,
     isUser: true,
     isSystem: false,
     sendDate: new Date().toISOString(),
@@ -605,7 +630,7 @@ const messages: Array<ChatMessage> = [
     id: 'msg-2',
     index: 1,
     name: 'Alice',
-    role: 'assistant',
+    role: ChatMessageRoles.ASSISTANT,
     isUser: false,
     isSystem: false,
     sendDate: new Date().toISOString(),
@@ -831,10 +856,15 @@ const recursive = await worldInfo.activateEntriesRecursive(
 ```ts
 import {
   ConnectionProfileRuntime,
+  ConnectionApiTypes,
   EventBus,
   NetworkService,
+  ProviderIds,
+  ReasoningFormats,
   SandboxTavernFileStore,
   SecretRuntime,
+  TavernScopes,
+  TokenizerStrategies,
 } from 'tavern_ohos';
 
 const events = new EventBus();
@@ -848,8 +878,8 @@ await connections.loadFromStore();
 
 const secret = secrets.createSecret({
   id: 'openai-secret',
-  providerId: 'openai',
-  scope: 'profile',
+  providerId: ProviderIds.OPENAI,
+  scope: TavernScopes.PROFILE,
   scopeId: 'profile-openai',
   label: 'OpenAI API Key',
   value: 'sk-...',
@@ -859,7 +889,7 @@ const secret = secrets.createSecret({
 connections.createProfile({
   id: 'profile-openai',
   name: 'OpenAI',
-  apiType: 'openai',
+  apiType: ConnectionApiTypes.OPENAI,
   model: 'gpt-4o-mini',
   serverUrl: 'https://api.openai.com/v1',
   secretRef: secret.secretRef,
@@ -867,9 +897,9 @@ connections.createProfile({
   systemPromptPresetId: '',
   contextTemplateId: '',
   instructTemplateId: '',
-  tokenizer: 'openai',
+  tokenizer: TokenizerStrategies.OPENAI,
   stopStrings: [],
-  reasoningFormat: '',
+  reasoningFormat: ReasoningFormats.NONE,
   toolCallingEnabled: false,
   proxyUrl: '',
   additionalHeaders: [],
@@ -888,6 +918,7 @@ const headers = network.resolveHeadersForProfile('profile-openai');
 
 ```ts
 import {
+  ConnectionApiTypes,
   EventBus,
   ProviderRuntime,
   StreamingRuntime,
@@ -897,7 +928,7 @@ import {
 const provider = new ProviderRuntime(new EventBus(), new StreamingRuntime(new EventBus()));
 
 const request: ProviderTextCompletionRequest = provider.buildTextCompletionRequest({
-  apiType: 'openai',
+  apiType: ConnectionApiTypes.OPENAI,
   model: 'gpt-4o-mini',
   prompt: 'User: 你好\nAssistant:',
   temperature: 0.7,
@@ -928,8 +959,10 @@ OpenAI-compatible chat streaming 推荐直接使用内置 `OpenAIOhosProviderStr
 
 ```ts
 import {
+  ChatMessageRoles,
   EventBus,
   OpenAIOhosProviderStreamSource,
+  ProviderIds,
   ProviderRuntime,
   StreamingRuntime,
 } from 'tavern_ohos';
@@ -950,10 +983,10 @@ const task = await provider.startOpenAICompatibleStream({
   chatId: 'chat-1',
   messageId: 'message-1',
   request: {
-    provider: 'openai-compatible',
+    provider: ProviderIds.OPENAI_COMPATIBLE,
     model: 'gpt-4o-mini',
     messages: [
-      { role: 'user', content: '你好' },
+      { role: ChatMessageRoles.USER, content: '你好' },
     ],
     temperature: 0.7,
     maxTokens: 256,
@@ -1045,7 +1078,7 @@ const chat = await chats.createChat({
 
 const messages = new MessageRuntime(files, events, 'tavern-data', 'default', chat.id);
 const assistant = await messages.addMessage({
-  role: 'assistant',
+  role: ChatMessageRoles.ASSISTANT,
   name: 'Assistant',
   text: '',
 });

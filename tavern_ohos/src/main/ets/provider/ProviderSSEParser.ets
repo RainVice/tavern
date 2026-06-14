@@ -1,31 +1,36 @@
 import type { ProviderSSEEvent } from './ProviderModels';
 
 /**
- * SSE 分隔符在字符串中的位置和长度信息。
+ * 描述Provider 请求模块在运行时交换的数据结构。
  */
 interface SSESeparator {
-  /** 分隔符的起始索引，-1 表示未找到。 */
+  /**
+   * 索引数据或循环位置，由当前实例内部维护。
+   */
   index: number;
-  /** 分隔符的长度："\n\n" 为 2，"\r\n\r\n" 为 4。 */
+  /**
+   * length 值，由当前实例内部维护。
+   */
   length: number;
 }
 
 /**
- * SSE (Server-Sent Events) 协议解析器。
- * 将流式原始数据块按 SSE 协议规范解析为结构化事件对象。
+ * 封装Provider 请求相关状态和行为。
  */
 export class ProviderSSEParser {
-  /** 尚未完成解析的缓冲区数据。 */
+  /**
+   * buffer 值，由当前实例内部维护。
+   */
   private buffer: string = '';
 
   /**
-   * 向解析器推送新的数据块，从中提取完整的事件并返回。
-   * @param chunk 原始数据块字符串。
-   * @returns 从当前缓冲区中解析出的完整 SSE 事件列表。
+   * 执行 push 的内部处理步骤，供当前模块复用。
+
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   push(chunk: string): Array<ProviderSSEEvent> {
     this.buffer = this.buffer + chunk;
-    // 从缓冲区中循环提取完整的事件
+    // 事件总线。
     const events = new Array<ProviderSSEEvent>();
     while (true) {
       const separator = this.findSeparator(this.buffer);
@@ -43,8 +48,8 @@ export class ProviderSSEParser {
   }
 
   /**
-   * 刷新缓冲区中剩余的未完成数据，将其作为最后一个事件解析并返回。
-   * @returns 缓冲区残留数据解析后的事件列表（最多一个事件）。
+   * 执行 flush 的内部处理步骤，供当前模块复用。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   flush(): Array<ProviderSSEEvent> {
     if (this.buffer.length === 0) {
@@ -60,9 +65,8 @@ export class ProviderSSEParser {
   }
 
   /**
-   * 在字符串中查找 SSE 事件分隔符（"\n\n" 或 "\r\n\r\n"），优先匹配先出现的。
-   * @param value 要搜索的目标字符串。
-   * @returns 分隔符的位置和长度。
+   * 在当前集合中查找Separator 值，未命中时返回空值或默认位置。
+   * @param value 要保存或比较的字段值。
    */
   private findSeparator(value: string): SSESeparator {
     const lf = value.indexOf('\n\n');
@@ -77,16 +81,13 @@ export class ProviderSSEParser {
   }
 
   /**
-   * 解析原始事件字符串为结构化 SSE 事件对象。
-   * 按照 SSE 协议规范，识别 event、id、data 字段，忽略注释行（以 ":" 开头）。
-   * @param rawEvent 两个事件分隔符之间的原始文本。
-   * @returns 解析后的 SSE 事件，若无可用的 data 字段则返回 null。
+   * 解析RawEvent，非法输入会返回失败标记或空结果。
    */
   private parseRawEvent(rawEvent: string): ProviderSSEEvent | null {
     const lines = rawEvent.replace(/\r\n/g, '\n').split('\n');
-    // 默认事件名称为 "message"
+    // event 名称。
     let eventName = 'message';
-    // SSE 事件标识
+    // event 标识。
     let eventId = '';
     const dataLines = new Array<string>();
     for (let index = 0; index < lines.length; index += 1) {

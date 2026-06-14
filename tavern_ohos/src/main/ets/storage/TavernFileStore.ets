@@ -8,55 +8,48 @@ import fileIo from '@ohos.file.fs';
 export interface TavernFileStore {
   /**
    * 确保目录路径存在，必要时创建缺失的中间目录。
-   * 在写入文件前由存储层自动调用，用于保证目标路径的父目录结构完整。
-   * @param path 目标文件或目录路径，相对于存储根目录。
+   * @param path 目标文件或目录路径。
    */
   ensureDirectory(path: string): Promise<void>;
 
   /**
-   * 检查指定路径是否存在文件或目录。
-   * 在读取或写入前由存储层调用，用于判断文件是否需要初始化默认值或执行后续操作。
-   * @param path 要检查的文件或目录路径，相对于存储根目录。
-   * @returns 路径存在时返回 true，否则返回 false。
+   * 检查指定路径是否存在文件或目录，调用方可据此决定读取、写入或创建。
+   * @param path 目标文件或目录路径。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   exists(path: string): Promise<boolean>;
 
   /**
-   * 读取指定路径的文本内容，路径不存在时抛出错误。
-   * 由 JsonStore / JsonlStore 在还原数据时调用，是数据读取链的最底层操作。
-   * @param path 要读取的文件路径，相对于存储根目录。
+   * 读取指定路径的文本内容，路径不存在时由存储实现抛出错误。
+   * @param path 目标文件或目录路径。
    */
   readText(path: string): Promise<string>;
 
   /**
-   * 把文本写入指定路径，按参数决定是否创建 .bak 备份。
-   * 由 JsonStore / JsonlStore 在持久化数据时调用，是数据写入链的最底层操作。
-   * @param path 要写入的文件路径，相对于存储根目录。
-   * @param content 要写入的文本内容，通常是序列化后的 JSON 数据。
-   * @param createBackup 写入前是否把已有文件创建为备份，用于防止写入失败导致数据丢失。
+   * 把文本写入指定路径，并按参数决定是否保留备份。
+   * @param path 目标文件或目录路径。
+   * @param content 要写入或追加的文本内容。
+   * @param createBackup 写入前是否创建备份。
    */
   writeText(path: string, content: string, createBackup: boolean): Promise<void>;
 
   /**
-   * 向指定文件尾部追加文本内容（文件不存在时创建）。
-   * 由 JsonlStore 在 append 操作时调用，用于增量日志场景的写入。
-   * @param path 要追加的文件路径，相对于存储根目录。
-   * @param content 要追加的文本内容，通常是序列化后的一行 JSON 数据。
+   * 向指定文本文件追加内容，常用于 JSONL 或日志类存储。
+   * @param path 目标文件或目录路径。
+   * @param content 要写入或追加的文本内容。
    */
   appendText(path: string, content: string): Promise<void>;
 
   /**
-   * 删除指定文件或空目录；路径不存在时静默返回。
-   * 在 Runtime 清理数据（如删除角色、聊天记录、缩略图或主题文件）时调用。
-   * @param path 要删除的文件或目录路径，相对于存储根目录。
+   * 删除指定文件或目录，具体递归策略由存储实现负责。
+   * @param path 目标文件或目录路径。
    */
   delete(path: string): Promise<void>;
 
   /**
-   * 列出指定目录下的直接子项名称。
-   * 在需要遍历目录内容（如列出所有备份文件、扫描存储结构）时调用。
-   * @param path 要列出的目录路径，相对于存储根目录。
-   * @returns 子项名称的数组（仅直接子项，不递归），按字母序排列。
+   * 列出指定目录下的直接子项名称，用于构建索引或资源列表。
+   * @param path 目标文件或目录路径。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   list(path: string): Promise<Array<string>>;
 }
@@ -68,40 +61,33 @@ export interface TavernFileStore {
  */
 export class SandboxTavernFileStore implements TavernFileStore {
   /**
-   * 应用沙箱中的存储根目录，在构造函数中根据传入的 baseDirectory 初始化，作为所有相对路径的前缀。
+   * 应用沙箱中的存储根目录。
    */
   private baseDirectory: string;
 
   /**
-   * @param baseDirectory 应用沙箱可写目录，通常传入宿主通过 context.filesDir 获取的路径，用于确定所有文件操作的根目录。
+   * @param baseDirectory 应用可写沙箱目录，例如宿主从上下文取得的 `filesDir`。
    */
   constructor(baseDirectory: string) {
     this.baseDirectory = this.normalizeBaseDirectory(baseDirectory);
   }
 
   /**
-   * 确保目录路径存在，必要时递归创建缺失的中间目录。
-   * 在写入文件前自动调用，用于保证目标路径的父目录结构完整。
-   * @param path 相对存储根目录的目录路径。
+   * 确保目录路径存在，必要时创建缺失的中间目录。
+   * @param path 相对 SDK 存储根的目录路径。
    */
   async ensureDirectory(path: string): Promise<void> {
     const target = this.resolvePath(path);
-    if (await this.isDirectory(target)) {
-      return;
-    }
     try {
       await fileIo.mkdir(target, true);
     } catch (error) {
-      if (await this.isDirectory(target)) {
-        return;
-      }
       throw new Error(`创建目录失败: ${path}, ${String(error)}`);
     }
   }
 
   /**
    * 检查指定路径是否存在文件或目录。
-   * @param path 相对存储根目录的文件或目录路径。
+   * @param path 相对 SDK 存储根的文件或目录路径。
    */
   async exists(path: string): Promise<boolean> {
     try {
@@ -113,7 +99,7 @@ export class SandboxTavernFileStore implements TavernFileStore {
 
   /**
    * 读取指定路径的文本内容。
-   * @param path 相对存储根目录的文件路径。
+   * @param path 相对 SDK 存储根的文件路径。
    */
   async readText(path: string): Promise<string> {
     try {
@@ -124,10 +110,10 @@ export class SandboxTavernFileStore implements TavernFileStore {
   }
 
   /**
-   * 写入文本内容，写入前按需确保父目录存在。
-   * @param path 相对存储根目录的文件路径。
+   * 写入文本内容，写入前按需创建父目录。
+   * @param path 相对 SDK 存储根的文件路径。
    * @param content 要写入的文本。
-   * @param createBackup 写入前是否把已有文件复制为 .bak 备份。
+   * @param createBackup 写入前是否把已有文件复制为 `.bak`。
    */
   async writeText(path: string, content: string, createBackup: boolean): Promise<void> {
     const target = this.resolvePath(path);
@@ -143,8 +129,8 @@ export class SandboxTavernFileStore implements TavernFileStore {
   }
 
   /**
-   * 向文本文件尾部追加内容，文件不存在时自动创建。
-   * @param path 相对存储根目录的文件路径。
+   * 向文本文件尾部追加内容，文件不存在时创建文件。
+   * @param path 相对 SDK 存储根的文件路径。
    * @param content 要追加的文本。
    */
   async appendText(path: string, content: string): Promise<void> {
@@ -155,7 +141,7 @@ export class SandboxTavernFileStore implements TavernFileStore {
 
   /**
    * 删除指定文件或空目录；路径不存在时不做处理。
-   * @param path 相对存储根目录的文件或目录路径。
+   * @param path 相对 SDK 存储根的文件或目录路径。
    */
   async delete(path: string): Promise<void> {
     const target = this.resolvePath(path);
@@ -175,7 +161,7 @@ export class SandboxTavernFileStore implements TavernFileStore {
 
   /**
    * 列出指定目录下的直接子项名称。
-   * @param path 相对存储根目录的目录路径。
+   * @param path 相对 SDK 存储根的目录路径。
    */
   async list(path: string): Promise<Array<string>> {
     if (!(await this.exists(path))) {
@@ -196,15 +182,6 @@ export class SandboxTavernFileStore implements TavernFileStore {
       return;
     }
     await this.ensureDirectory(normalized.substring(0, lastSlash));
-  }
-
-  private async isDirectory(path: string): Promise<boolean> {
-    try {
-      const stat = await fileIo.stat(path);
-      return stat.isDirectory();
-    } catch (error) {
-      return false;
-    }
   }
 
   private async writeFile(path: string, content: string, mode: number): Promise<void> {
@@ -257,20 +234,19 @@ export class SandboxTavernFileStore implements TavernFileStore {
 
 /**
  * 提供仅用于测试和示例的内存文件系统实现。
- * 在单元测试或示例代码中替代 SandboxTavernFileStore，避免对实际文件系统的依赖。
  */
 export class InMemoryFileStore implements TavernFileStore {
   /**
-   * 以规范化相对路径为键，保存文件文本内容。
+   * 以规范化后的相对路径保存文件文本内容。
    */
   private files: Map<string, string> = new Map<string, string>();
   /**
-   * 已创建的目录路径集合，模拟目录存在性和 list 行为。
+   * 记录已经创建的目录路径，用于模拟目录存在性和 list 行为。
    */
   private directories: Set<string> = new Set<string>();
 
   /**
-   * 初始化 InMemoryFileStore，默认包含根目录。
+   * 初始化当前运行时实例。
    */
   constructor() {
     this.directories.add('');
@@ -295,9 +271,9 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 检查指定路径是否存在文件或目录。
-   * @param path 要检查的文件或目录路径。
-   * @returns 存在文件或目录记录时返回 true，否则返回 false。
+   * 检查指定路径是否存在文件或目录，调用方可据此决定读取、写入或创建。
+   * @param path 目标文件或目录路径。
+   * @returns 条件命中时返回 true，否则返回 false。
    */
   async exists(path: string): Promise<boolean> {
     const normalized = this.normalize(path);
@@ -305,8 +281,8 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 读取指定路径的文本内容；文件不存在时抛出错误。
-   * @param path 要读取的文件路径。
+   * 读取指定路径的文本内容，路径不存在时由存储实现抛出错误。
+   * @param path 目标文件或目录路径。
    */
   async readText(path: string): Promise<string> {
     const normalized = this.normalize(path);
@@ -318,10 +294,10 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 把文本写入指定路径，按参数决定是否保留 .bak 备份。
-   * @param path 要写入的文件路径。
-   * @param content 要写入的文本。
-   * @param createBackup 写入前是否复制已有文件为 .bak。
+   * 把文本写入指定路径，并按参数决定是否保留备份。
+   * @param path 目标文件或目录路径。
+   * @param content 要写入或追加的文本内容。
+   * @param createBackup 写入前是否创建备份。
    */
   async writeText(path: string, content: string, createBackup: boolean): Promise<void> {
     const normalized = this.normalize(path);
@@ -338,9 +314,9 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 向指定文件尾部追加文本内容。
-   * @param path 要追加的文件路径。
-   * @param content 要追加的文本。
+   * 向指定文本文件追加内容，常用于 JSONL 或日志类存储。
+   * @param path 目标文件或目录路径。
+   * @param content 要写入或追加的文本内容。
    */
   async appendText(path: string, content: string): Promise<void> {
     const normalized = this.normalize(path);
@@ -350,8 +326,8 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 删除指定文件或目录。
-   * @param path 要删除的文件或目录路径。
+   * 删除指定文件或目录，具体递归策略由存储实现负责。
+   * @param path 目标文件或目录路径。
    */
   async delete(path: string): Promise<void> {
     const normalized = this.normalize(path);
@@ -360,9 +336,9 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 列出指定目录下的直接子项名称。
-   * @param path 要列出的目录路径。
-   * @returns 子项名称的数组，按字母排序。
+   * 列出指定目录下的直接子项名称，用于构建索引或资源列表。
+   * @param path 目标文件或目录路径。
+   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
    */
   async list(path: string): Promise<Array<string>> {
     const normalized = this.normalize(path);
@@ -380,8 +356,8 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 写入文件前确保父目录存在于目录集合中。
-   * @param path 已规范化的文件路径。
+   * 写文件前确保父目录存在；根目录或当前目录文件不需要额外处理。
+   * @param path 目标文件或目录路径。
    */
   private async ensureParentDirectory(path: string): Promise<void> {
     const lastSlash = path.lastIndexOf('/');
@@ -392,9 +368,9 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 从完整路径中提取当前目录下的直接子项名称，加入结果集合。
-   * @param results 用于去重的子项名称集合。
-   * @param prefix 当前目录的规范化前缀（以 / 结尾）。
+   * 从文件或目录完整路径中提取当前 list 目录的直接子项名称。
+   * @param results 用于去重收集直接子项名称的集合。
+   * @param prefix 当前目录的规范化前缀。
    * @param candidate 待检查的文件或目录完整路径。
    */
   private collectChild(results: Set<string>, prefix: string, candidate: string): void {
@@ -407,8 +383,8 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 把路径统一为正斜杠分隔的相对路径，折叠空段和当前目录段，阻止父目录逃逸。
-   * @param path 要规范化的路径。
+   * 把路径统一成正斜杠分隔的相对路径，并折叠空段和当前目录段。
+   * @param path 目标文件或目录路径。
    */
   private normalize(path: string): string {
     const parts = path.replace(/\\/g, '/').split('/');

@@ -27,6 +27,7 @@ import networkServiceUnitTest from './NetworkService.test';
 import personaUnitTest from './Persona.test';
 import permissionUnitTest from './Permission.test';
 import promptUnitTest from './Prompt.test';
+import publicContractsUnitTest from './PublicContracts.test';
 import presetUnitTest from './Preset.test';
 import promptTemplateUnitTest from './PromptTemplate.test';
 import providerUnitTest from './Provider.test';
@@ -193,6 +194,10 @@ export default function testsuite() {
    * 封装单元测试中的 promptUnitTest 步骤，供公开方法复用。
    */
   promptUnitTest();
+  /**
+   * 封装单元测试中的 publicContractsUnitTest 步骤，供公开方法复用。
+   */
+  publicContractsUnitTest();
   /**
    * 封装单元测试中的 presetUnitTest 步骤，供公开方法复用。
    */

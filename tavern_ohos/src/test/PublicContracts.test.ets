@@ -1,0 +1,120 @@
+import { describe, it, expect } from '@ohos/hypium';
+import {
+  ASRProviders,
+  ASRTaskStatuses,
+  AssetTypes,
+  AsyncTaskStatuses,
+  AttachmentKinds,
+  BackupKinds,
+  CaptionProviders,
+  CaptionTaskStatuses,
+  CharacterCardFormats,
+  ChatMessageRoles,
+  ConnectionApiTypes,
+  ContentSources,
+  ContentTypes,
+  DiagnosticKinds,
+  DiagnosticStatuses,
+  EmbeddingProviders,
+  ExpressionClassifications,
+  GroupMemberRoles,
+  ImageGenerationBackends,
+  ImageGenerationStatuses,
+  ImageMetadataFormats,
+  InstallStatuses,
+  MarkdownExtensions,
+  MediaFormats,
+  MigrationStatuses,
+  PresetKinds,
+  PromptSectionTypes,
+  ProviderIds,
+  ProxyResolutionModes,
+  ReasoningFormats,
+  RecoveryTypes,
+  RuntimePermissions,
+  RuntimeSources,
+  RuntimeTaskStatuses,
+  SearchResultTypes,
+  SecretPermissions,
+  SecretRefs,
+  SettingValueTypes,
+  StreamSessionStatuses,
+  TavernScopes,
+  ThumbnailTypes,
+  TranslationDirections,
+  TranslationScopes,
+  TranslationTaskStatuses,
+  TTSProviders,
+  TTSTaskStatuses,
+  TokenizerStrategies,
+  ToolCallContentTypes,
+  VisionContentPartTypes,
+} from '../../Index';
+
+export default function publicContractsUnitTest() {
+  describe('public contracts', () => {
+    it('exports discoverable constants from package entry', 0, () => {
+      expect(ConnectionApiTypes.OPENAI).assertEqual('openai');
+      expect(ConnectionApiTypes.OPENAI_COMPATIBLE).assertEqual('openai-compatible');
+      expect(TavernScopes.CHAT).assertEqual('chat');
+      expect(ChatMessageRoles.USER).assertEqual('user');
+      expect(ProviderIds.OPENAI).assertEqual('openai');
+      expect(ProviderIds.OPENAI_COMPATIBLE).assertEqual('openai-compatible');
+      expect(TokenizerStrategies.OPENAI).assertEqual('openai');
+      expect(TokenizerStrategies.PROVIDER).assertEqual('provider');
+      expect(ReasoningFormats.TAGGED).assertEqual('tagged');
+      expect(PresetKinds.GENERATION).assertEqual('generation');
+      expect(AssetTypes.IMAGE).assertEqual('image');
+      expect(AttachmentKinds.GENERATED_IMAGE).assertEqual('generated_image');
+      expect(MediaFormats.PNG).assertEqual('png');
+      expect(ThumbnailTypes.BACKGROUND).assertEqual('bg');
+      expect(ProxyResolutionModes.PROXY).assertEqual('proxy');
+      expect(DiagnosticKinds.STREAM).assertEqual('stream');
+      expect(DiagnosticStatuses.WARNING).assertEqual('warning');
+      expect(BackupKinds.MANUAL).assertEqual('manual');
+      expect(SettingValueTypes.JSON).assertEqual('json');
+      expect(RuntimeSources.PLUGIN).assertEqual('plugin');
+      expect(PromptSectionTypes.WORLD_INFO).assertEqual('world_info');
+      expect(ToolCallContentTypes.FUNCTION).assertEqual('function');
+      expect(VisionContentPartTypes.IMAGE_URL).assertEqual('image_url');
+      expect(SearchResultTypes.DATA_BANK).assertEqual('databank');
+      expect(SecretPermissions.READ_SECRET).assertEqual('secret:read');
+      expect(RuntimePermissions.NETWORK).assertEqual('network');
+      expect(RuntimeTaskStatuses.COMPLETED).assertEqual('completed');
+      expect(StreamSessionStatuses.ABORTED).assertEqual('aborted');
+      expect(GroupMemberRoles.MODERATOR).assertEqual('moderator');
+      expect(AsyncTaskStatuses.PENDING).assertEqual('pending');
+      expect(ASRProviders.OPENAI_WHISPER).assertEqual('openai_whisper');
+      expect(ASRTaskStatuses.CANCELLED).assertEqual('cancelled');
+      expect(CaptionProviders.OPENAI_VISION).assertEqual('openai_vision');
+      expect(CaptionTaskStatuses.FAILED).assertEqual('failed');
+      expect(CharacterCardFormats.CHARX).assertEqual('charx');
+      expect(ImageMetadataFormats.UNKNOWN).assertEqual('unknown');
+      expect(ImageGenerationBackends.OPENAI_IMAGE).assertEqual('openai_image');
+      expect(ImageGenerationStatuses.RUNNING).assertEqual('running');
+      expect(TTSProviders.EDGE).assertEqual('edge');
+      expect(TTSTaskStatuses.COMPLETED).assertEqual('completed');
+      expect(EmbeddingProviders.LOCAL_HTTP).assertEqual('local_http');
+      expect(ExpressionClassifications.NEUTRAL).assertEqual('neutral');
+      expect(ContentTypes.EXTENSION).assertEqual('extension');
+      expect(ContentSources.MARKETPLACE).assertEqual('marketplace');
+      expect(InstallStatuses.INSTALLED).assertEqual('installed');
+      expect(MigrationStatuses.ROLLED_BACK).assertEqual('rolled_back');
+      expect(TranslationDirections.OUTPUT).assertEqual('output');
+      expect(TranslationScopes.MESSAGE_INPUT).assertEqual('message_input');
+      expect(TranslationTaskStatuses.CANCELLED).assertEqual('cancelled');
+      expect(RecoveryTypes.SESSION_RESTORE).assertEqual('session_restore');
+      expect(MarkdownExtensions.STRIKETHROUGH).assertEqual('strikethrough');
+    });
+
+    it('builds and parses secret references through public helper', 0, () => {
+      const secretRef = SecretRefs.create(ProviderIds.OPENAI, 'primary');
+
+      expect(secretRef).assertEqual('secret:openai:primary');
+      expect(SecretRefs.providerId(secretRef)).assertEqual(ProviderIds.OPENAI);
+      expect(SecretRefs.id(secretRef)).assertEqual('primary');
+      expect(SecretRefs.isValid(secretRef)).assertTrue();
+      expect(SecretRefs.isValid('openai:primary')).assertFalse();
+    });
+  });
+}
