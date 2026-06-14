@@ -16,29 +16,30 @@ import type {
  */
 export class I18nRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于发布 locale 切换、bundle 注册、翻译缺失等事件。
    */
   private events: EventBus;
   /**
-   * default Locale 值，由当前实例内部维护。
+   * 兜底语言区域标识，当指定语言找不到翻译时回退到此值。
    */
   private defaultLocale: string;
   /**
-   * current Locale 值，由当前实例内部维护。
+   * 当前生效的语言区域标识。
    */
   private currentLocale: string;
   /**
-   * 记录副本列表，由当前实例内部维护。
+   * 已注册的全部翻译记录，键为 "${locale}:${key}"。
    */
   private records: Map<string, I18nTranslationRecord> = new Map<string, I18nTranslationRecord>();
   /**
-   * missing 值，由当前实例内部维护。
+   * 已记录的缺失翻译记录，键为 "${locale}:${key}"。
    */
   private missing: Map<string, I18nMissingRecord> = new Map<string, I18nMissingRecord>();
 
   /**
    * 注入本地化运行时依赖并初始化实例状态。
    * @param events 事件总线。
+   * @param defaultLocale 兜底语言区域标识。
    */
   constructor(events: EventBus, defaultLocale: string) {
     this.events = events;
@@ -47,16 +48,16 @@ export class I18nRuntime {
   }
 
   /**
-   * 读取指定CurrentLocale，不存在时抛出错误。
-   * @returns 更新或读取后的记录副本。
+   * 获取当前生效的语言区域标识。
+   * @returns 当前语言区域的小写形式。
    */
   getCurrentLocale(): string {
     return this.currentLocale;
   }
 
   /**
-   * 设置语言区域，用于切换运行时状态或保存配置。
-
+   * 设置语言区域并发布 locale 切换事件。
+   * @param locale 新的语言区域标识。
    */
   setLocale(locale: string): void {
     const normalized = this.normalizeLocale(locale);
@@ -70,8 +71,9 @@ export class I18nRuntime {
   }
 
   /**
-   * 注册Bundle 值，使其可被后续运行时流程使用。
-
+   * 注册一组翻译条目并发布 bundle 注册事件。
+   * 已存在的条目会被覆盖。
+   * @param bundle 待注册的翻译数据包。
    */
   registerBundle(bundle: I18nBundle): void {
     const normalized = this.normalizeLocale(bundle.locale);
@@ -90,16 +92,15 @@ export class I18nRuntime {
   }
 
   /**
-   * 创建或写入LocaleData，完成持久化后返回可供调用方使用的结果。
-
+   * 向指定语言区域添加新翻译条目，跳过已存在的键名。
+   * @param locale 目标语言区域标识。
    * @param source 来源类型。
-   * @param entries 条目列表。
+   * @param entries 待添加的条目列表。
    */
   addLocaleData(locale: string, source: RuntimeSource, entries: Array<I18nEntry>): void {
     const normalized = this.normalizeLocale(locale);
     const accepted = new Array<I18nEntry>();
     for (let index = 0; index < entries.length; index += 1) {
-      // 键名。
       const key = this.recordKey(normalized, entries[index].key);
       if (this.records.has(key)) {
         continue;
@@ -117,11 +118,12 @@ export class I18nRuntime {
   }
 
   /**
-   * 执行 translate 的内部处理步骤，供当前模块复用。
-   * @param key 键名。
-
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 翻译指定键名：优先查找当前 locale，未命中则回退到兜底 locale，
+   * 仍未命中则记录缺失并返回回退文本。结果中的 ${name} 占位符会被 params 替换。
+   * @param key 翻译键名。
+   * @param fallback 键名不存在时返回的回退文本。
+   * @param params 插值参数列表。
+   * @returns 翻译后的文本。
    */
   translate(key: string, fallback: string, params: Array<I18nParam>): string {
     const record = this.findRecord(this.currentLocale, key);
@@ -137,9 +139,9 @@ export class I18nRuntime {
   }
 
   /**
-   * 读取Locale列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 查询指定语言区域的所有已注册翻译记录。
+   * @param locale 目标语言区域标识。
+   * @returns 翻译记录列表的副本，按键名排序。
    */
   listLocale(locale: string): Array<I18nTranslationRecord> {
     const normalized = this.normalizeLocale(locale);
@@ -155,9 +157,9 @@ export class I18nRuntime {
   }
 
   /**
-   * 读取Missing列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 查询指定语言区域的所有缺失翻译记录。
+   * @param locale 目标语言区域标识。
+   * @returns 缺失记录列表的副本，按键名排序。
    */
   listMissing(locale: string): Array<I18nMissingRecord> {
     const normalized = this.normalizeLocale(locale);
@@ -173,15 +175,14 @@ export class I18nRuntime {
   }
 
   /**
-   * 创建或写入条目，完成持久化后返回可供调用方使用的结果。
-
+   * 创建或更新一条翻译记录。若已存在且 allowOverride 为 false，则保留原值。
+   * @param locale 语言区域标识。
    * @param source 来源类型。
-   * @param entry 条目记录。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @param entry 待写入的条目。
+   * @param allowOverride 是否允许覆盖已有值。
+   * @returns 写入后的条目（仅含 key / value / category）。
    */
   private upsertEntry(locale: string, source: RuntimeSource, entry: I18nEntry, allowOverride: boolean): I18nEntry {
-    // 键名。
     const key = this.recordKey(locale, entry.key);
     const existing = this.records.get(key);
     if (existing !== undefined && !allowOverride) {
@@ -210,19 +211,21 @@ export class I18nRuntime {
   }
 
   /**
-   * 在当前集合中查找Record 值，未命中时返回空值或默认位置。
-
-   * @param key 键名。
+   * 在 records 中查找指定 locale 和键名的翻译记录。
+   * @param locale 语言区域标识。
+   * @param key 翻译键名。
+   * @returns 找到的记录，未命中时返回 undefined。
    */
   private findRecord(locale: string, key: string): I18nTranslationRecord | undefined {
     return this.records.get(this.recordKey(this.normalizeLocale(locale), key));
   }
 
   /**
-   * 创建或写入Missing，完成持久化后返回可供调用方使用的结果。
-
-   * @param key 键名。
-
+   * 记录一次翻译缺失：首次缺失创建新记录，后续缺失累加计数。
+   * 同时发布 i18n.missing 事件。
+   * @param locale 语言区域标识。
+   * @param key 缺失的翻译键名。
+   * @param fallback 本次使用的回退文本。
    */
   private recordMissing(locale: string, key: string, fallback: string): void {
     const normalized = this.normalizeLocale(locale);
@@ -247,6 +250,13 @@ export class I18nRuntime {
     };
     this.events.publish<I18nMissingPayload>('i18n.missing', payload);
   }
+
+  /**
+   * 对文本执行参数插值，替换 ${name} 和 ${index} 占位符。
+   * @param text 包含占位符的原始文本。
+   * @param params 参数列表，按 name 和索引匹配占位符。
+   * @returns 插值后的文本。
+   */
   private interpolate(text: string, params: Array<I18nParam>): string {
     let output = text;
     for (let index = 0; index < params.length; index += 1) {
@@ -255,6 +265,14 @@ export class I18nRuntime {
     }
     return output;
   }
+
+  /**
+   * 替换字符串中所有匹配的子串。
+   * @param input 原始字符串。
+   * @param needle 要查找的子串。
+   * @param value 替换文本。
+   * @returns 替换后的字符串。
+   */
   private replaceAll(input: string, needle: string, value: string): string {
     if (needle.length === 0) {
       return input;
@@ -269,8 +287,9 @@ export class I18nRuntime {
   }
 
   /**
-   * 复制Record 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深拷贝一条翻译记录，避免外部调用修改内部状态。
+   * @param record 原始记录。
+   * @returns 新创建的记录副本。
    */
   private copyRecord(record: I18nTranslationRecord): I18nTranslationRecord {
     return {
@@ -285,8 +304,9 @@ export class I18nRuntime {
   }
 
   /**
-   * 复制Missing 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深拷贝一条缺失记录，避免外部调用修改内部状态。
+   * @param record 原始记录。
+   * @returns 新创建的记录副本。
    */
   private copyMissing(record: I18nMissingRecord): I18nMissingRecord {
     return {
@@ -299,16 +319,19 @@ export class I18nRuntime {
   }
 
   /**
-   * 创建或写入Key，完成持久化后返回可供调用方使用的结果。
-
-   * @param key 键名。
+   * 根据语言区域和键名生成内部存储键。
+   * @param locale 语言区域标识。
+   * @param key 翻译键名。
+   * @returns 格式为 "${locale}:${key}" 的合成键。
    */
   private recordKey(locale: string, key: string): string {
     return `${locale}:${key}`;
   }
 
   /**
-   * 规范化Locale 值，保证后续比较和存储使用一致格式。
+   * 将语言区域标识转换为小写，保证后续比较和存储的格式一致。
+   * @param locale 原始语言区域标识。
+   * @returns 规范化后的小写形式。
    */
   private normalizeLocale(locale: string): string {
     return locale.toLowerCase();

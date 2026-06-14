@@ -1,49 +1,49 @@
 /**
- * 描述系统 Prompt持久化或内存索引中的一条记录。
+ * 描述系统 Prompt 持久化或内存索引中的一条记录。
  */
 export interface SystemPromptRecord {
   /**
-   * 名称。
+   * 提示词名称，作为唯一标识。
    */
   name: string;
   /**
-   * 内容。
+   * 提示词正文内容。
    */
   content: string;
   /**
-   * post History 值，由当前实例内部维护。
+   * 提示词之后追加的对话历史说明文本。
    */
   postHistory: string;
 }
 
 /**
- * 描述系统 Prompt模块在运行时交换的数据结构。
+ * 描述系统 Prompt 模块在运行时交换的状态数据结构。
  */
 export interface SystemPromptState {
   /**
-   * enabled 值，由当前实例内部维护。
+   * 是否启用了系统提示词功能。
    */
   enabled: boolean;
   /**
-   * 名称。
+   * 当前选中的提示词名称。
    */
   name: string;
   /**
-   * 内容。
+   * 当前选中的提示词正文内容。
    */
   content: string;
   /**
-   * post History 值，由当前实例内部维护。
+   * 当前选中的提示词之后的对话历史说明文本。
    */
   postHistory: string;
 }
 
 /**
- * 描述系统 Prompt事件发布时携带的数据结构。
+ * 描述系统 Prompt 事件发布时携带的数据结构。
  */
 export interface SystemPromptPayload {
   /**
-   * state 值，由当前实例内部维护。
+   * 系统提示词的运行时状态快照。
    */
   state: SystemPromptState;
 }

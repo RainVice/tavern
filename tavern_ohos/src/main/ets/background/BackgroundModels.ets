@@ -17,7 +17,7 @@ export interface BackgroundImportParams {
    */
   content: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * 文件的 MIME 类型（如 image/png）。
    */
   mimeType: string;
   /**
@@ -25,7 +25,7 @@ export interface BackgroundImportParams {
    */
   metadataJson: string;
   /**
-   * is Animated 值，由当前实例内部维护。
+   * 是否为动图（如 GIF）。
    */
   isAnimated: boolean;
   /**
@@ -33,7 +33,7 @@ export interface BackgroundImportParams {
    */
   folderIds: Array<string>;
   /**
-   * thumbnail Content 值，由当前实例内部维护。
+   * 缩略图内容（base64 编码）。
    */
   thumbnailContent: string;
 }
@@ -43,7 +43,7 @@ export interface BackgroundImportParams {
  */
 export interface BackgroundRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 记录结构的 schema 版本号。
    */
   schemaVersion: number;
   /**
@@ -63,7 +63,7 @@ export interface BackgroundRecord {
    */
   content: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * 文件的 MIME 类型（如 image/png）。
    */
   mimeType: string;
   /**
@@ -71,7 +71,7 @@ export interface BackgroundRecord {
    */
   metadataJson: string;
   /**
-   * is Animated 值，由当前实例内部维护。
+   * 是否为动图（如 GIF）。
    */
   isAnimated: boolean;
   /**
@@ -83,31 +83,31 @@ export interface BackgroundRecord {
    */
   thumbnailPath: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最近更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述背景图持久化或内存索引中的一条记录。
+ * 描述列表中单张背景图的摘要信息。
  */
 export interface BackgroundListItem {
   /**
-   * filename 值，由当前实例内部维护。
+   * 文件名。
    */
   filename: string;
   /**
-   * is Animated 值，由当前实例内部维护。
+   * 是否为动图（如 GIF）。
    */
   isAnimated: boolean;
 }
 
 /**
- * 描述背景图持久化或内存索引中的一条记录。
+ * 描述文件夹维度聚合的记录。
  */
 export interface BackgroundFolderRecord {
   /**
@@ -125,11 +125,11 @@ export interface BackgroundFolderRecord {
  */
 export interface BackgroundListResult {
   /**
-   * images 列表，由当前实例内部维护。
+   * 背景图摘要列表。
    */
   images: Array<BackgroundListItem>;
   /**
-   * config 值，由当前实例内部维护。
+   * 缩略图尺寸配置。
    */
   config: ThumbnailDimensions;
 }
@@ -139,7 +139,7 @@ export interface BackgroundListResult {
  */
 export interface BackgroundImportedPayload {
   /**
-   * background 值，由当前实例内部维护。
+   * 背景图记录。
    */
   background: BackgroundRecord;
 }
@@ -153,7 +153,7 @@ export interface BackgroundRenamedPayload {
    */
   oldFileName: string;
   /**
-   * background 值，由当前实例内部维护。
+   * 背景图记录。
    */
   background: BackgroundRecord;
 }
@@ -177,7 +177,7 @@ export interface BackgroundDeletedPayload {
  */
 export interface BackgroundIndexData {
   /**
-   * backgrounds 列表，由当前实例内部维护。
+   * 背景图记录列表。
    */
   backgrounds: Array<BackgroundRecord>;
 }

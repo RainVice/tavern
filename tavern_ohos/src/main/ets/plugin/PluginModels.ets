@@ -1,341 +1,225 @@
 import type { RuntimePermission } from '../contracts/PublicContracts';
 
 /**
- * 描述插件模块在运行时交换的数据结构。
+ * 插件清单信息，声明插件的基本元数据和所需权限。
  */
 export interface PluginManifest {
-  /**
-   * 名称。
-   */
+  /** 插件名称，用于唯一标识。 */
   name: string;
-  /**
-   * version 值，由当前实例内部维护。
-   */
+  /** 插件版本号，语义化版本。 */
   version: string;
-  /**
-   * description 值，由当前实例内部维护。
-   */
+  /** 插件功能描述文本。 */
   description: string;
-  /**
-   * author 值，由当前实例内部维护。
-   */
+  /** 插件作者名。 */
   author: string;
-  /**
-   * permissions 列表，由当前实例内部维护。
-   */
+  /** 插件申请运行时所需权限列表。 */
   permissions: Array<RuntimePermission>;
 }
 
 /**
- * 描述插件持久化或内存索引中的一条记录。
+ * 插件记录，描述插件在持久化存储或内存索引中的状态。
  */
 export interface PluginRecord {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识，运行时自动生成。 */
   pluginId: string;
-  /**
-   * manifest 值，由当前实例内部维护。
-   */
+  /** 插件清单信息。 */
   manifest: PluginManifest;
-  /**
-   * enabled 值，由当前实例内部维护。
-   */
+  /** 是否已启用。 */
   enabled: boolean;
-  /**
-   * installed At 值，由当前实例内部维护。
-   */
+  /** 安装时的时间戳（毫秒）。 */
   installedAt: number;
-  /**
-   * updated At 值，由当前实例内部维护。
-   */
+  /** 最近一次更新时的时间戳（毫秒）。 */
   updatedAt: number;
 }
 
 /**
- * 描述插件模块在运行时交换的数据结构。
+ * 插件运行时上下文，为插件实例提供其运行环境信息。
  */
 export interface PluginContext {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * data Dir 值，由当前实例内部维护。
-   */
+  /** 插件数据目录的路径。 */
   dataDir: string;
 }
 
 /**
- * 描述插件模块在运行时交换的数据结构。
+ * 插件 Hook 注册信息，描述插件注册到哪个 Hook 点及执行优先级。
  */
 export interface PluginHookRegistration {
-  /**
-   * hook Point 值，由当前实例内部维护。
-   */
+  /** Hook 点名称。 */
   hookPoint: string;
-  /**
-   * priority 值，由当前实例内部维护。
-   */
+  /** 执行优先级，数值越小越先执行。 */
   priority: number;
 }
 
 /**
- * 描述插件操作完成后返回给调用方的结果。
+ * Hook 执行结果，决定 Hook 链是否允许继续执行。
  */
 export interface HookResult {
-  /**
-   * allowed 值，由当前实例内部维护。
-   */
+  /** 是否允许放行。 */
   allowed: boolean;
-  /**
-   * 原因说明，由当前实例内部维护。
-   */
+  /** 禁止放行时的原因说明。 */
   reason: string;
 }
 
 /**
- * 描述插件模块在运行时交换的数据结构。
+ * 插件命令注册信息，描述插件对外暴露的 CLI 命令。
  */
 export interface PluginCommandRegistration {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * command 名称。
-   */
+  /** 命令名称。 */
   commandName: string;
-  /**
-   * aliases 列表，由当前实例内部维护。
-   */
+  /** 命令别名列表。 */
   aliases: Array<string>;
-  /**
-   * help Text 值，由当前实例内部维护。
-   */
+  /** 命令的帮助文本。 */
   helpText: string;
-  /**
-   * permission 值，由当前实例内部维护。
-   */
+  /** 执行命令所需的权限。 */
   permission: RuntimePermission;
-  /**
-   * enabled 值，由当前实例内部维护。
-   */
+  /** 命令是否已启用。 */
   enabled: boolean;
 }
 
 /**
- * 描述插件模块在运行时交换的数据结构。
+ * 插件工具注册信息，描述插件对外暴露的工具函数。
  */
 export interface PluginToolRegistration {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * tool 名称。
-   */
+  /** 工具名称。 */
   toolName: string;
-  /**
-   * display 名称。
-   */
+  /** 工具展示名称。 */
   displayName: string;
-  /**
-   * description 值，由当前实例内部维护。
-   */
+  /** 工具描述文本。 */
   description: string;
-  /**
-   * parameters JSON 字符串。
-   */
+  /** 工具参数的 JSON Schema 字符串。 */
   parametersJson: string;
-  /**
-   * permission 值，由当前实例内部维护。
-   */
+  /** 调用工具所需的权限。 */
   permission: RuntimePermission;
-  /**
-   * stealth 值，由当前实例内部维护。
-   */
+  /** 是否隐藏工具不对外显示。 */
   stealth: boolean;
-  /**
-   * enabled 值，由当前实例内部维护。
-   */
+  /** 工具是否已启用。 */
   enabled: boolean;
 }
 
 /**
- * 描述插件模块在运行时交换的数据结构。
+ * 插件宏注册信息，描述插件注册的宏命令。
  */
 export interface PluginMacroRegistration {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * macro 名称。
-   */
+  /** 宏名称。 */
   macroName: string;
-  /**
-   * handler 名称。
-   */
+  /** 宏处理器名称。 */
   handlerName: string;
-  /**
-   * description 值，由当前实例内部维护。
-   */
+  /** 宏描述文本。 */
   description: string;
 }
 
 /**
- * 描述插件模块在运行时交换的数据结构。
+ * 插件提示词注入声明，描述插件在指定 Hook 点注入提示词内容。
  */
 export interface PluginPromptInjection {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * hook Point 值，由当前实例内部维护。
-   */
+  /** 注入点名称。 */
   hookPoint: string;
-  /**
-   * 内容。
-   */
+  /** 提示词文本内容。 */
   content: string;
-  /**
-   * position 值，由当前实例内部维护。
-   */
+  /** 注入位置（如 "before"、"after"）。 */
   position: string;
-  /**
-   * priority 值，由当前实例内部维护。
-   */
+  /** 执行优先级，数值越小越先注入。 */
   priority: number;
 }
 
 /**
- * 描述插件持久化或内存索引中的一条记录。
+ * 插件设置条目，描述插件的一项键值对配置。
  */
 export interface PluginSettingEntry {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * 键名，由当前实例内部维护。
-   */
+  /** 配置键名。 */
   key: string;
-  /**
-   * 字段值。
-   */
+  /** 配置值。 */
   value: string;
 }
 
 /**
- * 描述插件事件发布时携带的数据结构。
+ * 插件已注册事件的载荷。
  */
 export interface PluginRegisteredPayload {
-  /**
-   * plugin 值，由当前实例内部维护。
-   */
+  /** 被注册的插件记录。 */
   plugin: PluginRecord;
 }
 
 /**
- * 描述插件事件发布时携带的数据结构。
+ * 插件已启用事件的载荷。
  */
 export interface PluginEnabledPayload {
-  /**
-   * plugin 值，由当前实例内部维护。
-   */
+  /** 被启用的插件记录。 */
   plugin: PluginRecord;
 }
 
 /**
- * 描述插件事件发布时携带的数据结构。
+ * 插件已禁用事件的载荷。
  */
 export interface PluginDisabledPayload {
-  /**
-   * plugin 值，由当前实例内部维护。
-   */
+  /** 被禁用的插件记录。 */
   plugin: PluginRecord;
 }
 
 /**
- * 描述插件事件发布时携带的数据结构。
+ * 插件已卸载事件的载荷。
  */
 export interface PluginUninstalledPayload {
-  /**
-   * plugin 值，由当前实例内部维护。
-   */
+  /** 被卸载的插件记录。 */
   plugin: PluginRecord;
 }
 
 /**
- * 描述插件事件发布时携带的数据结构。
+ * 插件 Hook 已执行事件的载荷。
  */
 export interface PluginHookAppliedPayload {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * hook Point 值，由当前实例内部维护。
-   */
+  /** 已执行的 Hook 点名称。 */
   hookPoint: string;
-  /**
-   * 处理结果。
-   */
+  /** Hook 执行结果。 */
   result: HookResult;
 }
 
 /**
- * 描述插件事件发布时携带的数据结构。
+ * 插件错误事件的载荷。
  */
 export interface PluginErrorPayload {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * 消息数据。
-   */
+  /** 错误消息。 */
   message: string;
 }
 
 /**
- * 描述插件事件发布时携带的数据结构。
+ * 插件提示词已注入事件的载荷。
  */
 export interface PluginPromptInjectedPayload {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * hook Point 值，由当前实例内部维护。
-   */
+  /** 注入点名称。 */
   hookPoint: string;
-  /**
-   * 内容。
-   */
+  /** 注入的提示词内容。 */
   content: string;
-  /**
-   * position 值，由当前实例内部维护。
-   */
+  /** 注入位置（如 "before"、"after"）。 */
   position: string;
 }
 
 /**
- * 描述插件模块在运行时交换的数据结构。
+ * 插件导出数据，包含可序列化的完整插件状态，用于备份或迁移。
  */
 export interface PluginExportData {
-  /**
-   * manifest 值，由当前实例内部维护。
-   */
+  /** 插件清单信息。 */
   manifest: PluginManifest;
-  /**
-   * settings 列表，由当前实例内部维护。
-   */
+  /** 插件设置条目列表。 */
   settings: Array<PluginSettingEntry>;
-  /**
-   * prompt Injections 列表，由当前实例内部维护。
-   */
+  /** 插件提示词注入列表。 */
   promptInjections: Array<PluginPromptInjection>;
 }

@@ -1,313 +1,313 @@
 /**
- * 描述调用用户和会话能力时需要传入的参数。
+ * 描述创建新用户时所需传入的参数。
  */
 export interface UserCreateParams {
   /**
-   * handle 值，由当前实例内部维护。
+   * 用户句柄（唯一标识，会被规范化 slug）。
    */
   handle: string;
   /**
-   * 名称。
+   * 显示名称。
    */
   name: string;
   /**
-   * password 值，由当前实例内部维护。
+   * 登录密码（为空表示无密码登录）。
    */
   password?: string;
   /**
-   * admin 值，由当前实例内部维护。
+   * 是否为管理员。
    */
   admin?: boolean;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 是否启用该用户。
    */
   enabled?: boolean;
 }
 
 /**
- * 描述用户和会话持久化或内存索引中的一条记录。
+ * 描述用户内部存储记录的完整数据结构，包含密码哈希等敏感字段。
  */
 export interface UserRecord {
   /**
-   * handle 值，由当前实例内部维护。
+   * 用户句柄（规范化后的唯一标识）。
    */
   handle: string;
   /**
-   * 名称。
+   * 显示名称。
    */
   name: string;
   /**
-   * 创建后的记录，由当前实例内部维护。
+   * 用户账号创建时间戳。
    */
   created: number;
   /**
-   * password Hash 值，由当前实例内部维护。
+   * 密码的 FNV-1a 哈希值（格式为 "salt:hash"）。
    */
   passwordHash: string;
   /**
-   * salt 值，由当前实例内部维护。
+   * 密码加盐值。
    */
   salt: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 用户是否被启用。
    */
   enabled: boolean;
   /**
-   * admin 值，由当前实例内部维护。
+   * 用户是否拥有管理员权限。
    */
   admin: boolean;
   /**
-   * avatar 值，由当前实例内部维护。
+   * 头像的 base64 数据 URL（格式 "data:image/..."）。
    */
   avatar: string;
   /**
-   * account Version 值，由当前实例内部维护。
+   * 用户账号版本号（每次变更递增，用于会话失效校验）。
    */
   accountVersion: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 最近更新时间戳。
    */
   updatedAt: number;
 }
 
 /**
- * 描述用户和会话模块在运行时交换的数据结构。
+ * 描述用户信息对外暴露的视图模型，不包含密码哈希等敏感数据。
  */
 export interface UserViewModel {
   /**
-   * handle 值，由当前实例内部维护。
+   * 用户句柄（唯一标识）。
    */
   handle: string;
   /**
-   * 名称。
+   * 显示名称。
    */
   name: string;
   /**
-   * avatar 值，由当前实例内部维护。
+   * 头像 URL 或 base64 数据。
    */
   avatar: string;
   /**
-   * admin 值，由当前实例内部维护。
+   * 是否为管理员（仅在管理上下文可见）。
    */
   admin: boolean;
   /**
-   * password 值，由当前实例内部维护。
+   * 用户是否设置了密码（对外隐藏密码本身，仅表示有无）。
    */
   password: boolean;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 是否启用。
    */
   enabled: boolean;
   /**
-   * 创建后的记录，由当前实例内部维护。
+   * 账号创建时间戳。
    */
   created: number;
 }
 
 /**
- * 描述用户和会话模块在运行时交换的数据结构。
+ * 描述用户目录结构的映射关系，每个字段对应用户在文件系统中的子目录路径。
  */
 export interface UserDirectoryList {
   /**
-   * 规范化后的根路径，由当前实例内部维护。
+   * 用户根目录路径，格式为 "users/{handle}"。
    */
   root: string;
   /**
-   * thumbnails 列表，由当前实例内部维护。
+   * 缩略图目录路径。
    */
   thumbnails: string;
   /**
-   * thumbnails Bg 值，由当前实例内部维护。
+   * 缩略图背景子目录路径。
    */
   thumbnailsBg: string;
   /**
-   * thumbnails Avatar 值，由当前实例内部维护。
+   * 头像缩略图子目录路径。
    */
   thumbnailsAvatar: string;
   /**
-   * thumbnails Persona 值，由当前实例内部维护。
+   * 角色缩略图子目录路径。
    */
   thumbnailsPersona: string;
   /**
-   * worlds 列表，由当前实例内部维护。
+   * 世界书目录路径。
    */
   worlds: string;
   /**
-   * user 值，由当前实例内部维护。
+   * 用户配置目录路径。
    */
   user: string;
   /**
-   * avatars 列表，由当前实例内部维护。
+   * 头像资源目录路径。
    */
   avatars: string;
   /**
-   * user Images 列表，由当前实例内部维护。
+   * 用户图片目录路径。
    */
   userImages: string;
   /**
-   * groups 列表，由当前实例内部维护。
+   * 群组配置目录路径。
    */
   groups: string;
   /**
-   * group Chats 列表，由当前实例内部维护。
+   * 群组聊天记录目录路径。
    */
   groupChats: string;
   /**
-   * chats 列表，由当前实例内部维护。
+   * 聊天记录目录路径。
    */
   chats: string;
   /**
-   * characters 列表，由当前实例内部维护。
+   * 角色卡片目录路径。
    */
   characters: string;
   /**
-   * backgrounds 列表，由当前实例内部维护。
+   * 聊天背景目录路径。
    */
   backgrounds: string;
   /**
-   * novel AI Settings 列表，由当前实例内部维护。
+   * NovelAI 设置文件路径。
    */
   novelAI_Settings: string;
   /**
-   * kobold AI Settings 列表，由当前实例内部维护。
+   * KoboldAI 设置文件路径。
    */
   koboldAI_Settings: string;
   /**
-   * open AI Settings 列表，由当前实例内部维护。
+   * OpenAI 设置文件路径。
    */
   openAI_Settings: string;
   /**
-   * text Gen Settings 列表，由当前实例内部维护。
+   * TextGen 设置文件路径。
    */
   textGen_Settings: string;
   /**
-   * themes 列表，由当前实例内部维护。
+   * 主题配置目录路径。
    */
   themes: string;
   /**
-   * moving UI 值，由当前实例内部维护。
+   * 移动端 UI 布局配置目录路径。
    */
   movingUI: string;
   /**
-   * extensions 列表，由当前实例内部维护。
+   * 扩展插件配置目录路径。
    */
   extensions: string;
   /**
-   * instruct 值，由当前实例内部维护。
+   * 指令配置目录路径。
    */
   instruct: string;
   /**
-   * context 值，由当前实例内部维护。
+   * 上下文配置目录路径。
    */
   context: string;
   /**
-   * quickreplies 列表，由当前实例内部维护。
+   * 快捷回复配置目录路径。
    */
   quickreplies: string;
   /**
-   * assets 列表，由当前实例内部维护。
+   * 静态资源目录路径。
    */
   assets: string;
   /**
-   * comfy Workflows 列表，由当前实例内部维护。
+   * ComfyUI 工作流配置目录路径。
    */
   comfyWorkflows: string;
   /**
-   * 文件存储适配器。
+   * 文件存储适配器目录路径。
    */
   files: string;
   /**
-   * vectors 列表，由当前实例内部维护。
+   * 向量存储目录路径。
    */
   vectors: string;
   /**
-   * backups 列表，由当前实例内部维护。
+   * 备份目录路径。
    */
   backups: string;
   /**
-   * sysprompt 值，由当前实例内部维护。
+   * 系统提示词配置文件路径。
    */
   sysprompt: string;
   /**
-   * reasoning 值，由当前实例内部维护。
+   * 推理设置配置文件路径。
    */
   reasoning: string;
 }
 
 /**
- * 描述用户和会话持久化或内存索引中的一条记录。
+ * 描述用户登录会话的内部记录结构。
  */
 export interface UserSessionRecord {
   /**
-   * 标识。
+   * 会话唯一标识（如 "session-1"）。
    */
   id: string;
   /**
-   * handle 值，由当前实例内部维护。
+   * 关联的用户句柄。
    */
   handle: string;
   /**
-   * account Version 值，由当前实例内部维护。
+   * 创建会话时的用户账号版本号，用于校验会话是否有效。
    */
   accountVersion: number;
   /**
-   * created At 值，由当前实例内部维护。
+   * 会话创建时间戳。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 会话最近活动时间戳。
    */
   updatedAt: number;
 }
 
 /**
- * 描述用户和会话操作完成后返回给调用方的结果。
+ * 描述用户登录操作完成后返回给调用方的结果，包含用户信息和会话信息。
  */
 export interface UserLoginResult {
   /**
-   * user 值，由当前实例内部维护。
+   * 登录用户的视图模型。
    */
   user: UserViewModel;
   /**
-   * session 值，由当前实例内部维护。
+   * 本次登录创建的会话记录。
    */
   session: UserSessionRecord;
 }
 
 /**
- * 描述用户和会话事件发布时携带的数据结构。
+ * 描述用户创建、启用、禁用、更新等事件发布时携带的负载数据。
  */
 export interface UserEventPayload {
   /**
-   * user 值，由当前实例内部维护。
+   * 关联用户的视图模型。
    */
   user: UserViewModel;
 }
 
 /**
- * 描述用户和会话事件发布时携带的数据结构。
+ * 描述用户被删除事件（如 user.deleted）发布时携带的负载数据。
  */
 export interface UserDeletedPayload {
   /**
-   * handle 值，由当前实例内部维护。
+   * 被删除用户的句柄。
    */
   handle: string;
   /**
-   * purge 值，由当前实例内部维护。
+   * 是否同时清除用户的持久化数据。
    */
   purge: boolean;
 }
 
 /**
- * 描述用户和会话事件发布时携带的数据结构。
+ * 描述用户登录或登出事件（如 user.logged_in、user.logged_out）发布时携带的负载数据。
  */
 export interface UserSessionPayload {
   /**
-   * session 值，由当前实例内部维护。
+   * 相关会话记录。
    */
   session: UserSessionRecord;
   /**
-   * user 值，由当前实例内部维护。
+   * 关联用户的视图模型。
    */
   user: UserViewModel;
 }

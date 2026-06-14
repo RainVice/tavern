@@ -7,18 +7,18 @@ import type { RuntimeManifest, RuntimeStateRecord } from './AppModels';
  */
 export class AppRuntime {
   /**
-   * manifest Store 值，由当前实例内部维护。
+   * 持久化 manifest 数据的 JSON 存储实例，文件路径为 {rootPath}/app/manifest.json。
    */
   private manifestStore: JsonStore<RuntimeManifest>;
   /**
-   * state Store 值，由当前实例内部维护。
+   * 持久化运行时状态记录的 JSON 存储实例，文件路径为 {rootPath}/app/runtime-state.json。
    */
   private stateStore: JsonStore<RuntimeStateRecord>;
 
   /**
-   * 初始化当前运行时实例。
-   * @param files 文件存储适配器。
-   * @param rootPath 数据根路径。
+   * 初始化当前运行时实例，创建 manifest 和 runtime-state 两个 JSON 存储实例。
+   * @param files TavernFileStore 文件存储适配器，提供底层文件读写能力。
+   * @param rootPath 数据根路径，默认为 "tavern-data"，用于拼接存储文件的目录前缀。
    */
   constructor(files: TavernFileStore, rootPath: string = 'tavern-data') {
     this.manifestStore = new JsonStore<RuntimeManifest>(files, `${rootPath}/app/manifest.json`);
@@ -26,16 +26,17 @@ export class AppRuntime {
   }
 
   /**
-   * 读取或解析Manifest，调用方应处理不存在或不匹配的情况。
+   * 读取或解析 Manifest，调用方应处理不存在或不匹配的情况。
+   * @returns 解析后的完整 manifest 对象，文件不存在时返回默认值。
    */
   async loadManifest(): Promise<RuntimeManifest> {
     return this.manifestStore.read(this.defaultManifest());
   }
 
   /**
-   * 创建或写入Manifest，完成持久化后返回可供调用方使用的结果。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 创建或写入 Manifest，完成持久化后返回可供调用方使用的结果。
+   * @param globalMode 要写入的全局模式值，覆盖当前 manifest 中的 globalMode 字段。
+   * @returns 写入持久化后的完整 manifest 对象副本，包含自动填充的时间戳和 schema 版本。
    */
   async saveManifest(globalMode: boolean): Promise<RuntimeManifest> {
     const current = await this.loadManifest();
@@ -53,18 +54,19 @@ export class AppRuntime {
 
   /**
    * 读取或解析状态，调用方应处理不存在或不匹配的情况。
+   * @returns 解析后的状态记录对象，文件不存在时返回默认状态。
    */
   async loadRuntimeState(): Promise<RuntimeStateRecord> {
     return this.stateStore.read(this.defaultState());
   }
 
   /**
-   * 创建或写入状态，完成持久化后返回可供调用方使用的结果。
-
-
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 创建或写入运行时状态，完成持久化后返回可供调用方使用的结果。
+   * @param phase 要设置的生命周期阶段名称（如 "created"、"ready"）。
+   * @param ready 是否标记为就绪状态。
+   * @param globalMode 全局模式值，同步写入状态记录。
+   * @param lastSignal 最近一次信号标识，用于追踪驱动来源。
+   * @returns 写入持久化后的完整状态记录副本，包含 schemaVersion 和时间戳。
    */
   async saveRuntimeState(phase: string, ready: boolean, globalMode: boolean, lastSignal: string): Promise<RuntimeStateRecord> {
     const current = await this.loadRuntimeState();
@@ -83,7 +85,14 @@ export class AppRuntime {
   }
 
   /**
-   * 创建或写入状态，完成持久化后返回可供调用方使用的结果。
+   * 创建或写入完整的运行时状态，支持手动指定所有状态字段，完成持久化后返回状态副本。
+   * @param phase 要设置的生命周期阶段名称（如 "created"、"ready"）。
+   * @param ready 是否标记为就绪状态。
+   * @param globalMode 全局模式值，同步写入状态记录。
+   * @param lastSignal 最近一次信号标识，用于追踪驱动来源。
+   * @param migrationVersion 迁移版本号，用于记录数据迁移进度。
+   * @param restored 是否已完成恢复标记。
+   * @returns 写入持久化后的完整状态记录副本，包含 schemaVersion 和时间戳。
    */
   async saveDetailedRuntimeState(
     phase: string,

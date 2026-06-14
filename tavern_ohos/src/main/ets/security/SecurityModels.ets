@@ -1,7 +1,7 @@
 import type { TavernScope } from '../contracts/PublicContracts';
 
 /**
- * 描述安全检查模块在运行时交换的数据结构。
+ * 一条安全规则的完整定义，包含匹配模式与处置动作。
  */
 export interface SecurityRule {
   /**
@@ -26,7 +26,7 @@ export interface SecurityRule {
   enabled: boolean;
 }
 /**
- * 描述安全检查操作完成后返回给调用方的结果。
+ * 安全检查操作完成后返回给调用方的结果。
  */
 export interface SecurityCheckResult {
   /**
@@ -43,7 +43,7 @@ export interface SecurityCheckResult {
   message: string;
 }
 /**
- * 描述安全检查持久化或内存索引中的一条记录。
+ * 安全检查的一次审核记录，包含输入内容与最终结果。
  */
 export interface SecurityAuditRecord {
   /**
@@ -68,7 +68,7 @@ export interface SecurityAuditRecord {
   timestamp: number;
 }
 /**
- * 描述安全检查事件发布时携带的数据结构。
+ * 安全检查事件发布时携带的 payload，内含检查结果。
  */
 export interface SecurityCheckPayload {
   /**
@@ -77,7 +77,7 @@ export interface SecurityCheckPayload {
   result: SecurityCheckResult;
 }
 /**
- * 描述安全检查模块在运行时交换的数据结构。
+ * 模块数据导出时使用的容器，包含所有安全规则的快照。
  */
 export interface SecurityExportData {
   /**

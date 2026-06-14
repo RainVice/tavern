@@ -5,27 +5,27 @@ import type { GroupMemberRole } from '../contracts/PublicContracts';
  */
 export interface GroupCreateParams {
   /**
-   * 标识。
+   * 群聊唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 群聊显示名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 群聊描述信息。
    */
   description: string;
   /**
-   * 聊天标识。
+   * 关联的聊天会话标识。
    */
   chatId: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 群聊是否启用。
    */
   enabled: boolean;
   /**
-   * activation Strategy 值，由当前实例内部维护。
+   * 群聊的激活策略名称。
    */
   activationStrategy: string;
 }
@@ -35,43 +35,43 @@ export interface GroupCreateParams {
  */
 export interface GroupRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据模式版本号。
    */
   schemaVersion: number;
   /**
-   * 标识。
+   * 群聊唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 群聊显示名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 群聊描述信息。
    */
   description: string;
   /**
-   * 聊天标识。
+   * 关联的聊天会话标识。
    */
   chatId: string;
   /**
-   * persona 标识。
+   * 绑定的用户人格标识。
    */
   personaId: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 群聊是否启用。
    */
   enabled: boolean;
   /**
-   * activation Strategy 值，由当前实例内部维护。
+   * 群聊的激活策略名称。
    */
   activationStrategy: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
@@ -81,27 +81,27 @@ export interface GroupRecord {
  */
 export interface GroupMemberCreateParams {
   /**
-   * 角色标识。
+   * 成员对应的角色标识。
    */
   characterId: string;
   /**
-   * character 名称。
+   * 成员对应的角色显示名称。
    */
   characterName: string;
   /**
-   * role 值，由当前实例内部维护。
+   * 成员在群聊中的角色类型。
    */
   role: GroupMemberRole;
   /**
-   * talkativeness 列表，由当前实例内部维护。
+   * 成员发言活跃度，用于说话者选择。
    */
   talkativeness: number;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 成员是否在群聊中启用。
    */
   enabled: boolean;
   /**
-   * world Info Text 值，由当前实例内部维护。
+   * 成员专属的世界信息文本。
    */
   worldInfoText: string;
 }
@@ -111,43 +111,43 @@ export interface GroupMemberCreateParams {
  */
 export interface GroupMemberRecord {
   /**
-   * group 标识。
+   * 所属群聊的唯一标识。
    */
   groupId: string;
   /**
-   * 角色标识。
+   * 成员对应的角色标识。
    */
   characterId: string;
   /**
-   * character 名称。
+   * 成员对应的角色显示名称。
    */
   characterName: string;
   /**
-   * role 值，由当前实例内部维护。
+   * 成员在群聊中的角色类型。
    */
   role: GroupMemberRole;
   /**
-   * order 值，由当前实例内部维护。
+   * 成员在群聊成员列表中的序号。
    */
   order: number;
   /**
-   * talkativeness 列表，由当前实例内部维护。
+   * 成员发言活跃度，用于说话者选择。
    */
   talkativeness: number;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 成员是否在群聊中启用。
    */
   enabled: boolean;
   /**
-   * world Info Text 值，由当前实例内部维护。
+   * 成员专属的世界信息文本。
    */
   worldInfoText: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
@@ -157,15 +157,15 @@ export interface GroupMemberRecord {
  */
 export interface GroupPersonaBindingRecord {
   /**
-   * group 标识。
+   * 群聊的唯一标识。
    */
   groupId: string;
   /**
-   * persona 标识。
+   * 绑定的用户人格标识。
    */
   personaId: string;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 绑定记录更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
@@ -175,27 +175,27 @@ export interface GroupPersonaBindingRecord {
  */
 export interface GroupPromptData {
   /**
-   * group 标识。
+   * 群聊的唯一标识。
    */
   groupId: string;
   /**
-   * group 名称。
+   * 群聊显示名称。
    */
   groupName: string;
   /**
-   * persona 标识。
+   * 绑定的用户人格标识。
    */
   personaId: string;
   /**
-   * member Names 列表，由当前实例内部维护。
+   * 所有启用成员的角色名称列表（逗号分隔）。
    */
   memberNames: string;
   /**
-   * world Info Text 值，由当前实例内部维护。
+   * 合并后的世界信息文本，包含共享与成员专属信息。
    */
   worldInfoText: string;
   /**
-   * prompt Text 值，由当前实例内部维护。
+   * 最终构建的 Prompt 文本，包含群聊描述、成员和世界信息。
    */
   promptText: string;
 }
@@ -205,35 +205,35 @@ export interface GroupPromptData {
  */
 export interface GroupGenerationRequest {
   /**
-   * 标识。
+   * 请求唯一标识。
    */
   id: string;
   /**
-   * group 标识。
+   * 所属群聊标识。
    */
   groupId: string;
   /**
-   * 聊天标识。
+   * 关联的聊天会话标识。
    */
   chatId: string;
   /**
-   * 消息标识。
+   * 关联的消息标识。
    */
   messageId: string;
   /**
-   * request Type 值，由当前实例内部维护。
+   * 请求类型（如 regenerate、continue、tool_call）。
    */
   requestType: string;
   /**
-   * speaker Character 标识。
+   * 发言的角色标识。
    */
   speakerCharacterId: string;
   /**
-   * tool 名称。
+   * 关联的工具名称（tool_call 类型时使用）。
    */
   toolName: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 请求创建时间戳（毫秒）。
    */
   createdAt: number;
 }
@@ -243,15 +243,15 @@ export interface GroupGenerationRequest {
  */
 export interface GroupExportData {
   /**
-   * group 值，由当前实例内部维护。
+   * 导出的群聊记录。
    */
   group: GroupRecord;
   /**
-   * members 列表，由当前实例内部维护。
+   * 导出的成员记录列表。
    */
   members: Array<GroupMemberRecord>;
   /**
-   * requests 列表，由当前实例内部维护。
+   * 导出的生成请求记录列表。
    */
   requests: Array<GroupGenerationRequest>;
 }
@@ -261,15 +261,15 @@ export interface GroupExportData {
  */
 export interface GroupStorageIndex {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据模式版本号。
    */
   schemaVersion: number;
   /**
-   * group 标识列表。
+   * 索引中所有群聊的标识列表。
    */
   groupIds: Array<string>;
   /**
-   * 下一次生成请求编号之前已经使用过的最大编号。
+   * 生成请求自增计数器，用于生成唯一请求标识。
    */
   requestCounter: number;
 }
@@ -279,19 +279,19 @@ export interface GroupStorageIndex {
  */
 export interface GroupStorageSnapshot {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据模式版本号。
    */
   schemaVersion: number;
   /**
-   * group 值，由当前实例内部维护。
+   * 群聊记录快照。
    */
   group: GroupRecord;
   /**
-   * members 列表，由当前实例内部维护。
+   * 成员记录列表快照。
    */
   members: Array<GroupMemberRecord>;
   /**
-   * requests 列表，由当前实例内部维护。
+   * 生成请求记录列表快照。
    */
   requests: Array<GroupGenerationRequest>;
 }
@@ -301,7 +301,7 @@ export interface GroupStorageSnapshot {
  */
 export interface GroupEventPayload {
   /**
-   * group 值，由当前实例内部维护。
+   * 事件关联的群聊记录。
    */
   group: GroupRecord;
 }
@@ -311,7 +311,7 @@ export interface GroupEventPayload {
  */
 export interface GroupDeletedPayload {
   /**
-   * group 标识。
+   * 被删除群聊的唯一标识。
    */
   groupId: string;
 }
@@ -321,15 +321,15 @@ export interface GroupDeletedPayload {
  */
 export interface GroupMemberAddedPayload {
   /**
-   * group 标识。
+   * 所属群聊标识。
    */
   groupId: string;
   /**
-   * 角色标识。
+   * 被添加成员的角色标识。
    */
   characterId: string;
   /**
-   * member 值，由当前实例内部维护。
+   * 被添加的成员记录。
    */
   member: GroupMemberRecord;
 }
@@ -339,15 +339,15 @@ export interface GroupMemberAddedPayload {
  */
 export interface GroupSpeakerSelectedPayload {
   /**
-   * group 标识。
+   * 所属群聊标识。
    */
   groupId: string;
   /**
-   * 角色标识。
+   * 被选中的角色标识。
    */
   characterId: string;
   /**
-   * member 值，由当前实例内部维护。
+   * 被选中的成员记录。
    */
   member: GroupMemberRecord;
 }

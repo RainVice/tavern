@@ -7,313 +7,313 @@ import type {
 } from '../contracts/PublicContracts';
 
 /**
- * 描述连接配置持久化或内存索引中的一条记录。
+ * 描述连接配置中一条自定义 Header 记录，包含名称、值及是否标记为密钥。
  */
 export interface ConnectionHeaderRecord {
   /**
-   * 名称。
+   * Header 名称，如 "Authorization"。
    */
   name: string;
   /**
-   * 字段值。
+   * Header 值。
    */
   value: string;
   /**
-   * secret 值，由当前实例内部维护。
+   * 是否标记为密钥；为 true 时序列化或日志输出中应被遮盖。
    */
   secret: boolean;
 }
 
 /**
- * 描述调用连接配置能力时需要传入的参数。
+ * 创建连接配置记录时所需传入的参数集合。
  */
 export interface ConnectionProfileCreateParams {
   /**
-   * 标识。
+   * 唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 显示名称。
    */
   name: string;
   /**
-   * api Type 值，由当前实例内部维护。
+   * API 类型，决定使用哪个服务提供商协议。
    */
   apiType: ConnectionApiType;
   /**
-   * 模型名称，由当前实例内部维护。
+   * 模型名称，如 "gpt-4"。
    */
   model: string;
   /**
-   * 服务地址，由当前实例内部维护。
+   * 服务端点地址。
    */
   serverUrl: string;
   /**
-   * 密钥引用，由当前实例内部维护。
+   * 密钥引用，指向外部密钥存储中的凭据。
    */
   secretRef: SecretRef;
   /**
-   * generation Preset 标识。
+   * 生成预设标识，关联生成参数模板。
    */
   generationPresetId: string;
   /**
-   * system Prompt Preset 标识。
+   * 系统提示词预设标识，关联系统级提示词模板。
    */
   systemPromptPresetId: string;
   /**
-   * context Template 标识。
+   * 上下文模板标识，关联对话上下文格式化模板。
    */
   contextTemplateId: string;
   /**
-   * instruct Template 标识。
+   * 指令模板标识，关联用户输入指令格式化模板。
    */
   instructTemplateId: string;
   /**
-   * tokenizer 值，由当前实例内部维护。
+   * 分词器策略，决定文本如何分片。
    */
   tokenizer: TokenizerStrategy;
   /**
-   * stop Strings 列表，由当前实例内部维护。
+   * 停止字符串列表，命中任意一项即停止生成。
    */
   stopStrings: Array<string>;
   /**
-   * reasoning Format 值，由当前实例内部维护。
+   * 推理格式，控制思维链等推理内容的输出格式。
    */
   reasoningFormat: ReasoningFormat;
   /**
-   * tool Calling Enabled 值，由当前实例内部维护。
+   * 是否启用工具调用能力。
    */
   toolCallingEnabled: boolean;
   /**
-   * proxy Url 值，由当前实例内部维护。
+   * 代理地址，用于穿透网络限制。
    */
   proxyUrl: string;
   /**
-   * additional Headers 列表，由当前实例内部维护。
+   * 自定义请求头列表。
    */
   additionalHeaders: Array<ConnectionHeaderRecord>;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 是否启用该连接配置。
    */
   enabled: boolean;
 }
 
 /**
- * 描述连接配置持久化或内存索引中的一条记录。
+ * 描述一条完整的连接配置记录，持久化存储或内存索引中的核心数据单元。
  */
 export interface ConnectionProfileRecord {
   /**
-   * 标识。
+   * 唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 显示名称。
    */
   name: string;
   /**
-   * api Type 值，由当前实例内部维护。
+   * API 类型，决定使用哪个服务提供商协议。
    */
   apiType: ConnectionApiType;
   /**
-   * 模型名称，由当前实例内部维护。
+   * 模型名称，如 "gpt-4"。
    */
   model: string;
   /**
-   * 服务地址，由当前实例内部维护。
+   * 服务端点地址。
    */
   serverUrl: string;
   /**
-   * 密钥引用，由当前实例内部维护。
+   * 密钥引用，指向外部密钥存储中的凭据。
    */
   secretRef: SecretRef;
   /**
-   * generation Preset 标识。
+   * 生成预设标识，关联生成参数模板。
    */
   generationPresetId: string;
   /**
-   * system Prompt Preset 标识。
+   * 系统提示词预设标识，关联系统级提示词模板。
    */
   systemPromptPresetId: string;
   /**
-   * context Template 标识。
+   * 上下文模板标识，关联对话上下文格式化模板。
    */
   contextTemplateId: string;
   /**
-   * instruct Template 标识。
+   * 指令模板标识，关联用户输入指令格式化模板。
    */
   instructTemplateId: string;
   /**
-   * tokenizer 值，由当前实例内部维护。
+   * 分词器策略，决定文本如何分片。
    */
   tokenizer: TokenizerStrategy;
   /**
-   * stop Strings 列表，由当前实例内部维护。
+   * 停止字符串列表，命中任意一项即停止生成。
    */
   stopStrings: Array<string>;
   /**
-   * reasoning Format 值，由当前实例内部维护。
+   * 推理格式，控制思维链等推理内容的输出格式。
    */
   reasoningFormat: ReasoningFormat;
   /**
-   * tool Calling Enabled 值，由当前实例内部维护。
+   * 是否启用工具调用能力。
    */
   toolCallingEnabled: boolean;
   /**
-   * proxy Url 值，由当前实例内部维护。
+   * 代理地址，用于穿透网络限制。
    */
   proxyUrl: string;
   /**
-   * additional Headers 列表，由当前实例内部维护。
+   * 自定义请求头列表。
    */
   additionalHeaders: Array<ConnectionHeaderRecord>;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 是否启用该连接配置。
    */
   enabled: boolean;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 最后更新时间的毫秒级时间戳。
    */
   updatedAt: number;
 }
 
 /**
- * 描述连接配置持久化或内存索引中的一条记录。
+ * 描述连接配置与某一作用域的激活绑定关系。
  */
 export interface ConnectionActiveProfileRecord {
   /**
-   * 作用域。
+   * 作用域类型，标识绑定所属的领域（如角色、对话等）。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * profile 标识。
+   * 被绑定的连接配置标识。
    */
   profileId: string;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 绑定或最后更新时间的毫秒级时间戳。
    */
   updatedAt: number;
 }
 
 /**
- * 描述连接配置模块在运行时交换的数据结构。
+ * 描述解析后的完整连接配置，包含激活绑定、配置记录和密钥引用三项。
  */
 export interface ConnectionResolvedProfile {
   /**
-   * binding 值，由当前实例内部维护。
+   * 当前作用域的激活绑定信息。
    */
   binding: ConnectionActiveProfileRecord;
   /**
-   * profile 值，由当前实例内部维护。
+   * 完整的连接配置记录。
    */
   profile: ConnectionProfileRecord;
   /**
-   * 密钥引用，由当前实例内部维护。
+   * 密钥引用，指向外部密钥存储中的凭据。
    */
   secretRef: SecretRef;
 }
 
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * 描述发送给服务提供商或网络层的请求参数，不含存储层字段。
  */
 export interface ConnectionProviderRequest {
   /**
-   * api Type 值，由当前实例内部维护。
+   * API 类型，决定使用哪个服务提供商协议。
    */
   apiType: ConnectionApiType;
   /**
-   * 模型名称，由当前实例内部维护。
+   * 模型名称，如 "gpt-4"。
    */
   model: string;
   /**
-   * 服务地址，由当前实例内部维护。
+   * 服务端点地址。
    */
   serverUrl: string;
   /**
-   * 密钥引用，由当前实例内部维护。
+   * 密钥引用，指向外部密钥存储中的凭据。
    */
   secretRef: SecretRef;
   /**
-   * generation Preset 标识。
+   * 生成预设标识，关联生成参数模板。
    */
   generationPresetId: string;
   /**
-   * system Prompt Preset 标识。
+   * 系统提示词预设标识，关联系统级提示词模板。
    */
   systemPromptPresetId: string;
   /**
-   * context Template 标识。
+   * 上下文模板标识，关联对话上下文格式化模板。
    */
   contextTemplateId: string;
   /**
-   * instruct Template 标识。
+   * 指令模板标识，关联用户输入指令格式化模板。
    */
   instructTemplateId: string;
   /**
-   * tokenizer 值，由当前实例内部维护。
+   * 分词器策略，决定文本如何分片。
    */
   tokenizer: TokenizerStrategy;
   /**
-   * stop Strings 列表，由当前实例内部维护。
+   * 停止字符串列表，命中任意一项即停止生成。
    */
   stopStrings: Array<string>;
   /**
-   * reasoning Format 值，由当前实例内部维护。
+   * 推理格式，控制思维链等推理内容的输出格式。
    */
   reasoningFormat: ReasoningFormat;
   /**
-   * tool Calling Enabled 值，由当前实例内部维护。
+   * 是否启用工具调用能力。
    */
   toolCallingEnabled: boolean;
   /**
-   * proxy Url 值，由当前实例内部维护。
+   * 代理地址，用于穿透网络限制。
    */
   proxyUrl: string;
   /**
-   * additional Headers 列表，由当前实例内部维护。
+   * 自定义请求头列表。
    */
   additionalHeaders: Array<ConnectionHeaderRecord>;
 }
 
 /**
- * 描述连接配置事件发布时携带的数据结构。
+ * 连接配置创建事件发布时携带的数据。
  */
 export interface ConnectionProfileEventPayload {
   /**
-   * profile 值，由当前实例内部维护。
+   * 新创建的连接配置记录副本。
    */
   profile: ConnectionProfileRecord;
 }
 
 /**
- * 描述连接配置事件发布时携带的数据结构。
+ * 连接配置更新事件发布时携带的数据。
  */
 export interface ConnectionProfileUpdatedPayload {
   /**
-   * profile 值，由当前实例内部维护。
+   * 更新后的连接配置记录副本。
    */
   profile: ConnectionProfileRecord;
 }
 
 /**
- * 描述连接配置事件发布时携带的数据结构。
+ * 连接配置删除事件发布时携带的数据。
  */
 export interface ConnectionProfileDeletedPayload {
   /**
-   * profile 标识。
+   * 被删除的连接配置标识。
    */
   profileId: string;
 }
 
 /**
- * 描述连接配置事件发布时携带的数据结构。
+ * 激活绑定变更事件发布时携带的数据。
  */
 export interface ConnectionActiveProfilePayload {
   /**
-   * binding 值，由当前实例内部维护。
+   * 变更后的激活绑定记录。
    */
   binding: ConnectionActiveProfileRecord;
 }

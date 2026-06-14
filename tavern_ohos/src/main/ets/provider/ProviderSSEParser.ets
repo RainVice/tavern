@@ -1,36 +1,36 @@
 import type { ProviderSSEEvent } from './ProviderModels';
 
 /**
- * 描述Provider 请求模块在运行时交换的数据结构。
+ * SSE 分隔符位置与长度，标识缓冲区中事件边界的位置。
  */
 interface SSESeparator {
   /**
-   * 索引数据或循环位置，由当前实例内部维护。
+   * 分隔符在字符串中的起始索引。
    */
   index: number;
   /**
-   * length 值，由当前实例内部维护。
+   * 分隔符的长度（2 对应 \n\n，4 对应 \r\n\r\n）。
    */
   length: number;
 }
 
 /**
- * 封装Provider 请求相关状态和行为。
+ * SSE（Server-Sent Events）解析器。
+ * 将原始 SSE 数据流解析为 ProviderSSEEvent 对象数组。
  */
 export class ProviderSSEParser {
   /**
-   * buffer 值，由当前实例内部维护。
+   * 未完成解析的缓冲区数据。
    */
   private buffer: string = '';
 
   /**
-   * 执行 push 的内部处理步骤，供当前模块复用。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 向解析器推入数据块，解析并返回其中完整的 SSE 事件。
+   * @param chunk 原始 SSE 数据块字符串。
+   * @returns 解析出的完整 SSE 事件列表。
    */
   push(chunk: string): Array<ProviderSSEEvent> {
     this.buffer = this.buffer + chunk;
-    // 事件总线。
     const events = new Array<ProviderSSEEvent>();
     while (true) {
       const separator = this.findSeparator(this.buffer);
@@ -48,8 +48,8 @@ export class ProviderSSEParser {
   }
 
   /**
-   * 执行 flush 的内部处理步骤，供当前模块复用。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 刷新缓冲区中残留的未完成数据，将其作为最后一个事件返回。
+   * @returns 缓冲区中的最后一个 SSE 事件（可能为空列表）。
    */
   flush(): Array<ProviderSSEEvent> {
     if (this.buffer.length === 0) {
@@ -65,8 +65,9 @@ export class ProviderSSEParser {
   }
 
   /**
-   * 在当前集合中查找Separator 值，未命中时返回空值或默认位置。
-   * @param value 要保存或比较的字段值。
+   * 在字符串中查找 SSE 事件分隔符（\n\n 或 \r\n\r\n），返回位置和长度。
+   * @param value 待搜索的字符串。
+   * @returns 分隔符信息，未找到时 index 为 -1。
    */
   private findSeparator(value: string): SSESeparator {
     const lf = value.indexOf('\n\n');
@@ -81,13 +82,14 @@ export class ProviderSSEParser {
   }
 
   /**
-   * 解析RawEvent，非法输入会返回失败标记或空结果。
+   * 解析单条原始 SSE 事件文本，提取 event、id 和 data 字段。
+   * 不符合 SSE 格式的文本返回 null。
+   * @param rawEvent 原始 SSE 事件文本。
+   * @returns 解析后的 SSE 事件对象，或 null。
    */
   private parseRawEvent(rawEvent: string): ProviderSSEEvent | null {
     const lines = rawEvent.replace(/\r\n/g, '\n').split('\n');
-    // event 名称。
     let eventName = 'message';
-    // event 标识。
     let eventId = '';
     const dataLines = new Array<string>();
     for (let index = 0; index < lines.length; index += 1) {

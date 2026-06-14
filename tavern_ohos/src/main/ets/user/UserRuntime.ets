@@ -20,19 +20,19 @@ export class UserRuntime {
    */
   private events: EventBus;
   /**
-   * users 列表，由当前实例内部维护。
+   * 按句柄索引的所有用户记录。
    */
   private users: Map<string, UserRecord> = new Map<string, UserRecord>();
   /**
-   * sessions 列表，由当前实例内部维护。
+   * 按会话 ID 索引的所有活跃会话记录。
    */
   private sessions: Map<string, UserSessionRecord> = new Map<string, UserSessionRecord>();
   /**
-   * salt Counter 值，由当前实例内部维护。
+   * 用户密码盐值的自增计数器。
    */
   private saltCounter: number = 0;
   /**
-   * session Counter 值，由当前实例内部维护。
+   * 会话 ID 的自增计数器。
    */
   private sessionCounter: number = 0;
 
@@ -46,8 +46,8 @@ export class UserRuntime {
 
   /**
    * 创建新的用户记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * @param params 创建用户的参数（handle、name、password、admin、enabled）。
+   * @returns 新创建的用户记录副本。
    */
   createUser(params: UserCreateParams): UserRecord {
     const handle = this.slugify(params.handle);
@@ -78,9 +78,9 @@ export class UserRuntime {
   }
 
   /**
-   * 读取Users列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 获取用户列表，可选择仅返回已启用的用户。
+   * @param includeDisabled 是否包含已禁用的用户，默认 true。
+   * @returns 用户记录副本数组，按创建时间升序排列。
    */
   listUsers(includeDisabled: boolean = true): Array<UserRecord> {
     const records = Array.from(this.users.values());
@@ -95,9 +95,9 @@ export class UserRuntime {
   }
 
   /**
-   * 读取PublicUsers列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 获取对外公开的用户视图模型列表（不含管理字段），用于登录页面展示可选用户。
+   * @param discreetLogin 为 true 时不返回任何用户（模糊登录模式）。
+   * @returns 用户视图模型数组。
    */
   listPublicUsers(discreetLogin: boolean): Array<UserViewModel> {
     if (discreetLogin) {
@@ -112,9 +112,9 @@ export class UserRuntime {
   }
 
   /**
-   * 读取AdminUsers列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取管理后台所需的完整用户视图模型列表（包含管理字段）。
+   * @param adminHandle 发起请求的管理员句柄，用于鉴权。
+   * @returns 用户视图模型数组。
    */
   listAdminUsers(adminHandle: string): Array<UserViewModel> {
     this.requireAdmin(adminHandle);
@@ -127,26 +127,29 @@ export class UserRuntime {
   }
 
   /**
-   * 读取指定用户，不存在时抛出错误。
-
-   * @returns 更新或读取后的记录副本。
+   * 根据句柄获取指定用户记录的副本。
+   * @param handle 用户句柄。
+   * @returns 用户记录副本。
    */
   getUser(handle: string): UserRecord {
     return this.cloneUser(this.requireUser(handle));
   }
 
   /**
-   * 读取指定ViewModel，不存在时抛出错误。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 获取指定用户的对外视图模型。
+   * @param handle 用户句柄。
+   * @param includeAdminFields 是否包含 admin、enabled 等管理字段。
+   * @returns 用户视图模型。
    */
   getViewModel(handle: string, includeAdminFields: boolean = true): UserViewModel {
     return this.toViewModel(this.requireUser(handle), includeAdminFields);
   }
 
   /**
-   * 执行 enableUser 的内部处理步骤，供当前模块复用。
+   * 启用指定用户。
+   * @param adminHandle 发起操作的管理员句柄。
+   * @param handle 目标用户句柄。
+   * @returns 更新后的用户记录副本。
    */
   enableUser(adminHandle: string, handle: string): UserRecord {
     this.requireAdmin(adminHandle);
@@ -158,7 +161,10 @@ export class UserRuntime {
   }
 
   /**
-   * 执行 disableUser 的内部处理步骤，供当前模块复用。
+   * 禁用指定用户，同时吊销该用户的所有活跃会话。
+   * @param adminHandle 发起操作的管理员句柄。
+   * @param handle 目标用户句柄。
+   * @returns 更新后的用户记录副本。
    */
   disableUser(adminHandle: string, handle: string): UserRecord {
     this.requireAdmin(adminHandle);
@@ -175,7 +181,10 @@ export class UserRuntime {
   }
 
   /**
-   * 执行 promoteUser 的内部处理步骤，供当前模块复用。
+   * 将指定用户提升为管理员。
+   * @param adminHandle 发起操作的管理员句柄。
+   * @param handle 目标用户句柄。
+   * @returns 更新后的用户记录副本。
    */
   promoteUser(adminHandle: string, handle: string): UserRecord {
     this.requireAdmin(adminHandle);
@@ -187,7 +196,10 @@ export class UserRuntime {
   }
 
   /**
-   * 执行 demoteUser 的内部处理步骤，供当前模块复用。
+   * 撤销指定用户的管理员权限。
+   * @param adminHandle 发起操作的管理员句柄。
+   * @param handle 目标用户句柄。
+   * @returns 更新后的用户记录副本。
    */
   demoteUser(adminHandle: string, handle: string): UserRecord {
     this.requireAdmin(adminHandle);
@@ -202,10 +214,10 @@ export class UserRuntime {
   }
 
   /**
-   * 删除指定用户，并清理相关索引或资源引用。
-
-
-
+   * 删除指定用户及其关联的所有活跃会话。禁止删除 default-user 或删除自己。
+   * @param adminHandle 发起操作的管理员句柄。
+   * @param handle 目标用户句柄。
+   * @param purge 是否同时清除用户的持久化数据。
    */
   deleteUser(adminHandle: string, handle: string, purge: boolean = false): void {
     this.requireAdmin(adminHandle);
@@ -227,10 +239,11 @@ export class UserRuntime {
   }
 
   /**
-   * 执行 changeName 的内部处理步骤，供当前模块复用。
-
-
-   * @param name 显示名称或注册名称。
+   * 修改指定用户的显示名称。
+   * @param actorHandle 发起操作的用户句柄（需为本人或管理员）。
+   * @param handle 目标用户句柄。
+   * @param name 新的显示名称。
+   * @returns 更新后的用户记录副本。
    */
   changeName(actorHandle: string, handle: string, name: string): UserRecord {
     this.requireOwnerOrAdmin(actorHandle, handle);
@@ -245,7 +258,11 @@ export class UserRuntime {
   }
 
   /**
-   * 执行 changeAvatar 的内部处理步骤，供当前模块复用。
+   * 修改指定用户的头像。
+   * @param actorHandle 发起操作的用户句柄（需为本人或管理员）。
+   * @param handle 目标用户句柄。
+   * @param avatar 头像的 base64 数据 URL（格式 "data:image/..."）。
+   * @returns 更新后的用户记录副本。
    */
   changeAvatar(actorHandle: string, handle: string, avatar: string): UserRecord {
     this.requireOwnerOrAdmin(actorHandle, handle);
@@ -261,7 +278,12 @@ export class UserRuntime {
   }
 
   /**
-   * 执行 changePassword 的内部处理步骤，供当前模块复用。
+   * 修改指定用户的登录密码。
+   * @param actorHandle 发起操作的用户句柄。
+   * @param handle 目标用户句柄。
+   * @param oldPassword 旧密码（管理员可为空跳过校验）。
+   * @param newPassword 新密码（为空表示清除密码）。
+   * @returns 更新后的用户记录副本。
    */
   changePassword(actorHandle: string, handle: string, oldPassword: string, newPassword: string): UserRecord {
     const actor = this.requireUser(actorHandle);
@@ -286,7 +308,10 @@ export class UserRuntime {
   }
 
   /**
-   * 执行 login 的内部处理步骤，供当前模块复用。
+   * 用户登录。验证凭据后创建会话记录并发布 user.logged_in 事件。
+   * @param handle 用户句柄。
+   * @param password 登录密码。
+   * @returns 包含用户视图模型和会话记录的登录结果。
    */
   login(handle: string, password: string): UserLoginResult {
     const user = this.requireUser(handle);
@@ -319,8 +344,8 @@ export class UserRuntime {
   }
 
   /**
-   * 执行 logout 的内部处理步骤，供当前模块复用。
-   * @param sessionId 目标流式会话标识。
+   * 用户登出。删除指定会话记录并发布 user.logged_out 事件。
+   * @param sessionId 待销毁的会话 ID。
    */
   logout(sessionId: string): void {
     const session = this.sessions.get(sessionId);
@@ -337,8 +362,9 @@ export class UserRuntime {
   }
 
   /**
-   * 校验Session 值是否满足运行时约束。
-   * @param sessionId 目标流式会话标识。
+   * 校验指定会话是否仍然有效。如用户被禁用或账号版本变更，则标记会话过期并抛出错误。
+   * @param sessionId 待校验的会话 ID。
+   * @returns 关联用户的视图模型。
    */
   validateSession(sessionId: string): UserViewModel {
     const session = this.sessions.get(sessionId);
@@ -355,8 +381,8 @@ export class UserRuntime {
   }
 
   /**
-   * 读取Sessions列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取所有活跃会话的副本列表。
+   * @returns 会话记录副本数组。
    */
   listSessions(): Array<UserSessionRecord> {
     const records = Array.from(this.sessions.values());
@@ -368,9 +394,9 @@ export class UserRuntime {
   }
 
   /**
-   * 读取User Directories 列表，不存在时通常抛出错误或返回空值。
-
-   * @returns 更新或读取后的记录副本。
+   * 获取指定用户的目录结构映射，每个字段对应用户文件系统下的子目录路径。
+   * @param handle 用户句柄。
+   * @returns 目录路径映射表。
    */
   getUserDirectories(handle: string): UserDirectoryList {
     const root = `users/${this.slugify(handle)}`;
@@ -410,8 +436,9 @@ export class UserRuntime {
   }
 
   /**
-   * 执行 slugify 的内部处理步骤，供当前模块复用。
-   * @param text 文本内容。
+   * 将文本转换为 URL 友好的句柄（小写字母、数字、连字符）。
+   * @param text 原始文本。
+   * @returns 规范化后的句柄字符串。
    */
   slugify(text: string): string {
     const lower = text.toLowerCase().trim();
@@ -435,9 +462,9 @@ export class UserRuntime {
   }
 
   /**
-   * 读取必须存在的Owner Or Admin 值，缺失时抛出错误。
-
-
+   * 校验发起操作的用户是否为目标用户本人或管理员，否则抛出错误。
+   * @param actorHandle 发起操作的用户句柄。
+   * @param handle 目标用户句柄。
    */
   private requireOwnerOrAdmin(actorHandle: string, handle: string): void {
     const actor = this.requireUser(actorHandle);
@@ -447,7 +474,9 @@ export class UserRuntime {
   }
 
   /**
-   * 读取必须存在的Admin 值，缺失时抛出错误。
+   * 校验指定用户是否为活跃的管理员，否则抛出错误。
+   * @param handle 用户句柄。
+   * @returns 用户记录引用。
    */
   private requireAdmin(handle: string): UserRecord {
     const user = this.requireUser(handle);
@@ -458,7 +487,9 @@ export class UserRuntime {
   }
 
   /**
-   * 读取必须存在的User 值，缺失时抛出错误。
+   * 按句柄获取用户记录，不存在时抛出错误。
+   * @param handle 用户句柄。
+   * @returns 内部存储的用户记录引用。
    */
   private requireUser(handle: string): UserRecord {
     const user = this.users.get(this.slugify(handle));
@@ -469,10 +500,10 @@ export class UserRuntime {
   }
 
   /**
-   * 检查Password是否满足当前规则。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 校验用户密码是否匹配。
+   * @param user 用户记录。
+   * @param password 待验证的明文密码。
+   * @returns 密码匹配返回 true，否则 false。
    */
   private verifyPassword(user: UserRecord, password: string): boolean {
     if (user.passwordHash.length === 0) {
@@ -482,7 +513,10 @@ export class UserRuntime {
   }
 
   /**
-   * 判断当前对象是否包含h Password 值。
+   * 使用 FNV-1a 哈希算法计算密码的哈希值，格式为 "salt:hash"。
+   * @param password 明文密码。
+   * @param salt 盐值。
+   * @returns 密码哈希字符串。
    */
   private hashPassword(password: string, salt: string): string {
     let hash = 2166136261;
@@ -511,10 +545,10 @@ export class UserRuntime {
   }
 
   /**
-   * 把用户记录转换为界面可展示的视图模型。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 将用户内部记录转换为对外暴露的视图模型。
+   * @param user 用户记录。
+   * @param includeAdminFields 是否包含管理字段（admin、enabled 等）。
+   * @returns 用户视图模型。
    */
   private toViewModel(user: UserRecord, includeAdminFields: boolean): UserViewModel {
     return {
@@ -529,7 +563,9 @@ export class UserRuntime {
   }
 
   /**
-   * 复制User 值，避免外部修改内部状态。
+   * 深拷贝用户记录，避免外部修改内部状态。
+   * @param user 原始用户记录。
+   * @returns 独立副本。
    */
   private cloneUser(user: UserRecord): UserRecord {
     return {
@@ -547,7 +583,9 @@ export class UserRuntime {
   }
 
   /**
-   * 复制Session 值，避免外部修改内部状态。
+   * 深拷贝会话记录，避免外部修改内部状态。
+   * @param session 原始会话记录。
+   * @returns 独立副本。
    */
   private cloneSession(session: UserSessionRecord): UserSessionRecord {
     return {
@@ -560,9 +598,9 @@ export class UserRuntime {
   }
 
   /**
-   * 发布用户和会话事件，把状态变化通知给宿主或其他 Runtime。
-   * @param eventName 要订阅或发布的事件名。
-
+   * 发布用户相关事件，将状态变化通知给宿主或其他 Runtime 模块。
+   * @param eventName 事件名称。
+   * @param user 关联的用户记录。
    */
   private publishUser(eventName: string, user: UserRecord): void {
     const payload: UserEventPayload = {

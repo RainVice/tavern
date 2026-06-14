@@ -1,163 +1,157 @@
-import type {
-  MediaFormat,
-  TavernScope,
-  ThumbnailType,
-} from '../contracts/PublicContracts';
-
 /**
- * 描述调用图片资源能力时需要传入的参数。
+ * 上传图片时需传入的参数。
  */
 export interface ImageUploadParams {
   /**
-   * 标识。
+   * 图片唯一标识。
    */
   id: string;
   /**
-   * file 名称。
+   * 原始文件名。
    */
   fileName: string;
   /**
-   * format 值，由当前实例内部维护。
+   * 图片格式（如 png、jpg）。
    */
   format: MediaFormat;
   /**
-   * folder 名称。
+   * 文件夹名称，用于分组归类。
    */
   folderName: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * MIME 类型（如 image/png）。
    */
   mimeType: string;
   /**
-   * 内容。
+   * Base64 编码的图片内容。
    */
   content: string;
   /**
-   * thumbnail Type 值，由当前实例内部维护。
+   * 缩略图类型。
    */
   thumbnailType: ThumbnailType;
   /**
-   * thumbnail Content 值，由当前实例内部维护。
+   * Base64 编码的缩略图内容。
    */
   thumbnailContent: string;
   /**
-   * thumbnail Width 值，由当前实例内部维护。
+   * 缩略图宽度（像素）。
    */
   thumbnailWidth: number;
   /**
-   * thumbnail Height 值，由当前实例内部维护。
+   * 缩略图高度（像素）。
    */
   thumbnailHeight: number;
   /**
-   * attachment 标识。
+   * 关联的附件唯一标识。
    */
   attachmentId: string;
   /**
-   * attachment Target Type 值，由当前实例内部维护。
+   * 附件关联的目标作用域类型。
    */
   attachmentTargetType: TavernScope;
   /**
-   * attachment Target 标识。
+   * 附件关联的目标唯一标识。
    */
   attachmentTargetId: string;
   /**
-   * include In Prompt 值，由当前实例内部维护。
+   * 是否在 Prompt 中包含此图片。
    */
   includeInPrompt: boolean;
   /**
-   * include In Rag 值，由当前实例内部维护。
+   * 是否在 RAG 检索中包含此图片。
    */
   includeInRag: boolean;
 }
 
 /**
- * 描述图片资源持久化或内存索引中的一条记录。
+ * 持久化或内存索引中的一条图片记录。
  */
 export interface ImageRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据模式版本号。
    */
   schemaVersion: number;
   /**
-   * 标识。
+   * 图片唯一标识。
    */
   id: string;
   /**
-   * file 名称。
+   * 规范化后的文件名。
    */
   fileName: string;
   /**
-   * format 值，由当前实例内部维护。
+   * 图片格式（如 png、jpg）。
    */
   format: MediaFormat;
   /**
-   * folder 名称。
+   * 文件夹名称，用于分组归类。
    */
   folderName: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * MIME 类型（如 image/png）。
    */
   mimeType: string;
   /**
-   * 路径。
+   * 图片文件存储路径。
    */
   path: string;
   /**
-   * 内容。
+   * Base64 编码的图片内容。
    */
   content: string;
   /**
-   * thumbnail Type 值，由当前实例内部维护。
+   * 缩略图类型。
    */
   thumbnailType: ThumbnailType;
   /**
-   * thumbnail 路径。
+   * 缩略图文件存储路径。
    */
   thumbnailPath: string;
   /**
-   * attachment 标识。
+   * 关联的附件唯一标识。
    */
   attachmentId: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述图片资源事件发布时携带的数据结构。
+ * 图片上传事件发布时携带的数据。
  */
 export interface ImageUploadedPayload {
   /**
-   * image 值，由当前实例内部维护。
+   * 已上传的图片记录。
    */
   image: ImageRecord;
 }
 
 /**
- * 描述图片资源事件发布时携带的数据结构。
+ * 图片删除事件发布时携带的数据。
  */
 export interface ImageDeletedPayload {
   /**
-   * image 标识。
+   * 被删除图片的唯一标识。
    */
   imageId: string;
   /**
-   * 路径。
+   * 被删除图片的文件路径。
    */
   path: string;
 }
 
 /**
- * 描述图片资源模块在运行时交换的数据结构。
+ * 运行时图片索引快照，用于持久化保存。
  */
 export interface ImageIndexData {
   /**
-   * images 列表，由当前实例内部维护。
+   * 所有图片记录的列表。
    */
   images: Array<ImageRecord>;
 }

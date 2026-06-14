@@ -11,15 +11,15 @@ import type {
  */
 interface PromptTemplateKnownHash {
   /**
-   * hash 值，由当前实例内部维护。
+   * chat_template 字符串的 SHA-256 哈希值，用于快速匹配已知模板。
    */
   hash: string;
   /**
-   * context 值，由当前实例内部维护。
+   * 模板推导出的上下文模板名称（如 "Llama 3 Instruct"），为空表示未识别。
    */
   context: string | null;
   /**
-   * instruct 值，由当前实例内部维护。
+   * 模板推导出的指令模板名称，与 context 一致时为同源模板。
    */
   instruct: string | null;
 }
@@ -33,7 +33,7 @@ export class PromptTemplateRuntime {
    */
   private events: EventBus;
   /**
-   * templates 列表，由当前实例内部维护。
+   * 已注册的模板记录映射表，以模板 id 为键维护内存索引。
    */
   private templates: Map<string, PromptTemplateRecord> = new Map<string, PromptTemplateRecord>();
   private knownHashes: Array<PromptTemplateKnownHash> = [
@@ -67,7 +67,10 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 执行 deriveTemplatesFromChatTemplate 的内部处理步骤，供当前模块复用。
+   * 根据 chat_template 原始文本和 hash 值推导 LLM 模板类型，返回 context 与 instruct 的名称或空值。
+   * @param chatTemplate 来自 LLM 的 chat_template 原始字符串。
+   * @param hash chat_template 的 hash 值，用于命中已知模板库。
+   * @returns 包含 context 和 instruct 模板名称的推导结果；无法识别时两者均为 null。
    */
   deriveTemplatesFromChatTemplate(chatTemplate: string, hash: string): PromptTemplateDerivation {
     if (chatTemplate.trim().length === 0) {
@@ -92,8 +95,9 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 注册Template 值，使其可被后续运行时流程使用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 注册一条 prompt 模板记录，供后续渲染或导出使用。
+   * @param params 包含模板 id 和 content 的参数对象。
+   * @returns 注册成功后返回模板记录的只读副本。
    */
   registerTemplate(params: PromptTemplateRegistrationParams): PromptTemplateRecord {
     if (params.id.length === 0) {
@@ -108,9 +112,9 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 读取指定Template，不存在时抛出错误。
-   * @param id 唯一标识。
-   * @returns 更新或读取后的记录副本。
+   * 读取指定模板记录，不存在时返回 undefined。
+   * @param id 模板唯一标识。
+   * @returns 模板记录的副本；未找到时返回 undefined。
    */
   getTemplate(id: string): PromptTemplateRecord | undefined {
     const record = this.templates.get(id);
@@ -121,17 +125,18 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 读取模板标识列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有已注册模板标识的排序副本。
+   * @returns 按字典序排列的模板 id 列表；返回值是副本，调用方修改不改变内部状态。
    */
   listTemplateIds(): Array<string> {
     return Array.from(this.templates.keys()).sort();
   }
 
   /**
-   * 生成Template输出，供请求发送、导出或界面展示使用。
-   * @param id 唯一标识。
-   * @param data 导入或恢复使用的序列化数据。
+   * 渲染指定模板，将模板中的 {{变量名}} 占位符替换为实际数据，并发布渲染事件。
+   * @param id 模板唯一标识。
+   * @param data 变量名到实际值的映射，用于替换模板中的 {{变量名}} 占位符。
+   * @returns 渲染完成后的最终文本字符串。
    */
   renderTemplate(id: string, data: Map<string, string>): string {
     const record = this.templates.get(id);
@@ -148,9 +153,10 @@ export class PromptTemplateRuntime {
   }
 
   /**
-   * 生成Content输出，供请求发送、导出或界面展示使用。
-   * @param content 要写入或追加的文本内容。
-   * @param data 导入或恢复使用的序列化数据。
+   * 对给定的文本内容执行 {{变量名}} 占位符替换，不依赖已注册的模板记录。
+   * @param content 包含 {{占位符}} 的原始文本。
+   * @param data 变量名到实际值的映射。
+   * @returns 替换后的最终文本字符串。
    */
   renderContent(content: string, data: Map<string, string>): string {
     let output = '';

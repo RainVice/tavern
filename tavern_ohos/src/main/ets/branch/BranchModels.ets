@@ -7,19 +7,19 @@ export interface BranchCreateParams {
    */
   id: string;
   /**
-   * parent Chat 标识。
+   * 父级聊天会话的唯一标识。
    */
   parentChatId: string;
   /**
-   * anchor Message 标识。
+   * 锚定消息的唯一标识，表示分支产生的原始消息位置。
    */
   anchorMessageId: string;
   /**
-   * child Chat 标识。
+   * 子级聊天会话的唯一标识。
    */
   childChatId: string;
   /**
-   * 标题，由当前实例内部维护。
+   * 分支标题。
    */
   title: string;
 }
@@ -33,37 +33,37 @@ export interface BranchRecord {
    */
   id: string;
   /**
-   * parent Chat 标识。
+   * 父级聊天会话的唯一标识。
    */
   parentChatId: string;
   /**
-   * anchor Message 标识。
+   * 锚定消息的唯一标识。
    */
   anchorMessageId: string;
   /**
-   * child Chat 标识。
+   * 子级聊天会话的唯一标识。
    */
   childChatId: string;
   /**
-   * 标题，由当前实例内部维护。
+   * 分支标题。
    */
   title: string;
   /**
-   * active 值，由当前实例内部维护。
+   * 是否当前分支处于激活状态。
    */
   active: boolean;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间戳。
    */
   updatedAt: number;
 }
 
 /**
- * 描述调用聊天分支能力时需要传入的参数。
+ * 描述创建聊天检查点时需要传入的参数。
  */
 export interface CheckpointCreateParams {
   /**
@@ -71,25 +71,25 @@ export interface CheckpointCreateParams {
    */
   id: string;
   /**
-   * branch 标识。
+   * 所属分支的唯一标识。
    */
   branchId: string;
   /**
-   * anchor Message 标识。
+   * 锚定消息的唯一标识。
    */
   anchorMessageId: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 标签。
    */
   label: string;
   /**
-   * snapshot Ref 值，由当前实例内部维护。
+   * 快照引用标识。
    */
   snapshotRef: string;
 }
 
 /**
- * 描述聊天分支持久化或内存索引中的一条记录。
+ * 描述聊天检查点持久化或内存索引中的一条记录。
  */
 export interface CheckpointRecord {
   /**
@@ -97,67 +97,67 @@ export interface CheckpointRecord {
    */
   id: string;
   /**
-   * branch 标识。
+   * 所属分支的唯一标识。
    */
   branchId: string;
   /**
-   * anchor Message 标识。
+   * 锚定消息的唯一标识。
    */
   anchorMessageId: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 标签。
    */
   label: string;
   /**
-   * snapshot Ref 值，由当前实例内部维护。
+   * 快照引用标识。
    */
   snapshotRef: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳。
    */
   createdAt: number;
 }
 
 /**
- * 描述聊天分支模块在运行时交换的数据结构。
+ * 描述分支模块导出数据的内容结构，包含分支及其关联的检查点列表。
  */
 export interface BranchExportData {
   /**
-   * branch 值，由当前实例内部维护。
+   * 分支记录。
    */
   branch: BranchRecord;
   /**
-   * checkpoints 列表，由当前实例内部维护。
+   * 关联的检查点列表。
    */
   checkpoints: Array<CheckpointRecord>;
 }
 
 /**
- * 描述聊天分支事件发布时携带的数据结构。
+ * 描述分支通用事件（创建、恢复等）发布时携带的数据。
  */
 export interface BranchEventPayload {
   /**
-   * branch 值，由当前实例内部维护。
+   * 关联的分支记录。
    */
   branch: BranchRecord;
 }
 
 /**
- * 描述聊天分支事件发布时携带的数据结构。
+ * 描述分支激活事件发布时携带的数据。
  */
 export interface BranchActivatedPayload {
   /**
-   * branch 值，由当前实例内部维护。
+   * 关联的分支记录。
    */
   branch: BranchRecord;
 }
 
 /**
- * 描述聊天分支事件发布时携带的数据结构。
+ * 描述检查点事件（创建等）发布时携带的数据。
  */
 export interface CheckpointEventPayload {
   /**
-   * checkpoint 值，由当前实例内部维护。
+   * 关联的检查点记录。
    */
   checkpoint: CheckpointRecord;
 }

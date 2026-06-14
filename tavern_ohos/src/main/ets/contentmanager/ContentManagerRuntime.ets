@@ -21,32 +21,32 @@ export class ContentManagerRuntime {
    */
   private events: EventBus;
   /**
-   * 项目列表，由当前实例内部维护。
+   * 内容条目映射表，以 itemId 为键维护所有已安装条目的内存索引。
    */
   private items: Map<string, ContentItem> = new Map<string, ContentItem>();
   /**
-   * packages 列表，由当前实例内部维护。
+   * 内容包记录映射表，以 packageId 为键维护所有注册包的内存索引。
    */
   private packages: Map<string, PackageRecord> = new Map<string, PackageRecord>();
   /**
-   * item Counter 值，由当前实例内部维护。
+   * 条目自增计数器，每次创建新条目时递增用于生成唯一 itemId。
    */
   private itemCounter: number = 0;
   /**
-   * package Counter 值，由当前实例内部维护。
+   * 包自增计数器，每次注册新包时递增用于生成唯一 packageId。
    */
   private packageCounter: number = 0;
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 构造内容管理器运行时实例。
+   * @param events 事件总线实例。
    */
   constructor(events: EventBus) { this.events = events; }
 
   /**
-   * 读取Content列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按内容类型查询条目列表，返回副本以避免外部修改内部状态。
+   * @param contentType 内容类型过滤条件，不传则返回全部。
+   * @returns 符合条件的条目列表；调用方可安全读取该副本。
    */
   listContent(contentType?: ContentType): Array<ContentItem> {
     const result = new Array<ContentItem>();
@@ -58,9 +58,9 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 读取ByStatus列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param status 状态值。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按安装状态查询条目列表，返回副本以避免外部修改内部状态。
+   * @param status 目标安装状态。
+   * @returns 符合条件的条目列表；调用方可安全读取该副本。
    */
   listByStatus(status: InstallStatus): Array<ContentItem> {
     const result = new Array<ContentItem>();
@@ -72,11 +72,12 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 执行 installContent 的内部处理步骤，供当前模块复用。
-
+   * 创建并添加一个新内容条目。
+   * @param contentType 内容类型。
    * @param source 来源类型。
-
-   * @param displayName display名称。
+   * @param sourceUrl 来源地址。
+   * @param displayName 显示名称。
+   * @returns 新创建的内容条目副本。
    */
   installContent(contentType: ContentType, source: ContentSource, sourceUrl: string, displayName: string): ContentItem {
     this.itemCounter += 1;
@@ -93,10 +94,10 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 更新Progress 列表，同步内部状态并按需发布变更事件。
+   * 更新条目下载进度，同步内部状态并发布进度事件。
    * @param itemId 目标内容项标识。
-
-   * @returns 更新或读取后的记录副本。
+   * @param progress 下载进度值（0-100）。
+   * @returns 更新后的条目副本。
    */
   updateProgress(itemId: string, progress: number): ContentItem {
     const item = this.requireItem(itemId);
@@ -108,9 +109,11 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 标记Install 值完成，并写入最终结果。
+   * 标记条目安装完成，写入最终路径和版本信息并发布完成事件。
    * @param itemId 目标内容项标识。
-   * @param installPath install 路径。
+   * @param installPath 安装路径。
+   * @param version 安装版本号。
+   * @returns 更新后的条目副本。
    */
   completeInstall(itemId: string, installPath: string, version: string): ContentItem {
     const item = this.requireItem(itemId);
@@ -122,9 +125,10 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 标记Install 值失败，并保存错误信息。
+   * 标记条目安装失败，保存错误信息并发布失败事件。
    * @param itemId 目标内容项标识。
    * @param error 错误信息。
+   * @returns 更新后的条目副本。
    */
   failInstall(itemId: string, error: string): ContentItem {
     const item = this.requireItem(itemId);
@@ -135,8 +139,8 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 移除内容。
-   * @param itemId 内容项标识。
+   * 移除指定内容条目并发布移除事件。
+   * @param itemId 待移除的内容项标识。
    */
   removeContent(itemId: string): void {
     this.requireItem(itemId);
@@ -145,19 +149,20 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 读取指定Item，不存在时抛出错误。
+   * 获取指定条目的副本，条目不存在时抛出错误。
    * @param itemId 目标内容项标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 条目副本。
    */
   getItem(itemId: string): ContentItem { return this.copyItem(this.requireItem(itemId)); }
 
   /**
-   * 注册Package 值，使其可被后续运行时流程使用。
-   * @param displayName display名称。
-
-
-
-   * @param installPath install 路径。
+   * 注册一个新的内容包，使其可被后续流程使用。
+   * @param displayName 显示名称。
+   * @param contentType 内容类型。
+   * @param version 版本号。
+   * @param author 作者。
+   * @param installPath 安装路径。
+   * @returns 新创建的包记录副本。
    */
   registerPackage(displayName: string, contentType: ContentType, version: string, author: string, installPath: string): PackageRecord {
     this.packageCounter += 1;
@@ -174,9 +179,9 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 读取Packages列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按内容类型查询包记录列表，返回副本以避免外部修改内部状态。
+   * @param contentType 内容类型过滤条件，不传则返回全部。
+   * @returns 符合条件的包记录列表；调用方可安全读取该副本。
    */
   listPackages(contentType?: ContentType): Array<PackageRecord> {
     const result = new Array<PackageRecord>();
@@ -188,10 +193,10 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 设置内容包启用状态，用于切换运行时状态或保存配置。
+   * 设置内容包启用状态。
    * @param packageId 目标内容包标识。
-   * @param enabled 是否启用该能力。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @param enabled 是否启用。
+   * @returns 更新后的包记录副本。
    */
   setPackageEnabled(packageId: string, enabled: boolean): PackageRecord {
     const record = this.requirePackage(packageId);
@@ -200,22 +205,25 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 移除包。
-   * @param packageId 包标识。
+   * 移除指定内容包。
+   * @param packageId 待移除的包标识。
    */
   removePackage(packageId: string): void {
     this.requirePackage(packageId);
     this.packages.delete(packageId);
   }
 
-  // 导出
+  /**
+   * 导出全部内容条目和包记录。
+   * @returns 包含所有条目和包记录的导出数据。
+   */
   exportData(): ContentExportData {
     return { items: this.listContent(), packages: this.listPackages() };
   }
 
   /**
-   * 导入。
-   * @param data 数据内容。
+   * 导入内容条目和包记录，存在重复标识时抛出错误。
+   * @param data 待导入的导出数据。
    */
   importData(data: ContentExportData): void {
     for (let index = 0; index < data.items.length; index += 1) {
@@ -237,8 +245,9 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 读取必须存在的Item 值，缺失时抛出错误。
+   * 按标识获取条目，条目不存在时抛出错误。
    * @param itemId 目标内容项标识。
+   * @returns 条目引用。
    */
   private requireItem(itemId: string): ContentItem {
     const item = this.items.get(itemId);
@@ -247,8 +256,9 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 读取必须存在的Package 值，缺失时抛出错误。
+   * 按标识获取包记录，包不存在时抛出错误。
    * @param packageId 目标内容包标识。
+   * @returns 包记录引用。
    */
   private requirePackage(packageId: string): PackageRecord {
     const record = this.packages.get(packageId);
@@ -257,8 +267,9 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 复制Item 值，避免外部修改内部状态。
-   * @param item 项目记录。
+   * 深度复制条目，避免外部修改内部状态。
+   * @param item 待复制的条目。
+   * @returns 条目副本。
    */
   private copyItem(item: ContentItem): ContentItem {
     return {
@@ -279,8 +290,9 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 复制Package 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深度复制包记录，避免外部修改内部状态。
+   * @param record 待复制的包记录。
+   * @returns 包记录副本。
    */
   private copyPackage(record: PackageRecord): PackageRecord {
     return {
@@ -299,7 +311,9 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 复制Metadata 值，避免外部修改内部状态。
+   * 深度复制元数据字典，避免外部修改内部状态。
+   * @param metadata 待复制的元数据字典。
+   * @returns 元数据字典副本。
    */
   private copyMetadata(metadata: Record<string, string>): Record<string, string> {
     const result: Record<string, string> = {};
@@ -311,8 +325,9 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 解析ItemCounter，非法输入会返回失败标记或空结果。
+   * 从条目标识中解析计数器值，格式非法时返回 0。
    * @param itemId 目标内容项标识。
+   * @returns 解析后的计数器值。
    */
   private parseItemCounter(itemId: string): number {
     if (!itemId.startsWith('content-')) {
@@ -323,8 +338,9 @@ export class ContentManagerRuntime {
   }
 
   /**
-   * 解析PackageCounter，非法输入会返回失败标记或空结果。
+   * 从包标识中解析计数器值，格式非法时返回 0。
    * @param packageId 目标内容包标识。
+   * @returns 解析后的计数器值。
    */
   private parsePackageCounter(packageId: string): number {
     if (!packageId.startsWith('pkg-')) {

@@ -1,395 +1,395 @@
 /**
- * 描述统计持久化或内存索引中的一条记录。
+ * 单个聊天会话的统计记录。
  */
 export interface StatsChatRecord {
   /**
-   * 聊天标识。
+   * 聊天会话的唯一标识。
    */
   chatId: string;
   /**
-   * message Count 值，由当前实例内部维护。
+   * 消息总数。
    */
   messageCount: number;
   /**
-   * user Messages 列表，由当前实例内部维护。
+   * 用户消息数。
    */
   userMessages: number;
   /**
-   * assistant Messages 列表，由当前实例内部维护。
+   * 助手（AI）消息数。
    */
   assistantMessages: number;
   /**
-   * token Count 值，由当前实例内部维护。
+   * 消耗的 token 总数。
    */
   tokenCount: number;
   /**
-   * byte Count 值，由当前实例内部维护。
+   * 消息内容的字节总数。
    */
   byteCount: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述统计持久化或内存索引中的一条记录。
+ * 模型服务提供者的统计记录。
  */
 export interface StatsProviderRecord {
   /**
-   * provider 标识。
+   * 提供者的唯一标识。
    */
   providerId: string;
   /**
-   * request Count 值，由当前实例内部维护。
+   * 总请求次数。
    */
   requestCount: number;
   /**
-   * error Count 值，由当前实例内部维护。
+   * 请求失败次数。
    */
   errorCount: number;
   /**
-   * error Rate 值，由当前实例内部维护。
+   * 请求错误率（失败次数/总请求次数的比值）。
    */
   errorRate: number;
   /**
-   * generation Count 值，由当前实例内部维护。
+   * 生成完成的总次数。
    */
   generationCount: number;
   /**
-   * generation Time Ms 列表，由当前实例内部维护。
+   * 累计生成耗时（毫秒）。
    */
   generationTimeMs: number;
   /**
-   * prompt Tokens 列表，由当前实例内部维护。
+   * 累计提示词 token 数。
    */
   promptTokens: number;
   /**
-   * completion Tokens 列表，由当前实例内部维护。
+   * 累计补全 token 数。
    */
   completionTokens: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述统计持久化或内存索引中的一条记录。
+ * 知识库（RAG）查询来源的统计记录。
  */
 export interface StatsRagRecord {
   /**
-   * source 标识。
+   * 知识库来源的唯一标识。
    */
   sourceId: string;
   /**
-   * query Count 值，由当前实例内部维护。
+   * 查询次数。
    */
   queryCount: number;
   /**
-   * hit Count 值，由当前实例内部维护。
+   * 命中次数（成功检索到相关内容）。
    */
   hitCount: number;
   /**
-   * hit Rate 值，由当前实例内部维护。
+   * 命中率（命中次数/查询次数的比值）。
    */
   hitRate: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述统计持久化或内存索引中的一条记录。
+ * 插件的错误统计记录。
  */
 export interface StatsPluginRecord {
   /**
-   * plugin 标识。
+   * 插件的唯一标识。
    */
   pluginId: string;
   /**
-   * error Count 值，由当前实例内部维护。
+   * 累计错误次数。
    */
   errorCount: number;
   /**
-   * last Error 值，由当前实例内部维护。
+   * 最近一次错误信息。
    */
   lastError: string;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述统计持久化或内存索引中的一条记录。
+ * 单个角色的使用统计记录。
  */
 export interface StatsCharacterRecord {
   /**
-   * character Key 值，由当前实例内部维护。
+   * 角色的唯一标识键。
    */
   characterKey: string;
   /**
-   * total Gen Time 值，由当前实例内部维护。
+   * 累计生成耗时（毫秒）。
    */
   totalGenTime: number;
   /**
-   * user Msg Count 值，由当前实例内部维护。
+   * 用户消息数量。
    */
   userMsgCount: number;
   /**
-   * non User Msg Count 值，由当前实例内部维护。
+   * 非用户消息数量（AI 回复）。
    */
   nonUserMsgCount: number;
   /**
-   * user Word Count 值，由当前实例内部维护。
+   * 用户消息的单词总数。
    */
   userWordCount: number;
   /**
-   * non User Word Count 值，由当前实例内部维护。
+   * 非用户消息的单词总数。
    */
   nonUserWordCount: number;
   /**
-   * total Swipe Count 值，由当前实例内部维护。
+   * 总滑动（swipe）次数。
    */
   totalSwipeCount: number;
   /**
-   * date Last Chat 值，由当前实例内部维护。
+   * 最近一次聊天的日期时间戳（毫秒）。
    */
   dateLastChat: number;
   /**
-   * date First Chat 值，由当前实例内部维护。
+   * 首次聊天的日期时间戳（毫秒）。
    */
   dateFirstChat: number;
 }
 
 /**
- * 描述调用统计能力时需要传入的参数。
+ * 处理消息时需要传入的统计参数。
  */
 export interface StatsMessageProcessInput {
   /**
-   * character Key 值，由当前实例内部维护。
+   * 角色的唯一标识键。
    */
   characterKey: string;
   /**
-   * 消息数据。
+   * 消息文本内容。
    */
   message: string;
   /**
-   * is User 值，由当前实例内部维护。
+   * 是否为用户发送的消息。
    */
   isUser: boolean;
   /**
-   * process Type 值，由当前实例内部维护。
+   * 处理类型，例如 `"append"`、`"continue"`、`"swipe"`。
    */
   processType: string;
   /**
-   * old Message 值，由当前实例内部维护。
+   * 旧消息文本，编辑操作时传入以计算增量。
    */
   oldMessage?: string;
   /**
-   * gen Started At 值，由当前实例内部维护。
+   * 生成开始的时间戳（毫秒）。
    */
   genStartedAt?: number;
   /**
-   * gen Finished At 值，由当前实例内部维护。
+   * 生成结束的时间戳（毫秒）。
    */
   genFinishedAt?: number;
   /**
-   * 当前时间戳，由当前实例内部维护。
+   * 记录的参考时间戳，不传则以当前时间代替。
    */
   now?: number;
 }
 
 /**
- * 描述统计模块在运行时交换的数据结构。
+ * 用户维度的汇总统计数据。
  */
 export interface StatsTotals {
   /**
-   * total Gen Time 值，由当前实例内部维护。
+   * 累计生成耗时（毫秒）。
    */
   totalGenTime: number;
   /**
-   * user Msg Count 值，由当前实例内部维护。
+   * 用户消息数量。
    */
   userMsgCount: number;
   /**
-   * non User Msg Count 值，由当前实例内部维护。
+   * 非用户消息数量（AI 回复）。
    */
   nonUserMsgCount: number;
   /**
-   * user Word Count 值，由当前实例内部维护。
+   * 用户消息的单词总数。
    */
   userWordCount: number;
   /**
-   * non User Word Count 值，由当前实例内部维护。
+   * 非用户消息的单词总数。
    */
   nonUserWordCount: number;
   /**
-   * total Swipe Count 值，由当前实例内部维护。
+   * 总滑动（swipe）次数。
    */
   totalSwipeCount: number;
   /**
-   * date Last Chat 值，由当前实例内部维护。
+   * 最近一次聊天的日期时间戳（毫秒）。
    */
   dateLastChat: number;
   /**
-   * date First Chat 值，由当前实例内部维护。
+   * 首次聊天的日期时间戳（毫秒）。
    */
   dateFirstChat: number;
 }
 
 /**
- * 描述统计模块在运行时交换的数据结构。
+ * 当前统计数据的完整快照，包含所有维度的聚合值。
  */
 export interface StatsSnapshot {
   /**
-   * total Prompt Tokens 列表，由当前实例内部维护。
+   * 总提示词 token 数。
    */
   totalPromptTokens: number;
   /**
-   * total Completion Tokens 列表，由当前实例内部维护。
+   * 总补全 token 数。
    */
   totalCompletionTokens: number;
   /**
-   * total Tokens 列表，由当前实例内部维护。
+   * 总 token 数（提示词 + 补全）。
    */
   totalTokens: number;
   /**
-   * total Messages 列表，由当前实例内部维护。
+   * 总消息数。
    */
   totalMessages: number;
   /**
-   * user Messages 列表，由当前实例内部维护。
+   * 用户消息数。
    */
   userMessages: number;
   /**
-   * assistant Messages 列表，由当前实例内部维护。
+   * 助手（AI）消息数。
    */
   assistantMessages: number;
   /**
-   * total Chat Bytes 列表，由当前实例内部维护。
+   * 聊天消息的总字节数。
    */
   totalChatBytes: number;
   /**
-   * total Generations 列表，由当前实例内部维护。
+   * 总生成次数。
    */
   totalGenerations: number;
   /**
-   * total Generation Time Ms 列表，由当前实例内部维护。
+   * 总生成耗时（毫秒）。
    */
   totalGenerationTimeMs: number;
   /**
-   * provider Errors 列表，由当前实例内部维护。
+   * 提供者错误总数。
    */
   providerErrors: number;
   /**
-   * rag Queries 列表，由当前实例内部维护。
+   * 知识库查询总数。
    */
   ragQueries: number;
   /**
-   * rag Hits 列表，由当前实例内部维护。
+   * 知识库命中总数。
    */
   ragHits: number;
   /**
-   * plugin Errors 列表，由当前实例内部维护。
+   * 插件错误总数。
    */
   pluginErrors: number;
   /**
-   * chat Stats 列表，由当前实例内部维护。
+   * 各聊天会话的统计列表。
    */
   chatStats: Array<StatsChatRecord>;
   /**
-   * provider Stats 列表，由当前实例内部维护。
+   * 各模型服务提供者的统计列表。
    */
   providerStats: Array<StatsProviderRecord>;
   /**
-   * rag Stats 列表，由当前实例内部维护。
+   * 各知识库来源的统计列表。
    */
   ragStats: Array<StatsRagRecord>;
   /**
-   * plugin Stats 列表，由当前实例内部维护。
+   * 各插件的统计列表。
    */
   pluginStats: Array<StatsPluginRecord>;
   /**
-   * character Stats 列表，由当前实例内部维护。
+   * 各角色的统计列表。
    */
   characterStats: Array<StatsCharacterRecord>;
 }
 
 /**
- * 描述统计模块在运行时交换的数据结构。
+ * 单次模型生成的采样统计记录。
  */
 export interface StatsGenerationSample {
   /**
-   * provider 标识。
+   * 模型服务提供者的唯一标识。
    */
   providerId: string;
   /**
-   * started At 值，由当前实例内部维护。
+   * 生成开始的时间戳（毫秒）。
    */
   startedAt: number;
   /**
-   * finished At 值，由当前实例内部维护。
+   * 生成结束的时间戳（毫秒）。
    */
   finishedAt: number;
   /**
-   * duration Ms 列表，由当前实例内部维护。
+   * 生成耗时（毫秒）。
    */
   durationMs: number;
   /**
-   * prompt Tokens 列表，由当前实例内部维护。
+   * 提示词 token 数。
    */
   promptTokens: number;
   /**
-   * completion Tokens 列表，由当前实例内部维护。
+   * 补全 token 数。
    */
   completionTokens: number;
 }
 
 /**
- * 描述统计事件发布时携带的数据结构。
+ * 统计更新事件发布时携带的载荷。
  */
 export interface StatsUpdatedPayload {
   /**
-   * snapshot 值，由当前实例内部维护。
+   * 完整的统计快照。
    */
   snapshot: StatsSnapshot;
 }
 
 /**
- * 描述统计事件发布时携带的数据结构。
+ * 模型提供者错误事件发布时携带的载荷。
  */
 export interface StatsProviderErrorPayload {
   /**
-   * provider 标识。
+   * 模型服务提供者的唯一标识。
    */
   providerId: string;
   /**
-   * error Count 值，由当前实例内部维护。
+   * 累计错误次数。
    */
   errorCount: number;
   /**
-   * error Rate 值，由当前实例内部维护。
+   * 当前错误率（失败次数/总请求次数的比值）。
    */
   errorRate: number;
 }
 
 /**
- * 描述统计事件发布时携带的数据结构。
+ * 插件错误事件发布时携带的载荷。
  */
 export interface StatsPluginErrorPayload {
   /**
-   * plugin 标识。
+   * 插件的唯一标识。
    */
   pluginId: string;
   /**
-   * error Count 值，由当前实例内部维护。
+   * 累计错误次数。
    */
   errorCount: number;
   /**
-   * 消息数据。
+   * 最近一次错误的错误消息。
    */
   message: string;
 }

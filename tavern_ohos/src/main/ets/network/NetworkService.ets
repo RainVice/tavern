@@ -13,18 +13,20 @@ import type { NetworkHeaderOverrideRule } from './NetworkModels';
 
 /**
  * 提供网络请求头服务，封装跨 Runtime 的协作逻辑。
+ *
+ * 根据连接配置、Secret 值与覆盖规则组装最终请求头。
  */
 export class NetworkService {
   /**
-   * connections 列表，由当前实例内部维护。
+   * 连接配置运行时，用于查询连接配置与 API 类型。
    */
   private connections: ConnectionProfileRuntime;
   /**
-   * secrets 列表，由当前实例内部维护。
+   * Secret 运行时，用于读取 API 密钥等敏感信息。
    */
   private secrets: SecretRuntime;
   /**
-   * override Rules 列表，由当前实例内部维护。
+   * 请求头覆盖规则列表，根据目标主机匹配后动态注入请求头。
    */
   private overrideRules: Array<NetworkHeaderOverrideRule> = new Array<NetworkHeaderOverrideRule>();
 
@@ -38,7 +40,6 @@ export class NetworkService {
 
   /**
    * 设置请求头覆盖规则列表，用于切换运行时状态或保存配置。
-
    */
   setOverrideHeaders(rules: Array<NetworkHeaderOverrideRule>): void {
     this.overrideRules = this.cloneRules(rules);
@@ -48,7 +49,7 @@ export class NetworkService {
    * 根据当前上下文解析Headers For Profile 值，返回实际可用值。
    * @param profileId 目标连接或预设配置标识。
    * @param serverUrl 服务地址。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 请求头记录副本数组
    */
   resolveHeadersForProfile(profileId: string, serverUrl?: string): Array<ConnectionHeaderRecord> {
     const profile = this.connections.getProfile(profileId);
@@ -61,10 +62,10 @@ export class NetworkService {
   }
 
   /**
-   * 执行 previewHeadersForProfile 的内部处理步骤，供当前模块复用。
+   * 预览指定连接配置的请求头，不含密钥注入。
    * @param profileId 目标连接或预设配置标识。
    * @param serverUrl 服务地址。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 请求头记录副本数组
    */
   previewHeadersForProfile(profileId: string, serverUrl?: string): Array<ConnectionHeaderRecord> {
     const resolved = this.resolveHeadersForProfile(profileId, serverUrl);
@@ -74,8 +75,6 @@ export class NetworkService {
   /**
    * 追加Provider Headers 列表，保留既有内容并写入新增片段。
    * @param result 返回结果。
-
-
    */
   private appendProviderHeaders(result: Array<ConnectionHeaderRecord>, apiType: ConnectionApiType, secretValue: string): void {
     const normalized = apiType.toLowerCase();
@@ -123,7 +122,6 @@ export class NetworkService {
   /**
    * 追加Bearer Auth 值，保留既有内容并写入新增片段。
    * @param result 返回结果。
-
    */
   private appendBearerAuth(result: Array<ConnectionHeaderRecord>, secretValue: string): void {
     if (secretValue.length === 0) {
@@ -229,7 +227,6 @@ export class NetworkService {
    * @param result 返回结果。
    * @param name 显示名称或注册名称。
    * @param value 要保存或比较的字段值。
-
    */
   private upsertHeader(result: Array<ConnectionHeaderRecord>, name: string, value: string, secret: boolean): void {
     for (let index = 0; index < result.length; index += 1) {
@@ -266,8 +263,7 @@ export class NetworkService {
 
   /**
    * 复制Rules 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 请求头记录副本数组
    */
   private cloneRules(rules: Array<NetworkHeaderOverrideRule>): Array<NetworkHeaderOverrideRule> {
     const result = new Array<NetworkHeaderOverrideRule>();
@@ -283,8 +279,8 @@ export class NetworkService {
   /**
    * 复制Headers 列表，避免外部修改内部状态。
    * @param headers 请求头列表。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @param masked 是否遮盖敏感字段的值。
+   * @returns 请求头记录副本数组
    */
   private cloneHeaders(headers: Array<ConnectionHeaderRecord>, masked: boolean): Array<ConnectionHeaderRecord> {
     const result = new Array<ConnectionHeaderRecord>();

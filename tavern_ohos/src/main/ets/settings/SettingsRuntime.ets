@@ -40,15 +40,15 @@ export class SettingsRuntime {
    */
   private userId: string = 'default';
   /**
-   * schemas 列表，由当前实例内部维护。
+   * 已注册的 schema 映射表，键为设置键名。
    */
   private schemas: Map<string, SettingSchemaRecord> = new Map<string, SettingSchemaRecord>();
   /**
-   * 条目列表，由当前实例内部维护。
+   * 设置条目映射表，键为 `${scope}:${scopeId}:${key}` 格式的组合键。
    */
   private entries: Map<string, SettingEntry> = new Map<string, SettingEntry>();
   /**
-   * migrations 列表，由当前实例内部维护。
+   * 历史迁移记录列表。
    */
   private migrations: Array<SettingMigrationRecord> = new Array<SettingMigrationRecord>();
 
@@ -64,7 +64,7 @@ export class SettingsRuntime {
   }
 
   /**
-   * 从 SDK 内部文件存储恢复设置 schema、条目和迁移记录。
+   * 从持久化文件存储中恢复设置 schema、条目和迁移记录。
    */
   async loadFromStore(): Promise<void> {
     const store = new JsonStore<SettingsStorageSnapshot>(this.requireFiles(), this.storagePath());
@@ -83,7 +83,7 @@ export class SettingsRuntime {
   }
 
   /**
-   * 把当前设置 schema、条目和迁移记录写入 SDK 内部文件存储。
+   * 将当前设置 schema、条目和迁移记录写入持久化文件存储。
    */
   async saveToStore(): Promise<void> {
     const schemas = this.cloneSchemas(Array.from(this.schemas.values()));
@@ -100,8 +100,9 @@ export class SettingsRuntime {
   }
 
   /**
-   * 注册Schema 值，使其可被后续运行时流程使用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 注册一条设置 schema 的定义，使其可被后续运行时流程使用。
+   * @param params 创建 schema 所需的参数。
+   * @returns 注册后的 schema 记录副本。
    */
   registerSchema(params: SettingSchemaCreateParams): SettingSchemaRecord {
     const schema: SettingSchemaRecord = {
@@ -116,11 +117,12 @@ export class SettingsRuntime {
   }
 
   /**
-   * 设置配置项，用于切换运行时状态或保存配置。
+   * 设置指定作用域下的配置项值，并发布变更事件。
    * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
    * @param key 键名。
-   * @param value 要保存或比较的字段值。
+   * @param value 要保存的值。
+   * @returns 更新后的设置条目副本。
    */
   setSetting(scope: TavernScope, scopeId: string, key: string, value: string): SettingEntry {
     const schema = this.requireSchema(key);
@@ -147,11 +149,11 @@ export class SettingsRuntime {
   }
 
   /**
-   * 读取指定设置项，不存在时抛出错误。
+   * 读取指定作用域下的设置项值；若未显式赋值则返回 schema 默认值。
    * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
    * @param key 键名。
-   * @returns 更新或读取后的记录副本。
+   * @returns 设置项的当前值；若该键既无条目也无 schema，返回空字符串。
    */
   getSetting(scope: TavernScope, scopeId: string, key: string): string {
     const entry = this.entries.get(this.entryKey(scope, scopeId, key));
@@ -166,11 +168,11 @@ export class SettingsRuntime {
   }
 
   /**
-   * 读取指定设置项，不存在时抛出错误。
+   * 读取指定作用域下的设置项值，若未找到则向上回退到 global 作用域。
    * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
    * @param key 键名。
-   * @returns 更新或读取后的记录副本。
+   * @returns 设置项的当前值（优先作用域级，其次 global 级，最后 schema 默认值）；均未定义则返回空字符串。
    */
   getEffectiveSetting(scope: TavernScope, scopeId: string, key: string): string {
     const scoped = this.entries.get(this.entryKey(scope, scopeId, key));
@@ -187,15 +189,19 @@ export class SettingsRuntime {
   }
 
   /**
-   * 执行 migrateSetting 的内部处理步骤，供当前模块复用。
+   * 将指定作用域下的设置项从 fromKey 迁移到 toKey，并更新 schema 版本号。
    * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
+   * @param fromKey 迁移前的原始键名。
+   * @param toKey 迁移后的目标键名。
+   * @param targetVersion 迁移后的目标 schema 版本号。
+   * @returns 迁移完成后的完整快照。
    */
   migrateSetting(scope: TavernScope, scopeId: string, fromKey: string, toKey: string, targetVersion: number): SettingSnapshot {
     const fromSchema = this.requireSchema(fromKey);
     const toSchema = this.requireSchema(toKey);
     const sourceKey = this.entryKey(scope, scopeId, fromKey);
-    // 来源类型。
+    // 从原键读取当前值，若不存在则使用 fromKey 的默认值。
     const source = this.entries.get(sourceKey);
     const value = source === undefined ? fromSchema.defaultValue : source.value;
     if (source !== undefined) {
@@ -224,7 +230,8 @@ export class SettingsRuntime {
   }
 
   /**
-   * 执行 snapshot 的内部处理步骤，供当前模块复用。
+   * 生成当前设置状态的完整快照，包含所有条目和迁移记录。
+   * @returns 当前时刻的设置快照。
    */
   snapshot(): SettingSnapshot {
     const entries = this.cloneEntries(Array.from(this.entries.values()));
@@ -240,8 +247,8 @@ export class SettingsRuntime {
   }
 
   /**
-   * 读取Schemas列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取所有已注册的 schema 记录列表。
+   * @returns schema 记录列表；返回值是副本，调用方可安全读取。
    */
   listSchemas(): Array<SettingSchemaRecord> {
     const result = new Array<SettingSchemaRecord>();
@@ -253,10 +260,10 @@ export class SettingsRuntime {
   }
 
   /**
-   * 读取条目列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 获取指定作用域下的所有设置条目列表。
    * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 条目列表；返回值是副本，调用方可安全读取。
    */
   listEntries(scope: TavernScope, scopeId: string): Array<SettingEntry> {
     const result = new Array<SettingEntry>();
@@ -271,8 +278,8 @@ export class SettingsRuntime {
   }
 
   /**
-   * 读取必须存在的Schema 值，缺失时抛出错误。
-   * @param key 键名。
+   * 根据键名查找已注册的 schema，不存在则抛出异常。
+   * @param key 设置键名。
    */
   private requireSchema(key: string): SettingSchemaRecord {
     const schema = this.schemas.get(key);
@@ -321,7 +328,7 @@ export class SettingsRuntime {
   }
 
   /**
-   * 复制Schema 值，避免外部修改内部状态。
+   * 复制单条 schema 记录，避免外部修改内部状态。
    */
   private cloneSchema(schema: SettingSchemaRecord): SettingSchemaRecord {
     return {
@@ -342,8 +349,8 @@ export class SettingsRuntime {
   }
 
   /**
-   * 复制Entry 值，避免外部修改内部状态。
-   * @param entry 条目记录。
+   * 复制单条设置条目，避免外部修改内部状态。
+   * @param entry 要复制的条目。
    */
   private cloneEntry(entry: SettingEntry): SettingEntry {
     return {
@@ -357,9 +364,9 @@ export class SettingsRuntime {
   }
 
   /**
-   * 复制Entries 列表，避免外部修改内部状态。
+   * 复制条目列表，避免外部修改内部状态。
    * @param entries 条目列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 复制后的条目列表。
    */
   private cloneEntries(entries: Array<SettingEntry>): Array<SettingEntry> {
     const result = new Array<SettingEntry>();
@@ -370,7 +377,7 @@ export class SettingsRuntime {
   }
 
   /**
-   * 复制Migration 值，避免外部修改内部状态。
+   * 复制单条迁移记录，避免外部修改内部状态。
    */
   private cloneMigration(migration: SettingMigrationRecord): SettingMigrationRecord {
     return {
@@ -385,9 +392,8 @@ export class SettingsRuntime {
   }
 
   /**
-   * 复制Migrations 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 复制迁移记录列表，避免外部修改内部状态。
+   * @returns 复制后的迁移记录列表。
    */
   private cloneMigrations(migrations: Array<SettingMigrationRecord>): Array<SettingMigrationRecord> {
     const result = new Array<SettingMigrationRecord>();

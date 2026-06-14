@@ -5,309 +5,308 @@ import type {
 } from '../contracts/PublicContracts';
 
 /**
- * 描述调用token 统计能力时需要传入的参数。
+ * 描述创建 TokenizerProfile 时需要传入的参数。
  */
 export interface TokenizerProfileCreateParams {
   /**
-   * 标识。
+   * 配置文件唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 配置文件显示名称。
    */
   name: string;
   /**
-   * strategy 值，由当前实例内部维护。
+   * 分词策略。
    */
   strategy: TokenizerStrategy;
   /**
-   * bytes Per Token 值，由当前实例内部维护。
+   * 每个 token 的预估字节数。
    */
   bytesPerToken: number;
   /**
-   * max Context 值，由当前实例内部维护。
+   * 最大上下文长度（token 数）。
    */
   maxContext: number;
   /**
-   * message Overhead 值，由当前实例内部维护。
+   * 每条消息的额外 token 开销（可选，默认 0）。
    */
   messageOverhead?: number;
 }
 
 /**
- * 描述token 统计模块在运行时交换的数据结构。
+ * 描述分词器配置文件的完整记录。
  */
 export interface TokenizerProfile {
   /**
-   * 标识。
+   * 配置文件唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 配置文件显示名称。
    */
   name: string;
   /**
-   * strategy 值，由当前实例内部维护。
+   * 分词策略。
    */
   strategy: TokenizerStrategy;
   /**
-   * bytes Per Token 值，由当前实例内部维护。
+   * 每个 token 的预估字节数。
    */
   bytesPerToken: number;
   /**
-   * max Context 值，由当前实例内部维护。
+   * 最大上下文长度（token 数）。
    */
   maxContext: number;
   /**
-   * message Overhead 值，由当前实例内部维护。
+   * 每条消息的额外 token 开销。
    */
   messageOverhead: number;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳（单位 ms）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间戳（单位 ms）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述token 统计模块在运行时交换的数据结构。
+ * 描述一个可选的分词器选项。
  */
 export interface TokenizerOption {
   /**
-   * 标识。
+   * 选项编号。
    */
   id: number;
   /**
-   * 键名，由当前实例内部维护。
+   * 选项键名。
    */
   key: string;
   /**
-   * 名称。
+   * 选项显示名称。
    */
   name: string;
   /**
-   * profile 标识。
+   * 关联的配置文件标识。
    */
   profileId: string;
   /**
-   * can Encode 值，由当前实例内部维护。
+   * 是否支持本地编码。
    */
   canEncode: boolean;
   /**
-   * remote 值，由当前实例内部维护。
+   * 是否为远程分词器。
    */
   remote: boolean;
 }
 
 /**
- * 描述调用token 统计能力时需要传入的参数。
+ * 描述选择最佳分词器时需要传入的参数。
  */
 export interface TokenizerSelectionInput {
   /**
-   * api 值，由当前实例内部维护。
+   * API 名称（如 openai、kobold）。
    */
   api: string;
   /**
-   * provider 值，由当前实例内部维护。
+   * 提供商标识。
    */
   provider?: ProviderId;
   /**
-   * 模型名称，由当前实例内部维护。
+   * 模型名称。
    */
   model?: string;
   /**
-   * remote Tokenizer Supported 值，由当前实例内部维护。
+   * 是否支持远程分词器。
    */
   remoteTokenizerSupported?: boolean;
   /**
-   * tokenizer Warning Shown 值，由当前实例内部维护。
+   * 远程分词器警告是否已展示。
    */
   tokenizerWarningShown?: boolean;
 }
 
 /**
- * 描述token 统计操作完成后返回给调用方的结果。
+ * 描述选择最佳分词器的计算结果。
  */
 export interface TokenizerSelectionResult {
   /**
-   * option 值，由当前实例内部维护。
+   * 选中的分词器选项。
    */
   option: TokenizerOption;
   /**
-   * profile 标识。
+   * 选中的配置文件标识。
    */
   profileId: string;
   /**
-   * tokenizer Key 值，由当前实例内部维护。
+   * 分词器键名。
    */
   tokenizerKey: string;
   /**
-   * remote 值，由当前实例内部维护。
+   * 是否为远程分词器。
    */
   remote: boolean;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 选择原因说明。
    */
   reason: string;
 }
 
 /**
- * 描述token 统计模块在运行时交换的数据结构。
+ * 描述一条消息记录，包含角色和内容。
  */
 export interface TokenMessage {
   /**
-   * role 值，由当前实例内部维护。
+   * 消息角色。
    */
   role: ChatMessageRole;
   /**
-   * 内容。
+   * 消息文本内容。
    */
   content: string;
 }
 
 /**
- * 描述token 统计模块在运行时交换的数据结构。
+ * 描述一条消息的分段统计结果，包含角色、内容和 token 数。
  */
 export interface TokenMessagePart {
   /**
-   * role 值，由当前实例内部维护。
+   * 消息角色。
    */
   role: ChatMessageRole;
   /**
-   * 内容。
+   * 消息文本内容。
    */
   content: string;
   /**
-   * tokens 列表，由当前实例内部维护。
+   * 该分段的 token 数。
    */
   tokens: number;
 }
 
 /**
- * 描述token 统计操作完成后返回给调用方的结果。
+ * 描述单次文本 token 计数的结果。
  */
 export interface TokenCountResult {
   /**
-   * profile 标识。
+   * 使用的配置文件标识。
    */
   profileId: string;
   /**
-   * 文本内容。
+   * 被统计的文本内容。
    */
   text: string;
   /**
-   * tokens 列表，由当前实例内部维护。
+   * 文本的 token 数量。
    */
   tokens: number;
   /**
-   * strategy 值，由当前实例内部维护。
+   * 使用的分词策略。
    */
   strategy: TokenizerStrategy;
   /**
-   * from Cache 值，由当前实例内部维护。
+   * 是否从缓存中获取结果。
    */
   fromCache: boolean;
 }
 
 /**
- * 描述token 统计操作完成后返回给调用方的结果。
+ * 描述多条消息的 token 统计结果。
  */
 export interface TokenMessageCountResult {
   /**
-   * profile 标识。
+   * 使用的配置文件标识。
    */
   profileId: string;
   /**
-   * tokens 列表，由当前实例内部维护。
+   * 消息总 token 数。
    */
   tokens: number;
   /**
-   * 路径分段，由当前实例内部维护。
+   * 每条消息的分段统计结果。
    */
   parts: Array<TokenMessagePart>;
 }
 
 /**
- * 描述token 统计操作完成后返回给调用方的结果。
+ * 描述上下文预算的计算结果（上下文是否足够容纳消息）。
  */
 export interface TokenBudgetResult {
   /**
-   * profile 标识。
+   * 使用的配置文件标识。
    */
   profileId: string;
   /**
-   * max Context 值，由当前实例内部维护。
+   * 模型最大上下文长度（token 数）。
    */
   maxContext: number;
   /**
-   * completion Reserve 值，由当前实例内部维护。
+   * 为生成回复预留的 token 数。
    */
   completionReserve: number;
   /**
-   * available Prompt Tokens 列表，由当前实例内部维护。
+   * 实际可用于提示的 token 数上限。
    */
   availablePromptTokens: number;
   /**
-   * prompt Tokens 列表，由当前实例内部维护。
+   * 提示实际消耗的 token 数。
    */
   promptTokens: number;
   /**
-   * fits 列表，由当前实例内部维护。
+   * 当前提示是否在上下文限制内。
    */
   fits: boolean;
   /**
-   * 消息列表。
+   * 参与预算计算的消息列表。
    */
   messages: Array<TokenMessage>;
 }
 
 /**
- * 描述token 统计操作完成后返回给调用方的结果。
+ * 描述裁剪消息以适配上下文预算后的结果。
  */
 export interface TokenTrimResult {
   /**
-   * 处理结果。
+   * 裁剪后的预算计算结果。
    */
   result: TokenBudgetResult;
   /**
-   * 消息列表。
+   * 裁剪后的剩余消息列表。
    */
   messages: Array<TokenMessage>;
   /**
-   * removed Count 值，由当前实例内部维护。
+   * 被移除的消息数量。
    */
   removedCount: number;
 }
 
 /**
- * 描述token 统计事件发布时携带的数据结构。
+ * 描述分词器 profile 相关事件发布时携带的数据结构。
  */
 export interface TokenizerProfilePayload {
   /**
-   * profile 值，由当前实例内部维护。
+   * 关联的配置文件。
    */
   profile: TokenizerProfile;
 }
 
 /**
- * 描述token 统计事件发布时携带的数据结构。
+ * 描述 token 统计事件发布时携带的数据结构。
  */
 export interface TokenizerCountedPayload {
   /**
-   * 处理结果。
+   * token 计数结果。
    */
   result: TokenCountResult;
 }
 
 /**
- * 描述token 统计事件发布时携带的数据结构。
+ * 描述预算计算结果事件发布时携带的数据结构。
  */
-export interface TokenBudgetPayload {
   /**
-   * 处理结果。
+   * 预算计算结果。
    */
   result: TokenBudgetResult;
 }

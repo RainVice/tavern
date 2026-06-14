@@ -1,105 +1,105 @@
 /**
- * 描述头像模块在运行时交换的数据结构。
+ * 头像裁剪区域坐标，描述原始图像中用于裁剪的矩形范围。
  */
 export interface AvatarCrop {
   /**
-   * x 值，由当前实例内部维护。
+   * 裁剪矩形左上角的横坐标，单位为像素。
    */
   x: number;
   /**
-   * y 值，由当前实例内部维护。
+   * 裁剪矩形左上角的纵坐标，单位为像素。
    */
   y: number;
   /**
-   * width 值，由当前实例内部维护。
+   * 裁剪矩形的宽度，单位为像素。
    */
   width: number;
   /**
-   * height 值，由当前实例内部维护。
+   * 裁剪矩形的高度，单位为像素。
    */
   height: number;
 }
 
 /**
- * 描述头像持久化或内存索引中的一条记录。
+ * 头像的一条完整记录，用于持久化存储或运行时索引。
  */
 export interface AvatarRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据结构的 schema 版本号，用于向前兼容。
    */
   schemaVersion: number;
   /**
-   * target Type 值，由当前实例内部维护。
+   * 所属目标类型，如 "character" 或 "persona"。
    */
   targetType: string;
   /**
-   * target 标识。
+   * 关联目标的唯一标识符。
    */
   targetId: string;
   /**
-   * file 名称。
+   * 头像文件的原始名称。
    */
   fileName: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * 头像文件的 MIME 类型，如 "image/png"。
    */
   mimeType: string;
   /**
-   * 路径。
+   * 头像文件在存储中的完整路径。
    */
   path: string;
   /**
-   * 内容。
+   * 头像文件的 base64 编码内容。
    */
   content: string;
   /**
-   * crop 值，由当前实例内部维护。
+   * 与该头像关联的裁剪区域信息。
    */
   crop: AvatarCrop;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间的时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最近一次更新时间的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述头像事件发布时携带的数据结构。
+ * 头像上传事件发布时携带的数据载荷。
  */
 export interface AvatarUploadedPayload {
   /**
-   * avatar 值，由当前实例内部维护。
+   * 已完成上传的头像记录副本。
    */
   avatar: AvatarRecord;
 }
 
 /**
- * 描述头像事件发布时携带的数据结构。
+ * 头像删除事件发布时携带的数据载荷。
  */
 export interface AvatarDeletedPayload {
   /**
-   * target Type 值，由当前实例内部维护。
+   * 已删除头像所属的目标类型。
    */
   targetType: string;
   /**
-   * target 标识。
+   * 已删除头像所属目标的唯一标识符。
    */
   targetId: string;
   /**
-   * 路径。
+   * 已删除头像文件在存储中的路径。
    */
   path: string;
 }
 
 /**
- * 描述头像模块在运行时交换的数据结构。
+ * 头像索引的持久化数据结构，用于记录当前所有头像记录的快照。
  */
 export interface AvatarIndexData {
   /**
-   * avatars 列表，由当前实例内部维护。
+   * 所有头像记录的列表。
    */
   avatars: Array<AvatarRecord>;
 }

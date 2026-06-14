@@ -3,67 +3,67 @@
  */
 export interface RegexScriptRecord {
   /**
-   * 标识。
+   * 全局唯一标识。
    */
   id: string;
   /**
-   * script 名称。
+   * 脚本的用户可读名称，用于日志和调试。
    */
   scriptName: string;
   /**
-   * source Type 值，由当前实例内部维护。
+   * 脚本来源类型，用于区分定义源（如"global"、"character"、"temporary"）。
    */
   sourceType: string;
   /**
-   * 作用域标识。
+   * 脚本所属作用域的标识；空字符串表示全局作用域。
    */
   scopeId: string;
   /**
-   * find Regex 值，由当前实例内部维护。
+   * 用于匹配文本的正则表达式字符串。
    */
   findRegex: string;
   /**
-   * flags 列表，由当前实例内部维护。
+   * 正则匹配修饰标志（如 "gi"、"gm"）。
    */
   flags: string;
   /**
-   * replace String 值，由当前实例内部维护。
+   * 匹配成功后用于替换文本的字符串，支持 {{match}} 占位符。
    */
   replaceString: string;
   /**
-   * placements 列表，由当前实例内部维护。
+   * 脚本生效的放置位置列表，表示该脚本在哪些上下文中运行。
    */
   placements: Array<string>;
   /**
-   * disabled 值，由当前实例内部维护。
+   * 是否禁用：为 true 时脚本不参与运行。
    */
   disabled: boolean;
   /**
-   * markdown Only 值，由当前实例内部维护。
+   * 仅 Markdown 内容生效：为 true 时脚本只在 Markdown 内容上运行。
    */
   markdownOnly: boolean;
   /**
-   * prompt Only 值，由当前实例内部维护。
+   * 仅 Prompt 内容生效：为 true 时脚本只在 Prompt 内容上运行。
    */
   promptOnly: boolean;
   /**
-   * run On Edit 值，由当前实例内部维护。
+   * 是否在编辑时自动触发运行。
    */
   runOnEdit: boolean;
   /**
-   * min Depth 值，由当前实例内部维护。
+   * 脚本生效的最小层级深度，-1 表示不限制。
    */
   minDepth: number;
   /**
-   * max Depth 值，由当前实例内部维护。
+   * 脚本生效的最大层级深度，-1 表示不限制。
    */
   maxDepth: number;
   /**
-   * ephemeral 值，由当前实例内部维护。
+   * 是否为临时脚本：临时脚本在下次清理时会被移除。
    */
   ephemeral: boolean;
   /**
-   * trim Strings 列表，由当前实例内部维护。
+   * 替换完成后额外需移除的字符串列表，用于清理替换产生的不需要的残余文本。
    */
   trimStrings: Array<string>;
 }
@@ -73,65 +73,65 @@ export interface RegexScriptRecord {
  */
 export interface RegexApplyInput {
   /**
-   * 文本内容。
+   * 待处理的原始文本内容。
    */
   text: string;
   /**
-   * placement 值，由当前实例内部维护。
+   * 当前 placement 值，用于匹配脚本的 placements 列表以决定是否运行。
    */
   placement: string;
   /**
-   * is Markdown 值，由当前实例内部维护。
+   * 待处理文本是否为 Markdown 格式。
    */
   isMarkdown: boolean;
   /**
-   * is Prompt 值，由当前实例内部维护。
+   * 待处理文本是否为 Prompt 格式。
    */
   isPrompt: boolean;
   /**
-   * is Edit 值，由当前实例内部维护。
+   * 是否为编辑操作触发的调用。
    */
   isEdit: boolean;
   /**
-   * depth 值，由当前实例内部维护。
+   * 当前内容层级深度，用于与脚本的 minDepth/maxDepth 比较。
    */
   depth: number;
   /**
-   * 作用域标识。
+   * 当前作用域标识，用于匹配脚本的 scopeId。
    */
   scopeId: string;
 }
 
 /**
- * 描述正则脚本模块在运行时交换的数据结构。
+ * 描述单个正则脚本执行前后的变更跟踪信息。
  */
 export interface RegexApplyTrace {
   /**
-   * script 标识。
+   * 执行脚本的唯一标识。
    */
   scriptId: string;
   /**
-   * script 名称。
+   * 执行脚本的名称。
    */
   scriptName: string;
   /**
-   * placement 值，由当前实例内部维护。
+   * 当前执行所匹配的 placement 值。
    */
   placement: string;
   /**
-   * before 值，由当前实例内部维护。
+   * 脚本执行前的文本内容。
    */
   before: string;
   /**
-   * after 值，由当前实例内部维护。
+   * 脚本执行后的文本内容。
    */
   after: string;
   /**
-   * changed 值，由当前实例内部维护。
+   * 文本是否被本次执行修改。
    */
   changed: boolean;
   /**
-   * diff 值，由当前实例内部维护。
+   * 变更差异的简要描述，格式为"替换前 -> 替换后"。
    */
   diff: string;
 }
@@ -141,11 +141,11 @@ export interface RegexApplyTrace {
  */
 export interface RegexApplyResult {
   /**
-   * 文本内容。
+   * 处理完成后的最终文本内容。
    */
   text: string;
   /**
-   * traces 列表，由当前实例内部维护。
+   * 所有脚本执行的变更轨迹列表。
    */
   traces: Array<RegexApplyTrace>;
 }
@@ -155,7 +155,7 @@ export interface RegexApplyResult {
  */
 export interface RegexAppliedPayload {
   /**
-   * trace 值，由当前实例内部维护。
+   * 单次脚本执行的轨迹信息。
    */
   trace: RegexApplyTrace;
 }

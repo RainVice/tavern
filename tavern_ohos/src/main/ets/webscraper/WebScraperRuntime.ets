@@ -16,12 +16,12 @@ export class WebScraperRuntime {
   constructor(events: EventBus) { this.events=events; }
 
   /**
-   * 创建新的请求记录，写入存储并返回副本。
-
-
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 创建一个新的网页抓取请求，返回请求标识供后续完成或失败时使用。
+   * @param url 要抓取的目标 URL。
+   * @param extractText 是否提取纯文本。
+   * @param extractImages 是否提取图片。
+   * @param maxChars 文本最大字符数上限。
+   * @returns 新创建的请求标识（如 "scrape-1"）。
    */
   createRequest(url: string, extractText: boolean, extractImages: boolean, maxChars: number): string {
     this.counter+=1; const requestId=`scrape-${this.counter}`;
@@ -30,12 +30,12 @@ export class WebScraperRuntime {
   }
 
   /**
-   * 标记Scrape 值完成，并写入最终结果。
+   * 标记网页抓取成功，根据原始请求限制文本长度后返回结果。
    * @param requestId 目标请求标识。
-   * @param title 标题。
-
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param title 网页标题。
+   * @param textContent 抓取的纯文本内容。
+   * @param imageUrls 提取到的图片 URL 列表。
+   * @returns 包含抓取结果的 ScrapeResult 对象。
    */
   completeScrape(requestId: string, title: string, textContent: string, imageUrls: Array<string>): ScrapeResult {
     const req = this.requests.get(requestId);
@@ -47,9 +47,10 @@ export class WebScraperRuntime {
   }
 
   /**
-   * 标记Scrape 值失败，并保存错误信息。
+   * 标记网页抓取失败，返回带错误信息的 ScrapeResult。
    * @param requestId 目标请求标识。
-   * @param error 错误信息。
+   * @param error 错误描述。
+   * @returns 包含错误信息的 ScrapeResult 对象。
    */
   failScrape(requestId: string, error: string): ScrapeResult {
     const req=this.requests.get(requestId);
@@ -61,8 +62,8 @@ export class WebScraperRuntime {
   }
 
   /**
-   * 发布网页抓取事件，把状态变化通知给宿主或其他 Runtime。
-   * @param result 返回结果。
+   * 发布网页抓取完成事件，把状态变化通知给宿主或其他 Runtime。
+   * @param result 抓取结果。
    */
   private publishResult(result: ScrapeResult): void {
     this.events.publish<ScrapeCompletedPayload>('webscraper.completed', { result });

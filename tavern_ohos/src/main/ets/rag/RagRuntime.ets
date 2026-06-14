@@ -14,7 +14,7 @@ import type {
  */
 export class RagRuntime {
   /**
-   * vectors 列表，由当前实例内部维护。
+   * 向量检索运行时实例。
    */
   private vectors: VectorRuntime;
   /**
@@ -33,8 +33,11 @@ export class RagRuntime {
   }
 
   /**
-   * 执行 retrieve 的内部处理步骤，供当前模块复用。
-   * @param input 待处理的输入对象。
+   * 执行完整RAG 检索流程：将输入转换为向量查询，查询向量库，将命中结果组装为片段，
+   * 应用 prompt 模板，发布检索事件，返回最终结果。
+   *
+   * @param input 检索输入参数
+   * @returns 检索结果，包含命中的片段、得分和生成的 prompt 文本
    */
   retrieve(input: RagRetrievalInput): RagRetrievalResult {
     const queryParams: VectorQueryParams = {
@@ -73,7 +76,7 @@ export class RagRuntime {
   /**
    * 根据入参构建Query From Last User Message 值，仅生成数据结构，不直接执行外部请求。
    * @param messages 消息列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 检索到的向量命中列表副本
    */
   buildQueryFromLastUserMessage(messages: Array<RagChatMessage>): string {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -88,7 +91,7 @@ export class RagRuntime {
    * 根据入参构建Query From Recent Chat Window 值，仅生成数据结构，不直接执行外部请求。
    * @param messages 消息列表。
 
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 检索到的向量命中列表副本
    */
   buildQueryFromRecentChatWindow(messages: Array<RagChatMessage>, windowSize: number): string {
     const selected = new Array<string>();
@@ -126,7 +129,7 @@ export class RagRuntime {
   /**
    * 根据入参构建Debug Trace 值，仅生成数据结构，不直接执行外部请求。
 
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 检索到的向量命中列表副本
    */
   private buildDebugTrace(chunks: Array<RagChunk>): string {
     const parts = new Array<string>();
@@ -153,7 +156,7 @@ export class RagRuntime {
   /**
    * 复制Chunks 列表，避免外部修改内部状态。
 
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 检索到的向量命中列表副本
    */
   private copyChunks(chunks: Array<RagChunk>): Array<RagChunk> {
     const result = new Array<RagChunk>();

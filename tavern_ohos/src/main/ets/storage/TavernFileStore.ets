@@ -3,7 +3,7 @@ import fileIo from '@ohos.file.fs';
 /**
  * 定义 Runtime 访问文件系统的最小能力。
  *
- * 普通应用接入时直接使用 SandboxTavernFileStore；只有测试、加密存储或云同步等特殊场景才需要自定义实现。
+ * 常规场景使用 SandboxTavernFileStore；测试、加密存储或云同步等特殊场景可自行实现该接口。
  */
 export interface TavernFileStore {
   /**
@@ -49,7 +49,7 @@ export interface TavernFileStore {
   /**
    * 列出指定目录下的直接子项名称，用于构建索引或资源列表。
    * @param path 目标文件或目录路径。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 文件/目录名称列表副本。
    */
   list(path: string): Promise<Array<string>>;
 }
@@ -110,10 +110,10 @@ export class SandboxTavernFileStore implements TavernFileStore {
   }
 
   /**
-   * 写入文本内容，写入前按需创建父目录。
+   * 写入文本内容；写入前按需创建父目录；如需备份，将已有文件复制为 .bak。
    * @param path 相对 SDK 存储根的文件路径。
    * @param content 要写入的文本。
-   * @param createBackup 写入前是否把已有文件复制为 `.bak`。
+   * @param createBackup 写入前是否将已有文件复制为 `.bak` 备份。
    */
   async writeText(path: string, content: string, createBackup: boolean): Promise<void> {
     const target = this.resolvePath(path);
@@ -233,7 +233,9 @@ export class SandboxTavernFileStore implements TavernFileStore {
 }
 
 /**
- * 提供仅用于测试和示例的内存文件系统实现。
+ * 用于测试和示例的内存文件系统实现。
+ *
+ * 所有文件内容存放在 Map 中，目录结构存放在 Set 中，不涉及真实磁盘 I/O。
  */
 export class InMemoryFileStore implements TavernFileStore {
   /**
@@ -338,7 +340,7 @@ export class InMemoryFileStore implements TavernFileStore {
   /**
    * 列出指定目录下的直接子项名称，用于构建索引或资源列表。
    * @param path 目标文件或目录路径。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 文件/目录名称列表副本。
    */
   async list(path: string): Promise<Array<string>> {
     const normalized = this.normalize(path);
@@ -356,7 +358,8 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 写文件前确保父目录存在；根目录或当前目录文件不需要额外处理。
+   * 写文件前确保父目录存在。
+   * 路径中不含斜杠（即文件位于根目录）时不做处理。
    * @param path 目标文件或目录路径。
    */
   private async ensureParentDirectory(path: string): Promise<void> {
@@ -368,9 +371,12 @@ export class InMemoryFileStore implements TavernFileStore {
   }
 
   /**
-   * 从文件或目录完整路径中提取当前 list 目录的直接子项名称。
-   * @param results 用于去重收集直接子项名称的集合。
-   * @param prefix 当前目录的规范化前缀。
+   * 从完整路径中提取当前 List 目录的直接子项名称。
+   *
+   * 用于 list() 去重——检查 candidate 路径是否以 prefix 开头，
+   * 如果是则提取其下一级名称加入 results。
+   * @param results 用于收集并去重子项名称的集合。
+   * @param prefix 当前 list 目录的规范化前缀。
    * @param candidate 待检查的文件或目录完整路径。
    */
   private collectChild(results: Set<string>, prefix: string, candidate: string): void {

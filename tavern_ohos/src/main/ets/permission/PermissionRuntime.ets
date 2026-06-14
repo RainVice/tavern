@@ -17,61 +17,62 @@ import type {
  */
 export class PermissionRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于发布权限相关事件。
    */
   private events: EventBus;
   /**
-   * grants 列表，由当前实例内部维护。
+   * 已授权的权限记录，键为 subjectType:subjectId:permission。
    */
   private grants: Map<string, PermissionGrantRecord> = new Map<string, PermissionGrantRecord>();
   /**
-   * consent Requests 列表，由当前实例内部维护。
+   * 待处理或已处理的授权请求，键为请求 ID。
    */
   private consentRequests: Map<string, PermissionConsentRequest> = new Map<string, PermissionConsentRequest>();
   /**
-   * audit 值，由当前实例内部维护。
+   * 审计操作历史记录列表。
    */
   private audit: Array<PermissionAuditRecord> = new Array<PermissionAuditRecord>();
   /**
-   * file Roots 列表，由当前实例内部维护。
+   * 允许访问的文件根路径，键为 subjectType:subjectId。
    */
   private fileRoots: Map<string, Array<string>> = new Map<string, Array<string>>();
   /**
-   * dangerous Apis 列表，由当前实例内部维护。
+   * 被封禁的危险 API 名称集合。
    */
   private dangerousApis: Set<string> = new Set<string>();
   /**
-   * policies 列表，由当前实例内部维护。
+   * 权限策略记录，键为 subjectType:subjectId:policyType:value。
    */
   private policies: Map<string, PermissionPolicyRecord> = new Map<string, PermissionPolicyRecord>();
   /**
-   * crash Counts 列表，由当前实例内部维护。
+   * 插件崩溃次数计数，键为插件标识。
    */
   private crashCounts: Map<string, number> = new Map<string, number>();
   /**
-   * isolated Plugins 列表，由当前实例内部维护。
+   * 因频繁崩溃而被隔离的插件标识集合。
    */
   private isolatedPlugins: Set<string> = new Set<string>();
   /**
-   * audit Counter 值，由当前实例内部维护。
+   * 审计记录计数器，用于生成唯一 ID。
    */
   private auditCounter: number = 0;
   /**
-   * consent Counter 值，由当前实例内部维护。
+   * 授权请求计数器，用于生成唯一 ID。
    */
   private consentCounter: number = 0;
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化权限运行时实例，绑定事件总线。
+   * @param events 事件总线实例，用于发布权限变更事件。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 执行 grant 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 授予指定主体指定权限，并发布授权事件。
+   * @param params 授权参数，包含主体、权限、作用域和过期时间。
+   * @returns 新创建的授权记录副本。
    */
   grant(params: PermissionGrantParams): PermissionGrantRecord {
     const grant: PermissionGrantRecord = {
@@ -92,10 +93,10 @@ export class PermissionRuntime {
   }
 
   /**
-   * 执行 revoke 的内部处理步骤，供当前模块复用。
-
+   * 撤销指定主体指定权限，并记录审计日志。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
-
+   * @param permission 需要撤销的运行时权限标识。
    */
   revoke(subjectType: string, subjectId: string, permission: RuntimePermission): void {
     this.grants.delete(this.grantKey(subjectType, subjectId, permission));
@@ -103,9 +104,12 @@ export class PermissionRuntime {
   }
 
   /**
-   * 执行 check 的内部处理步骤，供当前模块复用。
-
+   * 检查指定主体是否拥有指定权限，并记录审计日志。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
+   * @param permission 待检查的运行时权限标识。
+   * @param resource 被访问的资源描述。
+   * @returns 包含是否允许以及原因说明的检查结果。
    */
   check(subjectType: string, subjectId: string, permission: RuntimePermission, resource: string): PermissionCheckResult {
     const grant = this.grants.get(this.grantKey(subjectType, subjectId, permission));
@@ -124,11 +128,12 @@ export class PermissionRuntime {
   }
 
   /**
-   * 执行 requestConsent 的内部处理步骤，供当前模块复用。
-
+   * 发起权限请求，等待外部用户确认，并发布请求事件。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
-
-   * @param reason 失败、中止或恢复操作的原因说明。
+   * @param permission 需要用户确认的运行时权限标识。
+   * @param reason 发起请求的原因说明。
+   * @returns 新创建的请求对象副本。
    */
   requestConsent(subjectType: string, subjectId: string, permission: RuntimePermission, reason: string): PermissionConsentRequest {
     this.consentCounter += 1;
@@ -154,10 +159,10 @@ export class PermissionRuntime {
   }
 
   /**
-   * 根据当前上下文解析Consent 值，返回实际可用值。
-   * @param requestId 目标请求标识。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 处理对指定授权请求的审批结果：批准时自动执行授权，拒绝时记录审计日志。
+   * @param requestId 目标授权请求标识。
+   * @param approved 是否批准该请求。
+   * @returns 更新后的请求对象副本。
    */
   resolveConsent(requestId: string, approved: boolean): PermissionConsentRequest {
     const request = this.requireConsent(requestId);
@@ -185,9 +190,11 @@ export class PermissionRuntime {
   }
 
   /**
-   * 检查网络Access是否满足当前规则。
-
+   * 检查网络访问是否满足当前权限规则。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
+   * @param url 待检查的 URL。
+   * @returns 网络访问权限检查结果。
    */
   checkNetworkAccess(subjectType: string, subjectId: string, url: string): PermissionCheckResult {
     if (this.isPrivateNetworkUrl(url)) {
@@ -200,10 +207,11 @@ export class PermissionRuntime {
   }
 
   /**
-   * 创建或写入Allowed文件Root，完成持久化后返回可供调用方使用的结果。
-
+   * 为指定主体添加允许访问的文件根路径，并记录策略。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
    * @param root 规范化后的根路径。
+   * @returns 新创建的策略记录副本。
    */
   addAllowedFileRoot(subjectType: string, subjectId: string, root: string): PermissionPolicyRecord {
     // 键名。
@@ -218,10 +226,11 @@ export class PermissionRuntime {
   }
 
   /**
-   * 检查文件Access是否满足当前规则。
-
+   * 检查文件访问是否满足当前权限规则。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
    * @param path 目标文件或目录路径。
+   * @returns 文件访问权限检查结果。
    */
   checkFileAccess(subjectType: string, subjectId: string, path: string): PermissionCheckResult {
     if (path.indexOf('..') >= 0) {
@@ -239,8 +248,8 @@ export class PermissionRuntime {
   }
 
   /**
-   * 执行 blockDangerousApi 的内部处理步骤，供当前模块复用。
-   * @param apiName api名称。
+   * 封禁指定的危险 API，阻止后续调用。
+   * @param apiName 需要封禁的 API 名称。
    */
   blockDangerousApi(apiName: string): void {
     this.dangerousApis.add(apiName);
@@ -248,10 +257,11 @@ export class PermissionRuntime {
   }
 
   /**
-   * 检查DangerousApi是否满足当前规则。
-
+   * 检查指定 API 是否已被封禁，并根据结果发布审计事件。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
-   * @param apiName api名称。
+   * @param apiName 待检查的 API 名称。
+   * @returns 包含是否允许调用的检查结果。
    */
   checkDangerousApi(subjectType: string, subjectId: string, apiName: string): PermissionCheckResult {
     if (this.dangerousApis.has(apiName)) {
@@ -261,9 +271,11 @@ export class PermissionRuntime {
   }
 
   /**
-   * 设置执行超时时间，用于切换运行时状态或保存配置。
-
+   * 设置指定主体的执行超时时间策略，并记录审计日志。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
+   * @param timeoutMs 超时时间（毫秒）。
+   * @returns 新创建的策略记录副本。
    */
   setExecutionTimeout(subjectType: string, subjectId: string, timeoutMs: number): PermissionPolicyRecord {
     const policy = this.setPolicy(subjectType, subjectId, 'executionTimeout', `${timeoutMs}`);
@@ -272,8 +284,9 @@ export class PermissionRuntime {
   }
 
   /**
-   * 创建或写入PluginCrash，完成持久化后返回可供调用方使用的结果。
+   * 记录一次插件崩溃事件；当同一插件崩溃次数达到阈值时自动将其隔离。
    * @param pluginId 插件标识。
+   * @returns 崩溃计数策略记录副本。
    */
   recordPluginCrash(pluginId: string): PermissionPolicyRecord {
     const current = this.crashCounts.get(pluginId);
@@ -289,17 +302,17 @@ export class PermissionRuntime {
   }
 
   /**
-   * 判断Plugin Isolated 值是否满足条件。
+   * 判断指定插件是否因频繁崩溃而被隔离。
    * @param pluginId 插件标识。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @returns 已被隔离时返回 true，否则返回 false。
    */
   isPluginIsolated(pluginId: string): boolean {
     return this.isolatedPlugins.has(pluginId);
   }
 
   /**
-   * 读取Audit列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回审计记录列表的副本。
+   * @returns 审计记录数组；调用方修改返回值不影响内部状态。
    */
   listAudit(): Array<PermissionAuditRecord> {
     const result = new Array<PermissionAuditRecord>();
@@ -310,10 +323,10 @@ export class PermissionRuntime {
   }
 
   /**
-   * 读取Policies列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
+   * 返回指定主体的策略记录列表的副本。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 符合条件的策略记录数组；调用方修改返回值不影响内部状态。
    */
   listPolicies(subjectType: string, subjectId: string): Array<PermissionPolicyRecord> {
     const prefix = `${this.subjectKey(subjectType, subjectId)}:`;
@@ -331,13 +344,14 @@ export class PermissionRuntime {
   }
 
   /**
-   * 发布权限审计事件，把状态变化通知给宿主或其他 Runtime。
-
+   * 发布权限检查事件并记录审计日志。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
-
-
-
-   * @param reason 失败、中止或恢复操作的原因说明。
+   * @param permission 待检查的运行时权限标识。
+   * @param resource 被访问的资源描述。
+   * @param allowed 是否允许通过。
+   * @param reason 检查结果的原因说明。
+   * @returns 权限检查结果。
    */
   private publishCheck(
     subjectType: string,
@@ -364,11 +378,12 @@ export class PermissionRuntime {
   }
 
   /**
-   * 设置权限策略，用于切换运行时状态或保存配置。
-
+   * 创建或更新一条权限策略记录。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
-
-   * @param value 要保存或比较的字段值。
+   * @param policyType 策略类型。
+   * @param value 策略值。
+   * @returns 策略记录副本。
    */
   private setPolicy(subjectType: string, subjectId: string, policyType: string, value: string): PermissionPolicyRecord {
     // 键名。
@@ -388,14 +403,15 @@ export class PermissionRuntime {
   }
 
   /**
-   * 创建或写入Audit，完成持久化后返回可供调用方使用的结果。
-
-
+   * 创建并追加一条审计日志记录。
+   * @param action 审计操作类型。
+   * @param subjectType 目标主体类型。
    * @param subjectId 目标主体标识。
-
-
-
-   * @param reason 失败、中止或恢复操作的原因说明。
+   * @param permission 涉及的运行时权限标识。
+   * @param resource 涉及的资源描述。
+   * @param allowed 是否允许通过。
+   * @param reason 审计原因说明。
+   * @returns 新创建的审计记录。
    */
   private addAudit(
     action: string,
@@ -423,8 +439,9 @@ export class PermissionRuntime {
   }
 
   /**
-   * 读取必须存在的Consent 值，缺失时抛出错误。
+   * 根据 ID 查找授权请求，不存在则抛出异常。
    * @param requestId 目标请求标识。
+   * @returns 查找到的授权请求对象。
    */
   private requireConsent(requestId: string): PermissionConsentRequest {
     const request = this.consentRequests.get(requestId);
@@ -435,9 +452,8 @@ export class PermissionRuntime {
   }
 
   /**
-   * 判断Private Network Url 值是否满足条件。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断给定 URL 是否属于私有网络地址。
+   * @returns 是私有地址时返回 true，否则返回 false。
    */
   private isPrivateNetworkUrl(url: string): boolean {
     const host = this.extractHost(url).toLowerCase();
@@ -462,7 +478,7 @@ export class PermissionRuntime {
   }
 
   /**
-   * 解析或导入主机数据，转换为当前 SDK 可使用的结构。
+   * 从 URL 中提取主机名。
    */
   private extractHost(url: string): string {
     const schemeIndex = url.indexOf('://');
@@ -499,9 +515,9 @@ export class PermissionRuntime {
   }
 
   /**
-   * 判断Private Ipv6 值是否满足条件。
-   * @param host 目标主机名。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断主机名是否属于私有 IPv6 地址范围。
+   * @param host 待判断的主机名。
+   * @returns 是私有 IPv6 地址时返回 true，否则返回 false。
    */
   private isPrivateIpv6(host: string): boolean {
     return host.startsWith('fc')
@@ -513,8 +529,9 @@ export class PermissionRuntime {
   }
 
   /**
-   * 解析IPv4 地址，非法输入会返回失败标记或空结果。
-   * @param host 目标主机名。
+   * 将 IPv4 地址字符串解析为 32 位整数。
+   * @param host 待解析的 IPv4 地址字符串。
+   * @returns 解析成功返回整数，否则返回 -1。
    */
   private parseIpv4(host: string): number {
     const parts = host.split('.');
@@ -536,11 +553,11 @@ export class PermissionRuntime {
   }
 
   /**
-   * 判断 IPv4 地址是否落在指定地址段内。
-   * @param value 要保存或比较的字段值。
-   * @param baseAddress CIDR 或地址段的基准地址。
-   * @param prefix CIDR 前缀长度。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断给定的整数 IPv4 地址是否在指定的 CIDR 地址段内。
+   * @param value 待检查的 IPv4 整数地址。
+   * @param baseAddress CIDR 网络地址字符串。
+   * @param prefix CIDR 前缀长度（0-32）。
+   * @returns 在地址段内返回 true，否则返回 false。
    */
   private inIpv4Range(value: number, baseAddress: string, prefix: number): boolean {
     const base = this.parseIpv4(baseAddress);
@@ -552,9 +569,9 @@ export class PermissionRuntime {
   }
 
   /**
-   * 判断十进制数字是否满足当前规则。
-   * @param value 要保存或比较的字段值。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断字符串是否为纯十进制数字。
+   * @param value 待检查的字符串。
+   * @returns 全部由十进制数字组成时返回 true，否则返回 false。
    */
   private isDecimalDigits(value: string): boolean {
     if (value.length === 0) {
@@ -570,10 +587,10 @@ export class PermissionRuntime {
   }
 
   /**
-   * 判断Path In Root 值是否满足条件。
+   * 判断路径是否在指定的根路径范围内（防止路径穿越）。
    * @param path 目标文件或目录路径。
    * @param root 规范化后的根路径。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @returns 在根路径内返回 true，否则返回 false。
    */
   private isPathInRoot(path: string, root: string): boolean {
     if (root.length === 0) {
@@ -595,7 +612,7 @@ export class PermissionRuntime {
   }
 
   /**
-   * 复制Grant 值，避免外部修改内部状态。
+   * 深拷贝授权记录，防止外部修改内部状态。
    */
   private copyGrant(grant: PermissionGrantRecord): PermissionGrantRecord {
     return {
@@ -609,8 +626,8 @@ export class PermissionRuntime {
   }
 
   /**
-   * 复制Consent 值，避免外部修改内部状态。
-   * @param request 待处理的请求对象。
+   * 深拷贝授权请求对象，防止外部修改内部状态。
+   * @param request 待深拷贝的授权请求对象。
    */
   private copyConsent(request: PermissionConsentRequest): PermissionConsentRequest {
     return {
@@ -627,8 +644,8 @@ export class PermissionRuntime {
   }
 
   /**
-   * 复制Audit 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深拷贝审计记录，防止外部修改内部状态。
+   * @param record 待深拷贝的审计记录。
    */
   private copyAudit(record: PermissionAuditRecord): PermissionAuditRecord {
     return {
@@ -645,7 +662,7 @@ export class PermissionRuntime {
   }
 
   /**
-   * 复制Policy 值，避免外部修改内部状态。
+   * 深拷贝策略记录，防止外部修改内部状态。
    */
   private copyPolicy(policy: PermissionPolicyRecord): PermissionPolicyRecord {
     return {
@@ -659,8 +676,8 @@ export class PermissionRuntime {
   }
 
   /**
-   * 复制Check Result 值，避免外部修改内部状态。
-   * @param result 返回结果。
+   * 深拷贝检查结果，防止外部修改内部状态。
+   * @param result 待深拷贝的检查结果。
    */
   private copyCheckResult(result: PermissionCheckResult): PermissionCheckResult {
     return {

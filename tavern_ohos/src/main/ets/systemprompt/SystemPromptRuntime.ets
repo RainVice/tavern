@@ -6,15 +6,15 @@ import type {
 } from './SystemPromptModels';
 
 /**
- * 提供系统 Prompt相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供系统 Prompt 相关的无 UI 运行时能力，负责提示词记录的加载、查询、选择和状态管理，并通过事件总线发布对应的状态变更事件。
  */
 export class SystemPromptRuntime {
   /**
-   * 事件总线。
+   * 事件总线实例，用于发布系统提示词状态变更事件。
    */
   private events: EventBus;
   /**
-   * prompts 列表，由当前实例内部维护。
+   * 按名称索引的系统提示词记录 Map，由当前运行时内部维护。
    */
   private prompts: Map<string, SystemPromptRecord> = new Map<string, SystemPromptRecord>();
   private state: SystemPromptState = {
@@ -25,16 +25,16 @@ export class SystemPromptRuntime {
   };
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 构建系统提示词运行时实例。
+   * @param events 注入的事件总线实例。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 读取或解析SystemPrompts，调用方应处理不存在或不匹配的情况。
-
+   * 加载系统提示词列表，替换当前内存中的所有记录。
+   * @param prompts 要加载的系统提示词记录列表。
    */
   loadSystemPrompts(prompts: Array<SystemPromptRecord>): void {
     this.prompts.clear();
@@ -45,8 +45,8 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 读取SystemPrompts列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取所有系统提示词记录的排序列表副本。
+   * @returns 按名称字母序排列的系统提示词记录副本列表。
    */
   listSystemPrompts(): Array<SystemPromptRecord> {
     const values = Array.from(this.prompts.values());
@@ -59,7 +59,9 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 创建或写入提示词，完成持久化后返回可供调用方使用的结果。
+   * 保存（创建或覆盖）一条系统提示词记录并返回副本。
+   * @param prompt 要保存的系统提示词记录。
+   * @returns 保存后的记录副本。
    */
   saveSystemPrompt(prompt: SystemPromptRecord): SystemPromptRecord {
     const copy = this.copyPrompt(prompt);
@@ -68,9 +70,9 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 设置启用状态，用于切换运行时状态或保存配置。
-   * @param enabled 是否启用该能力。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 设置系统提示词启用状态，发布 systemprompt.state.changed 事件。
+   * @param enabled 是否启用。
+   * @returns 启用状态的字符串表示（"true" / "false"）。
    */
   setEnabled(enabled: boolean): string {
     this.state.enabled = enabled;
@@ -79,8 +81,9 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 切换系统提示词状态并返回新的状态结构。
-   * @param value 要保存或比较的字段值。
+   * 切换系统提示词启用状态。如果传入有效字符串值（"true"/"1"/"yes"/"on"）则启用，否则返回当前状态不变。
+   * @param value 布尔值的字符串表示。
+   * @returns 切换后的启用状态字符串（"true" / "false"）。
    */
   toggleSystemPrompt(value: string): string {
     if (value.length === 0) {
@@ -90,10 +93,10 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 读取或解析提示词，调用方应处理不存在或不匹配的情况。
-   * @param name 显示名称或注册名称。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 选择并激活指定名称的系统提示词。如果 forceGet 为 false 且系统提示词未启用，则返回空记录。
+   * @param name 要选择的提示词名称。传入空字符串时返回当前已选中的提示词。
+   * @param forceGet 是否强制获取，忽略 enabled 状态。
+   * @returns 选中的提示词记录副本。
    */
   selectSystemPrompt(name: string, forceGet: boolean): SystemPromptRecord {
     if (!this.state.enabled && !forceGet) {
@@ -122,11 +125,11 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 执行 migrateFromInstruct 的内部处理步骤，供当前模块复用。
-   * @param presetName 预设名称。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 从旧的 instruct 配置迁移到系统提示词机制，创建或查找匹配的提示词记录并设为当前选中。
+   * @param presetName 预设名称，用于生成迁移后的提示词名称。
+   * @param instructEnabled 旧配置中 instruct 是否启用。
+   * @param systemPrompt 旧配置中的系统提示词内容。
+   * @returns 迁移后选中的提示词记录副本。
    */
   migrateFromInstruct(presetName: string, instructEnabled: boolean, systemPrompt: string): SystemPromptRecord {
     const existing = this.findPromptByContent(systemPrompt);
@@ -144,16 +147,17 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 读取指定状态，不存在时抛出错误。
-   * @returns 更新或读取后的记录副本。
+   * 获取当前运行时状态快照副本。
+   * @returns 系统提示词运行时状态副本。
    */
   getState(): SystemPromptState {
     return this.copyState(this.state);
   }
 
   /**
-   * 在当前集合中查找Prompt 值，未命中时返回空值或默认位置。
-   * @param name 显示名称或注册名称。
+   * 通过精确匹配或模糊搜索查找指定名称的提示词记录。
+   * @param name 提示词名称。
+   * @returns 找到的记录，未找到时返回 undefined。
    */
   private findPrompt(name: string): SystemPromptRecord | undefined {
     const exact = this.prompts.get(name);
@@ -183,8 +187,9 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 在当前集合中查找Prompt By Content 值，未命中时返回空值或默认位置。
-   * @param content 要写入或追加的文本内容。
+   * 通过正文内容精确查找提示词记录。
+   * @param content 提示词正文。
+   * @returns 找到的记录，未找到时返回 undefined。
    */
   private findPromptByContent(content: string): SystemPromptRecord | undefined {
     const values = Array.from(this.prompts.values());
@@ -197,7 +202,6 @@ export class SystemPromptRuntime {
   }
   private sharedPrefixLength(left: string, right: string): number {
     const max = Math.min(left.length, right.length);
-    // 数量。
     let count = 0;
     for (let index = 0; index < max; index += 1) {
       if (left[index] !== right[index]) {
@@ -209,9 +213,9 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 判断True Boolean 值是否满足条件。
-   * @param value 要保存或比较的字段值。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断字符串是否为真值：true / 1 / yes / on。
+   * @param value 待判断的字符串。
+   * @returns 是当真值时返回 true，否则 false。
    */
   private isTrueBoolean(value: string): boolean {
     const normalized = value.toLowerCase();
@@ -219,7 +223,7 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 复制Prompt 值，避免外部修改内部状态。
+   * 深度复制 SystemPromptRecord，防止外部修改内部状态。
    */
   private copyPrompt(prompt: SystemPromptRecord): SystemPromptRecord {
     return {
@@ -230,7 +234,7 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 复制State 值，避免外部修改内部状态。
+   * 深度复制 SystemPromptState，防止外部修改内部状态。
    */
   private copyState(state: SystemPromptState): SystemPromptState {
     return {
@@ -242,8 +246,8 @@ export class SystemPromptRuntime {
   }
 
   /**
-   * 发布系统 Prompt事件，把状态变化通知给宿主或其他 Runtime。
-   * @param eventName 要订阅或发布的事件名。
+   * 发布系统提示词事件，通知监听者状态已变更。
+   * @param eventName 要发布的事件名称。
    */
   private publishState(eventName: string): void {
     const payload: SystemPromptPayload = {

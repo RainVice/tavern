@@ -4,231 +4,231 @@ import type {
 } from '../contracts/PublicContracts';
 
 /**
- * 描述调用权限审计能力时需要传入的参数。
+ * 调用权限审计能力时所需的参数集合。
  */
 export interface PermissionGrantParams {
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 被审计主体的类型（如 "user"、"character"、"plugin"）。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 被审计主体的唯一标识。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 需要授权的运行时权限标识。
    */
   permission: RuntimePermission;
   /**
-   * 作用域。
+   * 授权作用域描述。
    */
   scope: TavernScope;
   /**
-   * expires At 值，由当前实例内部维护。
+   * 授权的过期时间戳（毫秒）；0 表示永不过期。
    */
   expiresAt: number;
 }
 
 /**
- * 描述权限审计持久化或内存索引中的一条记录。
+ * 持久化或内存索引中的一条授权记录，记录完整的授权上下文。
  */
 export interface PermissionGrantRecord {
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 被审计主体的类型。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 被审计主体的唯一标识。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 已授权的运行时权限标识。
    */
   permission: RuntimePermission;
   /**
-   * 作用域。
+   * 授权作用域描述。
    */
   scope: TavernScope;
   /**
-   * expires At 值，由当前实例内部维护。
+   * 授权的过期时间戳（毫秒）；0 表示永不过期。
    */
   expiresAt: number;
   /**
-   * granted At 值，由当前实例内部维护。
+   * 授权创建时的时间戳（毫秒）。
    */
   grantedAt: number;
 }
 
 /**
- * 描述权限审计操作完成后返回给调用方的结果。
+ * 权限审计操作完成后返回给调用方的结果。
  */
 export interface PermissionCheckResult {
   /**
-   * allowed 值，由当前实例内部维护。
+   * 是否允许通过。
    */
   allowed: boolean;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 审计结果的原因说明。
    */
   reason: string;
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 被审计主体的类型。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 被审计主体的唯一标识。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 被审计的运行时权限标识。
    */
   permission: RuntimePermission;
   /**
-   * resource 值，由当前实例内部维护。
+   * 被审计的资源路径或描述。
    */
   resource: string;
 }
 
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * 发送给外部服务或宿主网络层的授权请求数据。
  */
 export interface PermissionConsentRequest {
   /**
-   * 标识。
+   * 请求的唯一标识。
    */
   id: string;
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 发起请求的主体类型。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 发起请求的主体标识。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 需要用户确认的运行时权限标识。
    */
   permission: RuntimePermission;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 发起请求的原因说明。
    */
   reason: string;
   /**
-   * resolved 值，由当前实例内部维护。
+   * 请求是否已被处理。
    */
   resolved: boolean;
   /**
-   * approved 值，由当前实例内部维护。
+   * 请求是否已被批准。
    */
   approved: boolean;
   /**
-   * created At 值，由当前实例内部维护。
+   * 请求创建时的时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 请求最近一次更新的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述权限审计持久化或内存索引中的一条记录。
+ * 权限审计日志中的一条记录，用于追溯权限检查历史。
  */
 export interface PermissionAuditRecord {
   /**
-   * 标识。
+   * 审计记录的唯一标识。
    */
   id: string;
   /**
-   * action 值，由当前实例内部维护。
+   * 审计操作类型（如 "grant"、"check"、"revoke"）。
    */
   action: string;
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 被审计主体的类型。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 被审计主体的唯一标识。
    */
   subjectId: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 涉及的运行时权限标识。
    */
   permission: RuntimePermission;
   /**
-   * resource 值，由当前实例内部维护。
+   * 审计涉及的资源路径或描述。
    */
   resource: string;
   /**
-   * allowed 值，由当前实例内部维护。
+   * 审计结果是否允许通过。
    */
   allowed: boolean;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 审计结果的原因说明。
    */
   reason: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 审计记录创建时的时间戳（毫秒）。
    */
   createdAt: number;
 }
 
 /**
- * 描述权限审计持久化或内存索引中的一条记录。
+ * 权限策略记录，用于持久化和追溯运行时策略配置。
  */
 export interface PermissionPolicyRecord {
   /**
-   * subject Type 值，由当前实例内部维护。
+   * 策略作用的主体类型。
    */
   subjectType: string;
   /**
-   * subject 标识。
+   * 策略作用的主体标识。
    */
   subjectId: string;
   /**
-   * policy Type 值，由当前实例内部维护。
+   * 策略类型（如 "fileRoot"、"executionTimeout"、"crashCount"）。
    */
   policyType: string;
   /**
-   * 字段值。
+   * 策略的字段值。
    */
   value: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 策略创建时的时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 策略最近一次更新的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述权限审计事件发布时携带的数据结构。
+ * 权限授权事件发布时携带的数据结构。
  */
 export interface PermissionGrantedPayload {
   /**
-   * grant 值，由当前实例内部维护。
+   * 授权记录。
    */
   grant: PermissionGrantRecord;
 }
 
 /**
- * 描述权限审计事件发布时携带的数据结构。
+ * 权限检查事件发布时携带的数据结构。
  */
 export interface PermissionCheckedPayload {
   /**
-   * 处理结果。
+   * 检查结果。
    */
   result: PermissionCheckResult;
 }
 
 /**
- * 描述权限审计事件发布时携带的数据结构。
+ * 权限请求事件发布时携带的数据结构。
  */
 export interface PermissionConsentPayload {
   /**
-   * request 值，由当前实例内部维护。
+   * 授权请求。
    */
   request: PermissionConsentRequest;
 }

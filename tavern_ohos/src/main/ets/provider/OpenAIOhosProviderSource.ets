@@ -12,6 +12,9 @@ import type {
   ProviderStreamSource,
 } from './ProviderModels';
 
+/**
+ * OpenAI 兼容 Provider 流式数据源的配置选项，继承自 OpenAIClientOptions。
+ */
 export interface OpenAIOhosProviderStreamSourceOptions extends OpenAIClientOptions {
 }
 
@@ -30,7 +33,8 @@ interface OpenAIOhosChatCompletionStreamBody {
 }
 
 /**
- * 基于 openai_ohos 的 OpenAI 兼容 Provider 流式请求来源。
+ * 基于 openai_ohos 库实现的 OpenAI 兼容 Provider 流式数据源。
+ * 使用 OpenAIRequestClient 发起 SSE 流式请求，并将事件转发给 ProviderStreamSink。
  */
 export class OpenAIOhosProviderStreamSource implements ProviderStreamSource {
   private client: OpenAIRequestClient;
@@ -39,6 +43,12 @@ export class OpenAIOhosProviderStreamSource implements ProviderStreamSource {
     this.client = new OpenAIRequestClient(options);
   }
 
+  /**
+   * 启动流式请求，通过 openai_ohos 客户端发送 POST 请求并转发 SSE 事件。
+   * @param request 流式请求参数。
+   * @param sink 流式数据消费者。
+   * @returns 流式连接句柄，可在外部关闭。
+   */
   async start(request: ProviderStreamRequest, sink: ProviderStreamSink): Promise<ProviderStreamHandle> {
     const owner: OpenAIOhosProviderStreamSource = this;
     const headers: Record<string, string> = {};
@@ -88,6 +98,11 @@ export class OpenAIOhosProviderStreamSource implements ProviderStreamSource {
     sink.onDone();
   }
 
+  /**
+   * 将 SSE 事件序列化为标准 SSE 格式字符串（event + id + data 行）。
+   * @param event 原始 SSE 事件对象。
+   * @returns 序列化后的 SSE 文本块。
+   */
   private serializeEvent(event: OpenAISSEEvent): string {
     let result = '';
     if (event.event.length > 0 && event.event !== 'message') {
@@ -104,6 +119,9 @@ export class OpenAIOhosProviderStreamSource implements ProviderStreamSource {
   }
 }
 
+/**
+ * OpenAI 流式连接句柄的实现，通过底层流对象提供关闭功能。
+ */
 class OpenAIOhosProviderStreamHandle implements ProviderStreamHandle {
   private stream: OpenAIStream;
 
@@ -111,6 +129,9 @@ class OpenAIOhosProviderStreamHandle implements ProviderStreamHandle {
     this.stream = stream;
   }
 
+  /**
+   * 关闭底层流式连接。
+   */
   close(): void {
     this.stream.close();
   }

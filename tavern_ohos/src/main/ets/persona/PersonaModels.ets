@@ -1,193 +1,197 @@
 import type { TavernScope } from '../contracts/PublicContracts';
 
 /**
- * 描述调用用户人格能力时需要传入的参数。
+ * 调用方创建或更新用户人格时必须提供的参数。
  */
 export interface PersonaCreateParams {
   /**
-   * 标识。
+   * 用户人格唯一标识，创建后不可变更。
    */
   id: string;
   /**
-   * 名称。
+   * 用户人格显示名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 用户人格的描述文本，用于上下文注入。
    */
   description: string;
   /**
-   * avatar Ref 值，由当前实例内部维护。
+   * 用户头像的资源引用路径。
    */
   avatarRef: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 用户人格标签列表，用于分类和筛选。
    */
   tags: Array<string>;
   /**
-   * lorebook 标识。
+   * 关联的 lorebook（世界书）记录标识。
    */
   lorebookId: string;
   /**
-   * prompt Injection Strategy 值，由当前实例内部维护。
+   * Prompt 注入策略的取值，决定描述文本以何种方式拼入 Prompt。
    */
   promptInjectionStrategy: string;
   /**
-   * user Macro Value 值，由当前实例内部维护。
+   * 用户宏变量的取值，可在 Prompt 模板中展开。
    */
   userMacroValue: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 是否已启用。禁用的人格不会出现在 Prompt 构建结果中。
    */
   enabled: boolean;
 }
 
 /**
- * 描述用户人格持久化或内存索引中的一条记录。
+ * 持久化或内存中存储的一条完整用户人格记录。
+ * 与 {@link PersonaCreateParams} 相比，多出 updatedAt 时间戳字段。
  */
 export interface PersonaRecord {
   /**
-   * 标识。
+   * 用户人格唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 用户人格显示名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 用户人格的描述文本，用于上下文注入。
    */
   description: string;
   /**
-   * avatar Ref 值，由当前实例内部维护。
+   * 用户头像的资源引用路径。
    */
   avatarRef: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 用户人格标签列表，用于分类和筛选。
    */
   tags: Array<string>;
   /**
-   * lorebook 标识。
+   * 关联的 lorebook（世界书）记录标识。
    */
   lorebookId: string;
   /**
-   * prompt Injection Strategy 值，由当前实例内部维护。
+   * Prompt 注入策略的取值，决定描述文本以何种方式拼入 Prompt。
    */
   promptInjectionStrategy: string;
   /**
-   * user Macro Value 值，由当前实例内部维护。
+   * 用户宏变量的取值，可在 Prompt 模板中展开。
    */
   userMacroValue: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 是否已启用。
    */
   enabled: boolean;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 最近一次更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述用户人格持久化或内存索引中的一条记录。
+ * 用户人格与作用域之间的绑定关系记录。
+ * 用于将特定人格绑定到某个作用域（如聊天会话）下的具体对象。
  */
 export interface PersonaBindingRecord {
   /**
-   * 作用域。
+   * 绑定所属的作用域类型。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下具体对象的标识。
    */
   scopeId: string;
   /**
-   * persona 标识。
+   * 所绑定的用户人格标识。
    */
   personaId: string;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 绑定建立或最近修改的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述用户人格模块在运行时交换的数据结构。
+ * 运行时构建的用户人格 Prompt 数据。
+ * 包含拼接 Prompt 所需的全部字段，由 {@link PersonaRuntime} 负责生成。
  */
 export interface PersonaPromptData {
   /**
-   * persona 标识。
+   * 源用户人格标识。
    */
   personaId: string;
   /**
-   * 名称。
+   * 用户人格显示名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 用户人格的描述文本，用于上下文注入。
    */
   description: string;
   /**
-   * avatar Ref 值，由当前实例内部维护。
+   * 用户头像的资源引用路径。
    */
   avatarRef: string;
   /**
-   * lorebook 标识。
+   * 关联的 lorebook（世界书）记录标识。
    */
   lorebookId: string;
   /**
-   * prompt Injection Strategy 值，由当前实例内部维护。
+   * Prompt 注入策略的取值。
    */
   promptInjectionStrategy: string;
   /**
-   * user Macro Value 值，由当前实例内部维护。
+   * 用户宏变量的取值。
    */
   userMacroValue: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 用户人格标签列表。
    */
   tags: Array<string>;
 }
 
 /**
- * 描述用户人格模块在运行时交换的数据结构。
+ * 导出用户人格时的序列化数据结构。
+ * 包含完整的 {@link PersonaRecord}，可用于备份或跨实例迁移。
  */
 export interface PersonaExportData {
   /**
-   * persona 值，由当前实例内部维护。
+   * 导出的完整用户人格记录。
    */
   persona: PersonaRecord;
 }
 
 /**
- * 描述用户人格事件发布时携带的数据结构。
+ * 用户人格切换事件（persona.changed）携带的载荷。
  */
 export interface PersonaChangedPayload {
   /**
-   * persona 值，由当前实例内部维护。
+   * 切换后的用户人格记录。
    */
   persona: PersonaRecord;
   /**
-   * previous Persona 标识。
+   * 切换前的用户人格标识；首次选择时为空字符串。
    */
   previousPersonaId: string;
 }
 
 /**
- * 描述用户人格事件发布时携带的数据结构。
+ * 用户人格更新或导入事件（persona.updated / persona.imported）携带的载荷。
  */
 export interface PersonaUpdatedPayload {
   /**
-   * persona 值，由当前实例内部维护。
+   * 更新后的用户人格记录。
    */
   persona: PersonaRecord;
 }
 
 /**
- * 描述用户人格事件发布时携带的数据结构。
+ * 用户人格删除事件（persona.deleted）携带的载荷。
  */
 export interface PersonaDeletedPayload {
   /**
-   * persona 标识。
+   * 被删除的用户人格标识。
    */
   personaId: string;
 }

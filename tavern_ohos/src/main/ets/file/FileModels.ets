@@ -1,155 +1,155 @@
 /**
- * 描述调用上传文件能力时需要传入的参数。
+ * 上传文件时需要提供的参数集合，包含文件元数据、关联附件和知识库文档所需的信息。
  */
 export interface FileUploadParams {
   /**
-   * 标识。
+   * 要上传的文件唯一标识。
    */
   id: string;
   /**
-   * file 名称。
+   * 文件的原始名称，包含扩展名。
    */
   fileName: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * 文件的 MIME 类型，由调用方根据文件内容设置。
    */
   mimeType: string;
   /**
-   * 内容。
+   * 文件内容，通常为 Base64 或纯文本数据。
    */
   content: string;
   /**
-   * attachment 标识。
+   * 关联的附件唯一标识，空字符串表示不关联附件。
    */
   attachmentId: string;
   /**
-   * attachment Target Type 值，由当前实例内部维护。
+   * 关联附件所属的目标类型（如 "message"、"character"）。
    */
   attachmentTargetType: string;
   /**
-   * attachment Target 标识。
+   * 关联附件所属的目标标识。
    */
   attachmentTargetId: string;
   /**
-   * include In Prompt 值，由当前实例内部维护。
+   * 上传完成后是否将文件内容包含在 Prompt 上下文中。
    */
   includeInPrompt: boolean;
   /**
-   * include In Rag 值，由当前实例内部维护。
+   * 上传完成后是否将文件内容纳入 RAG 索引。
    */
   includeInRag: boolean;
   /**
-   * data Bank Document 标识。
+   * 关联的知识库文档唯一标识，空字符串表示不关联知识库文档。
    */
   dataBankDocumentId: string;
   /**
-   * data Bank Scope 值，由当前实例内部维护。
+   * 知识库文档的作用域标识。
    */
   dataBankScope: string;
   /**
-   * data Bank Tags 列表，由当前实例内部维护。
+   * 知识库文档的标签列表。
    */
   dataBankTags: Array<string>;
   /**
-   * metadata JSON 字符串。
+   * 附加的自定义元数据 JSON 字符串。
    */
   metadataJson: string;
 }
 
 /**
- * 描述上传文件持久化或内存索引中的一条记录。
+ * 已上传文件的持久化记录，包含文件的元数据、内容、关联信息和时间戳。
  */
 export interface FileRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据结构的 schema 版本号，用于向上兼容。
    */
   schemaVersion: number;
   /**
-   * 标识。
+   * 文件记录的唯一标识。
    */
   id: string;
   /**
-   * file 名称。
+   * 文件的原始名称，包含扩展名。
    */
   fileName: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * 文件的 MIME 类型。
    */
   mimeType: string;
   /**
-   * 路径。
+   * 文件在存储中的相对路径。
    */
   path: string;
   /**
-   * 内容。
+   * 文件内容，通常为 Base64 或纯文本数据。
    */
   content: string;
   /**
-   * attachment 标识。
+   * 关联的附件唯一标识，空字符串表示未关联。
    */
   attachmentId: string;
   /**
-   * data Bank Document 标识。
+   * 关联的知识库文档唯一标识，空字符串表示未关联。
    */
   dataBankDocumentId: string;
   /**
-   * metadata JSON 字符串。
+   * 附加的自定义元数据 JSON 字符串。
    */
   metadataJson: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述上传文件操作完成后返回给调用方的结果。
+ * 文件存在性检查的结果，供调用方判断文件是否可用。
  */
 export interface FileVerifyResult {
   /**
-   * 路径。
+   * 被检查的文件路径。
    */
   path: string;
   /**
-   * exists 列表，由当前实例内部维护。
+   * 文件是否存在于存储中。
    */
   exists: boolean;
 }
 
 /**
- * 描述上传文件事件发布时携带的数据结构。
+ * 文件上传事件发布时携带的数据。
  */
 export interface FileUploadedPayload {
   /**
-   * file 值，由当前实例内部维护。
+   * 上传完成的文件记录对象。
    */
   file: FileRecord;
 }
 
 /**
- * 描述上传文件事件发布时携带的数据结构。
+ * 文件删除事件发布时携带的数据。
  */
 export interface FileDeletedPayload {
   /**
-   * file 标识。
+   * 被删除文件的唯一标识。
    */
   fileId: string;
   /**
-   * 路径。
+   * 被删除文件在存储中的路径。
    */
   path: string;
 }
 
 /**
- * 描述上传文件模块在运行时交换的数据结构。
+ * 文件索引持久化数据，用于在存储中保存和恢复所有文件记录的状态。
  */
 export interface FileIndexData {
   /**
-   * 文件存储适配器。
+   * 所有已上传文件的记录列表。
    */
   files: Array<FileRecord>;
 }

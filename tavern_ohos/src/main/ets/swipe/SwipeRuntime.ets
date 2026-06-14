@@ -8,30 +8,30 @@ import type {
 } from './SwipeModels';
 
 /**
- * 提供消息候选回复相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供消息候选回复相关的无 UI 运行时能力，负责候选回复记录的创建、切换、编辑、删除和流式增量追加，并通过事件总线发布对应的状态变更事件。
  */
 export class SwipeRuntime {
   /**
-   * 事件总线。
+   * 事件总线实例，用于发布候选回复状态变更事件。
    */
   private events: EventBus;
   /**
-   * swipes 列表，由当前实例内部维护。
+   * 按 "chatId:messageId" 键索引的候选回复列表 Map，由当前运行时内部维护。
    */
   private swipes: Map<string, Array<SwipeRecord>> = new Map<string, Array<SwipeRecord>>();
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 构建消息候选回复运行时实例。
+   * @param events 注入的事件总线实例。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 创建新的候选回复记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新的候选回复记录，置为 complete 状态，并发布 message.swipe.changed 事件。
+   * @param params 创建参数，包含 chatId / messageId / text。
+   * @returns 新创建的候选回复记录副本。
    */
   createSwipe(params: SwipeCreateParams): SwipeRecord {
     const records = this.getOrCreateRecords(params.chatId, params.messageId);
@@ -45,9 +45,10 @@ export class SwipeRuntime {
   }
 
   /**
-   * 执行 regenerateSwipe 的内部处理步骤，供当前模块复用。
+   * 重新生成候选回复，创建一条新的 streaming 状态的空记录并设为激活，适合流式场景。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
+   * @returns 新创建的候选回复记录副本。
    */
   regenerateSwipe(chatId: string, messageId: string): SwipeRecord {
     const records = this.getOrCreateRecords(chatId, messageId);
@@ -60,10 +61,11 @@ export class SwipeRuntime {
   }
 
   /**
-   * 更新候选回复状态，必要时写回存储并发布对应事件。
+   * 切换到指定索引的候选回复，将其设为激活状态，同时取消其他记录激活状态。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @param swipeIndex 目标位置索引。
+   * @param swipeIndex 要切换到的候选回复索引。
+   * @returns 切换后的候选回复记录副本。
    */
   switchSwipe(chatId: string, messageId: string, swipeIndex: number): SwipeRecord {
     const records = this.requireRecords(chatId, messageId);
@@ -76,11 +78,12 @@ export class SwipeRuntime {
   }
 
   /**
-   * 执行 editSwipe 的内部处理步骤，供当前模块复用。
+   * 编辑指定候选回复的文本内容，状态置为 complete。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @param swipeIndex 目标位置索引。
-   * @param text 文本内容。
+   * @param swipeIndex 目标候选回复索引。
+   * @param text 更新后的文本内容。
+   * @returns 编辑后的候选回复记录副本。
    */
   editSwipe(chatId: string, messageId: string, swipeIndex: number, text: string): SwipeRecord {
     const records = this.requireRecords(chatId, messageId);
@@ -94,10 +97,10 @@ export class SwipeRuntime {
   }
 
   /**
-   * 删除指定候选回复，并清理相关索引或资源引用。
+   * 删除指定候选回复，重新索引剩余记录；若删除后无激活记录则自动激活第一条，并发布 message.swipe.deleted 事件。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @param swipeIndex 目标位置索引。
+   * @param swipeIndex 要删除的候选回复索引。
    */
   deleteSwipe(chatId: string, messageId: string, swipeIndex: number): void {
     const records = this.requireRecords(chatId, messageId);
@@ -119,10 +122,12 @@ export class SwipeRuntime {
   }
 
   /**
-   * 追加Stream Delta 值，保留既有内容并写入新增片段。
+   * 向指定候选回复追加流式增量文本，维持 streaming 状态。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @param swipeIndex 目标位置索引。
+   * @param swipeIndex 目标候选回复索引。
+   * @param delta 本次追加的增量文本。
+   * @returns 更新后的候选回复记录副本。
    */
   appendStreamDelta(chatId: string, messageId: string, swipeIndex: number, delta: string): SwipeRecord {
     const records = this.requireRecords(chatId, messageId);
@@ -135,10 +140,12 @@ export class SwipeRuntime {
   }
 
   /**
-   * 标记Stream 值完成，并写入最终结果。
+   * 标记流式候选回复完成，追加最终增量文本并将状态置为 complete。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @param swipeIndex 目标位置索引。
+   * @param swipeIndex 目标候选回复索引。
+   * @param finalDelta 最终追加的增量文本。
+   * @returns 完成后的候选回复记录副本。
    */
   completeStream(chatId: string, messageId: string, swipeIndex: number, finalDelta: string): SwipeRecord {
     const records = this.requireRecords(chatId, messageId);
@@ -152,10 +159,11 @@ export class SwipeRuntime {
   }
 
   /**
-   * 更新Failed状态，必要时写回存储并发布对应事件。
+   * 创建一条 failed 状态的候选回复，标记当前执行为失败。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @param error 错误信息。
+   * @param error 失败原因描述。
+   * @returns 新创建的失败候选回复记录副本。
    */
   markFailed(chatId: string, messageId: string, error: string): SwipeRecord {
     const records = this.getOrCreateRecords(chatId, messageId);
@@ -168,10 +176,11 @@ export class SwipeRuntime {
   }
 
   /**
-   * 更新Interrupted状态，必要时写回存储并发布对应事件。
+   * 创建一条 interrupted 状态的候选回复，标记当前执行为打断。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @param text 文本内容。
+   * @param text 打断时已累积的文本内容。
+   * @returns 新创建的中断候选回复记录副本。
    */
   markInterrupted(chatId: string, messageId: string, text: string): SwipeRecord {
     const records = this.getOrCreateRecords(chatId, messageId);
@@ -184,10 +193,10 @@ export class SwipeRuntime {
   }
 
   /**
-   * 读取指定候选回复，不存在时抛出错误。
+   * 读取指定消息当前激活的候选回复，不存在时抛出异常。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 当前激活的候选回复记录副本。
    */
   getActiveSwipe(chatId: string, messageId: string): SwipeRecord {
     const records = this.requireRecords(chatId, messageId);
@@ -200,10 +209,10 @@ export class SwipeRuntime {
   }
 
   /**
-   * 读取Swipes列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 读取指定消息的所有候选回复列表，返回副本以避免外部修改内部状态。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 候选回复记录列表的副本。
    */
   listSwipes(chatId: string, messageId: string): Array<SwipeRecord> {
     const records = this.swipes.get(this.keyOf(chatId, messageId));
@@ -214,10 +223,10 @@ export class SwipeRuntime {
   }
 
   /**
-   * 读取States列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 读取指定消息所有候选回复的运行时状态快照列表。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 候选回复运行时状态列表。
    */
   listStates(chatId: string, messageId: string): Array<SwipeStreamState> {
     const records = this.listSwipes(chatId, messageId);
@@ -235,13 +244,12 @@ export class SwipeRuntime {
   }
 
   /**
-   * 读取Or Create Records 列表，不存在时通常抛出错误或返回空值。
+   * 根据 chatId 和 messageId 获取候选回复列表，不存在则创建空列表。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 候选回复列表引用（非副本）。
    */
   private getOrCreateRecords(chatId: string, messageId: string): Array<SwipeRecord> {
-    // 键名。
     const key = this.keyOf(chatId, messageId);
     const existing = this.swipes.get(key);
     if (existing !== undefined) {
@@ -253,10 +261,10 @@ export class SwipeRuntime {
   }
 
   /**
-   * 读取必须存在的Records 列表，缺失时抛出错误。
+   * 根据 chatId 和 messageId 获取候选回复列表，不存在时抛出异常。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 候选回复列表引用（非副本）。
    */
   private requireRecords(chatId: string, messageId: string): Array<SwipeRecord> {
     const records = this.swipes.get(this.keyOf(chatId, messageId));
@@ -267,12 +275,12 @@ export class SwipeRuntime {
   }
 
   /**
-   * 读取必须存在的Swipe 值，缺失时抛出错误。
-   * @param records 记录副本列表。
-   * @param swipeIndex 目标位置索引。
-   * @param chatId 目标聊天标识。
-   * @param messageId 目标消息标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 根据索引从列表中获取候选回复记录，越界时抛出异常。
+   * @param records 候选回复列表。
+   * @param swipeIndex 目标索引。
+   * @param chatId 仅用于错误消息中的上下文。
+   * @param messageId 仅用于错误消息中的上下文。
+   * @returns 候选回复记录引用。
    */
   private requireSwipe(records: Array<SwipeRecord>, swipeIndex: number, chatId: string, messageId: string): SwipeRecord {
     if (swipeIndex < 0 || swipeIndex >= records.length) {
@@ -282,14 +290,14 @@ export class SwipeRuntime {
   }
 
   /**
-   * 创建新的记录记录，写入存储并返回副本。
-   * @param chatId 目标聊天标识。
-   * @param messageId 目标消息标识。
-   * @param index 索引数据或循环位置。
+   * 创建一条 SwipeRecord 数据结构（不写入存储）。
+   * @param chatId 所属聊天标识。
+   * @param messageId 所属消息标识。
+   * @param index 候选回复索引。
    * @param text 文本内容。
-
-   * @param error 错误信息。
-   * @returns 更新或读取后的记录副本。
+   * @param state 初始状态。
+   * @param error 可选的错误信息。
+   * @returns 新创建的 SwipeRecord 对象。
    */
   private createRecord(
     chatId: string,
@@ -315,8 +323,8 @@ export class SwipeRuntime {
   }
 
   /**
-   * 更新All状态，必要时写回存储并发布对应事件。
-   * @param records 记录副本列表。
+   * 将列表中所有候选回复的 active 标记设为 false。
+   * @param records 候选回复列表。
    */
   private deactivateAll(records: Array<SwipeRecord>): void {
     for (let index = 0; index < records.length; index += 1) {
@@ -332,9 +340,9 @@ export class SwipeRuntime {
   }
 
   /**
-   * 判断当前对象是否包含Active 值。
-   * @param records 记录副本列表。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 检查列表中是否存在 active 标记为 true 的记录。
+   * @param records 候选回复列表。
+   * @returns 存在激活记录返回 true，否则 false。
    */
   private hasActive(records: Array<SwipeRecord>): boolean {
     for (let index = 0; index < records.length; index += 1) {
@@ -346,8 +354,7 @@ export class SwipeRuntime {
   }
 
   /**
-   * 发布消息候选回复事件，把状态变化通知给宿主或其他 Runtime。
-
+   * 发布 message.swipe.changed 事件，通知监听者候选回复已变更。
    */
   private publishChanged(swipe: SwipeRecord): void {
     const payload: SwipeChangedPayload = {
@@ -360,7 +367,7 @@ export class SwipeRuntime {
   }
 
   /**
-   * 复制Swipe 值，避免外部修改内部状态。
+   * 深度复制 SwipeRecord，防止外部修改内部状态。
    */
   private cloneSwipe(swipe: SwipeRecord): SwipeRecord {
     return {
@@ -377,9 +384,8 @@ export class SwipeRuntime {
   }
 
   /**
-   * 复制Swipes 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深度复制 SwipeRecord 列表，防止外部修改内部状态。
+   * @returns SwipeRecord 副本列表。
    */
   private cloneSwipes(swipes: Array<SwipeRecord>): Array<SwipeRecord> {
     const result = new Array<SwipeRecord>();

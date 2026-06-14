@@ -9,31 +9,31 @@ import type {
  */
 export interface DiagnosticRecord {
   /**
-   * 标识。
+   * 唯一标识。
    */
   id: string;
   /**
-   * kind 值，由当前实例内部维护。
+   * 诊断记录类型。
    */
   kind: DiagnosticKind;
   /**
-   * subject 标识。
+   * 关联主体标识。
    */
   subjectId: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 来源模块标签。
    */
   label: string;
   /**
-   * 状态值，由当前实例内部维护。
+   * 诊断状态。
    */
   status: DiagnosticStatus;
   /**
-   * 消息数据。
+   * 诊断消息内容。
    */
   message: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳。
    */
   createdAt: number;
 }
@@ -43,65 +43,65 @@ export interface DiagnosticRecord {
  */
 export interface DiagnosticBundle {
   /**
-   * 标识。
+   * 唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 诊断包显示名称。
    */
   name: string;
   /**
-   * 路径。
+   * 关联文件或目录路径。
    */
   path: string;
   /**
-   * 记录副本列表，由当前实例内部维护。
+   * 包内包含的诊断记录列表。
    */
   records: Array<DiagnosticRecord>;
   /**
-   * created At 值，由当前实例内部维护。
+   * 包创建时间戳。
    */
   createdAt: number;
 }
 
 /**
- * 描述诊断记录模块在运行时交换的数据结构。
+ * 描述诊断系统运行健康状态的摘要数据结构。
  */
 export interface DiagnosticHealthSummary {
   /**
-   * total Records 列表，由当前实例内部维护。
+   * 诊断记录总数。
    */
   totalRecords: number;
   /**
-   * error Count 值，由当前实例内部维护。
+   * 错误级别记录数。
    */
   errorCount: number;
   /**
-   * warning Count 值，由当前实例内部维护。
+   * 警告级别记录数。
    */
   warningCount: number;
   /**
-   * 状态值，由当前实例内部维护。
+   * 整体健康状态。
    */
   status: HealthStatus;
 }
 
 /**
- * 描述诊断记录事件发布时携带的数据结构。
+ * 诊断记录创建事件发布时携带的数据结构。
  */
 export interface DiagnosticsRecordCreatedPayload {
   /**
-   * 记录数据。
+   * 已创建的诊断记录。
    */
   record: DiagnosticRecord;
 }
 
 /**
- * 描述诊断记录事件发布时携带的数据结构。
+ * 诊断包创建事件发布时携带的数据结构。
  */
 export interface DiagnosticsBundleCreatedPayload {
   /**
-   * bundle 值，由当前实例内部维护。
+   * 已创建的诊断包。
    */
   bundle: DiagnosticBundle;
 }

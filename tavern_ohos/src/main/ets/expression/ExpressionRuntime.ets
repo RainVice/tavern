@@ -6,22 +6,31 @@ import type { ExpressionChangedPayload, ExpressionClassification, ExpressionExpo
  */
 export class ExpressionRuntime {
   /**
-   * 事件总线。
+   * 事件总线实例。
    */
-  private events: EventBus; private states: Map<string,ExpressionState>=new Map(); private counter=0;
+  private events: EventBus;
+  /**
+   * 所有表情状态的映射表，以 expressionId 为键。
+   */
+  private states: Map<string, ExpressionState> = new Map();
+  /**
+   * 自增计数器，用于生成全局唯一的 expressionId。
+   */
+  private counter = 0;
   /**
    * 初始化当前运行时实例。
    * @param events 事件总线。
    */
   constructor(events: EventBus) { this.events=events; }
   /**
-   * 设置表情状态，用于切换运行时状态或保存配置。
+   * 设置指定角色的表情状态：创建新状态并持久化，同时通过事件总线发布变更通知。
    * @param characterId 目标角色标识。
-
+   * @param classification 表情分类。
    * @param label 展示标签。
    * @param spriteName 立绘名称。
-
-   * @param messageId 目标消息标识。
+   * @param intensity 表情强度。
+   * @param messageId 关联消息标识。
+   * @returns 新创建的表情状态副本。
    */
   setExpression(characterId: string, classification: ExpressionClassification, label: string, spriteName: string, intensity: number, messageId: string): ExpressionState {
     this.counter+=1; const expressionId=`expr-${this.counter}`; const now=Date.now();
@@ -31,9 +40,9 @@ export class ExpressionRuntime {
     return this.copyState(state);
   }
   /**
-   * 读取指定CurrentExpression，不存在时抛出错误。
+   * 获取指定角色当前（最近一次设置）的表情状态。
    * @param characterId 目标角色标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 表情状态副本；若该角色从未设置过表情，返回 undefined。
    */
   getCurrentExpression(characterId: string): ExpressionState|undefined {
     const values=Array.from(this.states.values());
@@ -41,9 +50,9 @@ export class ExpressionRuntime {
     return undefined;
   }
   /**
-   * 读取Expressions列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 读取指定角色全部表情状态列表。
    * @param characterId 目标角色标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 符合条件的表情状态副本列表。
    */
   listExpressions(characterId: string): Array<ExpressionState> {
     const result=new Array<ExpressionState>(); const values=Array.from(this.states.values());
@@ -56,8 +65,8 @@ export class ExpressionRuntime {
    */
   exportData(): ExpressionExportData { return { states: this.listAllStates() }; }
   /**
-   * 从外部数据导入Data 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
+   * 导入外部表情状态数据，覆盖当前运行时内存中的状态。
+   * @param data 从 exportData() 导出的序列化数据。
    */
   importData(data: ExpressionExportData): void {
     for (let i=0;i<data.states.length;i++) {
@@ -69,7 +78,7 @@ export class ExpressionRuntime {
 
   /**
    * 读取AllStates列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 表情状态列表副本。
    */
   private listAllStates(): Array<ExpressionState> {
     const result = new Array<ExpressionState>();
@@ -98,8 +107,9 @@ export class ExpressionRuntime {
   }
 
   /**
-   * 解析Counter，非法输入会返回失败标记或空结果。
-   * @param expressionId 目标表情状态标识。
+   * 解析 expressionId 中的自增序号。
+   * @param expressionId 表情状态标识，格式为 "expr-{数字}"。
+   * @returns 解析后的序号；若格式非法，返回 0。
    */
   private parseCounter(expressionId: string): number {
     if (!expressionId.startsWith('expr-')) {

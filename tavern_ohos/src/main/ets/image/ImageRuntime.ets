@@ -27,19 +27,19 @@ export class ImageRuntime {
    */
   private events: EventBus;
   /**
-   * thumbnails 列表，由当前实例内部维护。
+   * 缩略图运行时实例，负责缩略图生成与管理。
    */
   private thumbnails: ThumbnailRuntime;
   /**
-   * attachments 列表，由当前实例内部维护。
+   * 附件运行时实例，负责附件绑定与清理。
    */
   private attachments: AttachmentRuntime;
   /**
-   * 记录副本列表，由当前实例内部维护。
+   * 内存中的图片记录映射，键为图片标识。
    */
   private records: Map<string, ImageRecord> = new Map<string, ImageRecord>();
   /**
-   * 数据根路径。
+   * 图片数据在文件存储中的根路径。
    */
   private rootPath: string = 'tavern-data/users/default/assets/images';
 
@@ -56,16 +56,16 @@ export class ImageRuntime {
   }
 
   /**
-   * 执行 uploadImage 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 上传图片，包含文件写入、索引持久化和事件发布。
+   * @param params 上传图片所需参数。
    */
   async uploadImage(params: ImageUploadParams): Promise<ImageRecord> {
     this.validateFormat(params.format);
     const now = Date.now();
     const existing = this.records.get(params.id);
-    // file 名称。
+    // 生成规范化文件名。
     const fileName = this.normalizedFileName(params.fileName, params.format);
-    // folder 名称。
+    // 生成文件夹名称片段。
     const folderName = this.safeOptionalSegment(params.folderName);
     const path = this.imagePath(folderName, fileName);
     let thumbnailPath = '';
@@ -108,7 +108,7 @@ export class ImageRuntime {
   }
 
   /**
-   * 读取Image Content 值，并转换为运行时使用的数据结构。
+   * 读取指定图片的原始内容。
    * @param imageId 目标图片标识。
    */
   async readImageContent(imageId: string): Promise<string> {
@@ -117,10 +117,10 @@ export class ImageRuntime {
   }
 
   /**
-   * 读取Images列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param folderName folder名称。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出指定文件夹下的图片记录。
+   * @param folderName 文件夹名称。
+   * @param sortOrder 排序方式，"asc" 为升序，"desc" 为降序。
+   * @returns 所有图片记录列表副本（含未绑定附件）。
    */
   async listImages(folderName: string, sortOrder: string): Promise<Array<ImageRecord>> {
     const normalizedFolder = this.safeOptionalSegment(folderName);
@@ -138,8 +138,8 @@ export class ImageRuntime {
   }
 
   /**
-   * 读取Folders列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有包含图片的文件夹名称。
+   * @returns 文件夹名称列表副本，调用方可安全读取。
    */
   async listFolders(): Promise<Array<string>> {
     const folders = new Set<string>();
@@ -174,9 +174,9 @@ export class ImageRuntime {
   }
 
   /**
-   * 把图片资源对象绑定到指定作用域，后续读取会按该绑定解析。
-   * @param record 记录副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 把图片记录绑定到附件系统。
+   * @param record 已上传的图片记录。
+   * @param params 上传时使用的参数。
    */
   private bindAttachmentIfNeeded(record: ImageRecord, params: ImageUploadParams): void {
     if (params.attachmentId.length === 0 || params.attachmentTargetId.length === 0) {
@@ -200,7 +200,7 @@ export class ImageRuntime {
   }
 
   /**
-   * 读取必须存在的Record 值，缺失时抛出错误。
+   * 获取指定图片的记录，若不存在则抛出异常。
    * @param imageId 目标图片标识。
    */
   private requireRecord(imageId: string): ImageRecord {
@@ -219,8 +219,8 @@ export class ImageRuntime {
   }
 
   /**
-   * 读取AllImages列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出内存中所有图片记录，排序后返回副本。
+   * @returns 图片记录列表副本，调用方可安全读取。
    */
   private async listAllImages(): Promise<Array<ImageRecord>> {
     const result = new Array<ImageRecord>();
@@ -238,13 +238,14 @@ export class ImageRuntime {
   }
 
   /**
-   * 规范化d File 名称，保证后续比较和存储使用一致格式。
-   * @param fileName 文件名称。
+   * 获取规范化后的文件名，保证后续比较和存储使用一致格式。
+   * @param fileName 原始文件名。
+   * @param format 目标格式扩展名。
    */
   private normalizedFileName(fileName: string, format: MediaFormat): string {
     const sanitized = safeFileName(fileName, 'image');
     const dotIndex = sanitized.lastIndexOf('.');
-    // base 名称。
+    // 提取去除扩展名后的基础名称。
     const baseName = dotIndex < 0 ? sanitized : sanitized.substring(0, dotIndex);
     return `${baseName}.${format}`;
   }
@@ -256,8 +257,7 @@ export class ImageRuntime {
   }
 
   /**
-   * 校验Format 值是否满足运行时约束。
-
+   * 校验图片格式是否满足运行时支持的格式集合。
    */
   private validateFormat(format: MediaFormat): void {
     if (format === 'png' || format === 'jpg' || format === 'jpeg' || format === 'webp' || format === 'gif') {
@@ -267,8 +267,8 @@ export class ImageRuntime {
   }
 
   /**
-   * 复制Record 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 复制图片记录，避免外部修改内部状态。
+   * @param record 待复制的图片记录。
    */
   private copyRecord(record: ImageRecord): ImageRecord {
     return {

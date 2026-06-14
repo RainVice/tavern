@@ -5,23 +5,25 @@ import { EventBus } from '../runtime/EventBus';
 import type { TavernFileStore } from '../storage/TavernFileStore';
 
 /**
- * 提供生命周期相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 生命周期运行时，编排 initialize → (migrate) → (restore) → markReady 的启动流程，
+ * 并管理运行时状态的持久化与生命周期事件发布。
  */
 export class LifecycleRuntime {
   /**
-   * app 值，由当前实例内部维护。
+   * AppRuntime 实例，负责 manifest 与运行时状态的读写。
    */
   private app: AppRuntime;
   /**
-   * 事件总线。
+   * EventRuntime 实例，负责运行时生命周期信号的发布。
    */
   private events: EventRuntime;
-  /**
-   * 注入生命周期运行时依赖并初始化实例状态。
-   * @param files 文件存储适配器。
-   * @param eventBus 事件总线。
 
-   * @param rootPath Tavern 数据根路径。
+  /**
+   * 注入生命周期运行时依赖，初始化与 AppRuntime 的绑定和事件运行时实例。
+   * @param files 文件存储适配器，用于底层文件读写。
+   * @param eventBus 事件总线实例，供 EventRuntime 订阅与发布事件。
+   * @param app 应用运行时实例，负责状态的持久化和读取。
+   * @param _rootPath Tavern 数据根路径，暂未使用，保留接口兼容性。
    */
   constructor(_files: TavernFileStore, eventBus: EventBus, app: AppRuntime, _rootPath: string = 'tavern-data') {
     this.app = app;
@@ -29,9 +31,9 @@ export class LifecycleRuntime {
   }
 
   /**
-   * 执行 initialize 的内部处理步骤，供当前模块复用。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 执行初始化流程：持久化 manifest、写入 ''init'' 阶段状态并发布 runtime.init 信号。
+   * @param globalMode 是否启用全局模式，传入 saveManifest 和 saveRuntimeState。
+   * @returns 写入持久化后的运行时状态快照。
    */
   async initialize(globalMode: boolean): Promise<RuntimeStateRecord> {
     await this.app.saveManifest(globalMode);
@@ -41,7 +43,8 @@ export class LifecycleRuntime {
   }
 
   /**
-   * 更新Ready状态，必要时写回存储并发布对应事件。
+   * 标记运行时为就绪状态：写入 ready 阶段并发布 runtime.ready 信号。
+   * @returns 写入持久化后的运行时状态快照。
    */
   async markReady(): Promise<RuntimeStateRecord> {
     const current = await this.app.loadRuntimeState();
@@ -58,8 +61,9 @@ export class LifecycleRuntime {
   }
 
   /**
-   * 执行 runStartup 的内部处理步骤，供当前模块复用。
-   * @param options 控制本次调用行为的选项。
+   * 执行完整的启动流程，按需经过 initialize → migrate → restore → ready 四个阶段。
+   * @param options 启动选项，控制全局模式、迁移版本和恢复行为。
+   * @returns 包含已执行阶段列表和最终运行时状态快照的结果对象。
    */
   async runStartup(options: LifecycleStartupOptions): Promise<LifecycleStartupResult> {
     const phases = new Array<string>();

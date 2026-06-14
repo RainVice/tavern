@@ -4,23 +4,23 @@ import type {
 } from '../contracts/PublicContracts';
 
 /**
- * 描述调用向量检索能力时需要传入的参数。
+ * 创建向量集合时需要传入的参数。
  */
 export interface VectorCollectionCreateParams {
   /**
-   * 标识。
+   * 集合的唯一标识符。
    */
   id: string;
   /**
-   * provider 值，由当前实例内部维护。
+   * 向量计算服务对应的 provider 标识，由运行时自动填充。
    */
   provider: ProviderId;
   /**
-   * 模型名称，由当前实例内部维护。
+   * 创建集合时使用的模型名称，由运行时自动填充。
    */
   model: string;
   /**
-   * dimension 值，由当前实例内部维护。
+   * 集合中向量的维度数，由运行时自动填充。
    */
   dimension: number;
   /**
@@ -34,159 +34,159 @@ export interface VectorCollectionCreateParams {
  */
 export interface VectorCollectionRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据格式版本号，用于迁移兼容。
    */
   schemaVersion: number;
   /**
-   * 标识。
+   * 集合的唯一标识符。
    */
   id: string;
   /**
-   * provider 值，由当前实例内部维护。
+   * 向量计算服务对应的 provider 标识。
    */
   provider: ProviderId;
   /**
-   * 模型名称，由当前实例内部维护。
+   * 创建集合时使用的模型名称。
    */
   model: string;
   /**
-   * dimension 值，由当前实例内部维护。
+   * 集合中向量的维度数。
    */
   dimension: number;
   /**
-   * 路径。
+   * 集合数据持久化存储的路径。
    */
   path: string;
   /**
-   * metadata JSON 字符串。
+   * JSON 格式的元数据字符串。
    */
   metadataJson: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 集合的创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 集合的最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述向量检索持久化或内存索引中的一条记录。
+ * 持久化或内存索引中的一条向量记录。
  */
 export interface VectorRecord {
   /**
-   * 标识。
+   * 向量记录的唯一标识符。
    */
   id: string;
   /**
-   * document 标识。
+   * 归属的文档标识符。
    */
   documentId: string;
   /**
-   * 作用域。
+   * 向量所属的作用域，用于查询过滤。
    */
   scope: TavernScope;
   /**
-   * 文本内容。
+   * 向量关联的文本内容。
    */
   text: string;
   /**
-   * 向量数据，由当前实例内部维护。
+   * 向量数据的数值数组，由嵌入模型生成。
    */
   embedding: Array<number>;
   /**
-   * metadata JSON 字符串。
+   * JSON 格式的元数据字符串。
    */
   metadataJson: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录的创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录的最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述向量检索模块在运行时交换的数据结构。
+ * 向量检索返回的一条匹配结果，包含记录及相似度分数。
  */
 export interface VectorHit {
   /**
-   * collection 标识。
+   * 命中记录所属的集合标识。
    */
   collectionId: string;
   /**
-   * vector 值，由当前实例内部维护。
+   * 命中的向量记录。
    */
   vector: VectorRecord;
   /**
-   * score 值，由当前实例内部维护。
+   * 与查询向量的余弦相似度分数。
    */
   score: number;
 }
 
 /**
- * 描述调用向量检索能力时需要传入的参数。
+ * 查询向量集合时需要传入的参数。
  */
 export interface VectorQueryParams {
   /**
-   * collection 标识列表。
+   * 要搜索的目标集合标识列表。
    */
   collectionIds: Array<string>;
   /**
-   * 向量数据，由当前实例内部维护。
+   * 查询用的向量数值数组。
    */
   embedding: Array<number>;
   /**
-   * top K 值，由当前实例内部维护。
+   * 返回的 Top-K 结果数量。
    */
   topK: number;
   /**
-   * score Threshold 值，由当前实例内部维护。
+   * 相似度分数阈值，低于此值的记录会被过滤。
    */
   scoreThreshold: number;
   /**
-   * 作用域。
+   * 查询作用域，用于按作用域过滤。
    */
   scope: TavernScope;
 }
 
 /**
- * 描述向量检索操作完成后返回给调用方的结果。
+ * 向量查询操作完成后返回的结果集。
  */
 export interface VectorQueryResult {
   /**
-   * hits 列表，由当前实例内部维护。
+   * 匹配的命中结果列表。
    */
   hits: Array<VectorHit>;
 }
 
 /**
- * 描述向量检索事件发布时携带的数据结构。
+ * 向量 upsert 事件发布时携带的数据载荷。
  */
 export interface VectorUpsertPayload {
   /**
-   * collection 标识。
+   * 写入操作的目标集合标识。
    */
   collectionId: string;
   /**
-   * vector 值，由当前实例内部维护。
+   * 写入的向量记录。
    */
   vector: VectorRecord;
 }
 
 /**
- * 描述向量检索事件发布时携带的数据结构。
+ * 向量删除事件发布时携带的数据载荷。
  */
 export interface VectorDeletedPayload {
   /**
-   * collection 标识。
+   * 删除操作的目标集合标识。
    */
   collectionId: string;
   /**
-   * deleted 标识列表。
+   * 被删除的向量记录标识列表。
    */
   deletedIds: Array<string>;
 }

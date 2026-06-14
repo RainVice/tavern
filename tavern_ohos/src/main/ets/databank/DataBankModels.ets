@@ -1,135 +1,135 @@
 import type { TavernScope } from '../contracts/PublicContracts';
 
 /**
- * 描述调用Data Bank 文档能力时需要传入的参数。
+ * 创建 Data Bank 文档时需提供的参数集合。
  */
 export interface DataBankDocumentCreateParams {
   /**
-   * 标识。
+   * 文档唯一标识，全局不重复。
    */
   id: string;
   /**
-   * 作用域。
+   * 文档所属的 Tavern 作用域（如 chat、character），用于隔离不同模块的数据。
    */
   scope: TavernScope;
   /**
-   * source Type 值，由当前实例内部维护。
+   * 文档来源的类型标识，由创建方传入，用于区分不同插件或模块产生的文档。
    */
   sourceType: string;
   /**
-   * file 名称。
+   * 文档对应的文件名，用于向用户展示。
    */
   fileName: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * 文档内容的 MIME 类型，由创建方传入，用于区分纯文本、JSON 等格式。
    */
   mimeType: string;
   /**
-   * 内容。
+   * 文档正文内容。
    */
   content: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 附加的标签列表，用于分类和按标签检索。
    */
   tags: Array<string>;
   /**
-   * metadata JSON 字符串。
+   * 自定义元数据的 JSON 字符串，用于存储与具体业务相关的扩展字段。
    */
   metadataJson: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 文档是否启用，禁用的文档在常规查询中会被过滤。
    */
   enabled: boolean;
 }
 
 /**
- * 描述Data Bank 文档持久化或内存索引中的一条记录。
+ * Data Bank 文档在持久化存储和内存索引中的完整记录结构。
  */
 export interface DataBankDocumentRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 记录结构的 schema 版本号，用于将来格式迁移时做兼容判断。
    */
   schemaVersion: number;
   /**
-   * 标识。
+   * 文档唯一标识，全局不重复。
    */
   id: string;
   /**
-   * 作用域。
+   * 文档所属的 Tavern 作用域。
    */
   scope: TavernScope;
   /**
-   * source Type 值，由当前实例内部维护。
+   * 文档来源的类型标识，由创建方传入。
    */
   sourceType: string;
   /**
-   * file 名称。
+   * 文档对应的文件名，用于向用户展示。
    */
   fileName: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * 文档内容的 MIME 类型，由创建方传入。
    */
   mimeType: string;
   /**
-   * 路径。
+   * 文档内容在文件系统中的存储路径。
    */
   path: string;
   /**
-   * 内容。
+   * 文档正文内容。
    */
   content: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 附加的标签列表，用于分类和按标签检索。
    */
   tags: Array<string>;
   /**
-   * metadata JSON 字符串。
+   * 自定义元数据的 JSON 字符串，用于存储扩展字段。
    */
   metadataJson: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 文档是否启用，禁用的文档在常规查询中会被过滤。
    */
   enabled: boolean;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时的时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最近一次更新的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述Data Bank 文档模块在运行时交换的数据结构。
+ * 导入或导出 Data Bank 全部文档时使用的数据容器。
  */
 export interface DataBankExportData {
   /**
-   * documents 列表，由当前实例内部维护。
+   * 所有文档记录的数组。
    */
   documents: Array<DataBankDocumentRecord>;
 }
 
 /**
- * 描述Data Bank 文档事件发布时携带的数据结构。
+ * Data Bank 文档更新事件发布时携带的数据结构。
  */
 export interface DataBankUpdatedPayload {
   /**
-   * document 标识。
+   * 发生变更的文档标识。
    */
   documentId: string;
   /**
-   * document 值，由当前实例内部维护。
+   * 变更后的文档记录副本。
    */
   document: DataBankDocumentRecord;
 }
 
 /**
- * 描述Data Bank 文档事件发布时携带的数据结构。
+ * Data Bank 文档删除事件发布时携带的数据结构。
  */
 export interface DataBankDeletedPayload {
   /**
-   * document 标识。
+   * 被删除的文档标识。
    */
   documentId: string;
 }

@@ -20,19 +20,19 @@ export class DiagnosticsRuntime {
    */
   private events: EventBus;
   /**
-   * 记录副本列表，由当前实例内部维护。
+   * 诊断记录列表。
    */
   private records: Array<DiagnosticRecord> = new Array<DiagnosticRecord>();
   /**
-   * bundles 列表，由当前实例内部维护。
+   * 诊断包列表。
    */
   private bundles: Array<DiagnosticBundle> = new Array<DiagnosticBundle>();
   /**
-   * record Counter 值，由当前实例内部维护。
+   * 记录计数器，用于生成自增 ID。
    */
   private recordCounter: number = 0;
   /**
-   * bundle Counter 值，由当前实例内部维护。
+   * 包计数器，用于生成自增 ID。
    */
   private bundleCounter: number = 0;
 
@@ -45,78 +45,85 @@ export class DiagnosticsRuntime {
   }
 
   /**
-   * 创建或写入提示词Trace，完成持久化后返回可供调用方使用的结果。
-   * @param subjectId 目标主体标识。
-   * @param message 消息记录。
-   * @param status 状态值。
+   * 创建一条提示词诊断记录，完成记录写入并通过事件总线通知监听方。
+   * @param subjectId 关联主体标识。
+   * @param message 诊断消息内容。
+   * @param status 诊断状态。
+   * @returns 创建的诊断记录副本。
    */
   recordPromptTrace(subjectId: string, message: string, status: DiagnosticStatus): DiagnosticRecord {
     return this.record('prompt', subjectId, 'PromptInspector', message, status);
   }
 
   /**
-   * 创建或写入事件Trace，完成持久化后返回可供调用方使用的结果。
-   * @param subjectId 目标主体标识。
-   * @param message 消息记录。
-   * @param status 状态值。
+   * 创建一条事件诊断记录，完成记录写入并通过事件总线通知监听方。
+   * @param subjectId 关联主体标识。
+   * @param message 诊断消息内容。
+   * @param status 诊断状态。
+   * @returns 创建的诊断记录副本。
    */
   recordEventTrace(subjectId: string, message: string, status: DiagnosticStatus): DiagnosticRecord {
     return this.record('event', subjectId, 'EventInspector', message, status);
   }
 
   /**
-   * 创建或写入PluginTrace，完成持久化后返回可供调用方使用的结果。
-   * @param subjectId 目标主体标识。
-   * @param message 消息记录。
-   * @param status 状态值。
+   * 创建一条插件诊断记录，完成记录写入并通过事件总线通知监听方。
+   * @param subjectId 关联主体标识。
+   * @param message 诊断消息内容。
+   * @param status 诊断状态。
+   * @returns 创建的诊断记录副本。
    */
   recordPluginTrace(subjectId: string, message: string, status: DiagnosticStatus): DiagnosticRecord {
     return this.record('plugin', subjectId, 'PluginInspector', message, status);
   }
 
   /**
-   * 创建或写入CommandTrace，完成持久化后返回可供调用方使用的结果。
-   * @param subjectId 目标主体标识。
-   * @param message 消息记录。
-   * @param status 状态值。
+   * 创建一条命令诊断记录，完成记录写入并通过事件总线通知监听方。
+   * @param subjectId 关联主体标识。
+   * @param message 诊断消息内容。
+   * @param status 诊断状态。
+   * @returns 创建的诊断记录副本。
    */
   recordCommandTrace(subjectId: string, message: string, status: DiagnosticStatus): DiagnosticRecord {
     return this.record('command', subjectId, 'CommandDebugger', message, status);
   }
 
   /**
-   * 创建或写入ScriptTrace，完成持久化后返回可供调用方使用的结果。
-   * @param subjectId 目标主体标识。
-   * @param message 消息记录。
-   * @param status 状态值。
+   * 创建一条脚本诊断记录，完成记录写入并通过事件总线通知监听方。
+   * @param subjectId 关联主体标识。
+   * @param message 诊断消息内容。
+   * @param status 诊断状态。
+   * @returns 创建的诊断记录副本。
    */
   recordScriptTrace(subjectId: string, message: string, status: DiagnosticStatus): DiagnosticRecord {
     return this.record('script', subjectId, 'ScriptTrace', message, status);
   }
 
   /**
-   * 创建或写入ToolCallTrace，完成持久化后返回可供调用方使用的结果。
-   * @param subjectId 目标主体标识。
-   * @param message 消息记录。
-   * @param status 状态值。
+   * 创建一条工具调用诊断记录，完成记录写入并通过事件总线通知监听方。
+   * @param subjectId 关联主体标识。
+   * @param message 诊断消息内容。
+   * @param status 诊断状态。
+   * @returns 创建的诊断记录副本。
    */
   recordToolCallTrace(subjectId: string, message: string, status: DiagnosticStatus): DiagnosticRecord {
     return this.record('tool', subjectId, 'ToolCallTrace', message, status);
   }
 
   /**
-   * 创建或写入流式任务Trace，完成持久化后返回可供调用方使用的结果。
-   * @param subjectId 目标主体标识。
-   * @param message 消息记录。
-   * @param status 状态值。
+   * 创建一条流式任务诊断记录，完成记录写入并通过事件总线通知监听方。
+   * @param subjectId 关联主体标识。
+   * @param message 诊断消息内容。
+   * @param status 诊断状态。
+   * @returns 创建的诊断记录副本。
    */
   recordStreamTrace(subjectId: string, message: string, status: DiagnosticStatus): DiagnosticRecord {
     return this.record('stream', subjectId, 'StreamTrace', message, status);
   }
 
   /**
-   * 读取Records列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取全部诊断记录的副本列表，外部修改不会影响内部状态。
+   * @returns 诊断记录列表副本。
    */
   listRecords(): Array<DiagnosticRecord> {
     const result = new Array<DiagnosticRecord>();
@@ -127,9 +134,9 @@ export class DiagnosticsRuntime {
   }
 
   /**
-   * 读取ByKind列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param kind 记录类型。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按诊断记录类型筛选并返回副本列表。
+   * @param kind 要筛选的记录类型。
+   * @returns 匹配类型的诊断记录列表副本。
    */
   listByKind(kind: DiagnosticKind): Array<DiagnosticRecord> {
     const result = new Array<DiagnosticRecord>();
@@ -142,8 +149,8 @@ export class DiagnosticsRuntime {
   }
 
   /**
-   * 读取Errors列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 筛选所有错误级别的诊断记录并返回副本列表。
+   * @returns 错误级别的诊断记录列表副本。
    */
   listErrors(): Array<DiagnosticRecord> {
     const result = new Array<DiagnosticRecord>();
@@ -156,11 +163,11 @@ export class DiagnosticsRuntime {
   }
 
   /**
-   * 创建新的诊断包记录，写入存储并返回副本。
-   * @param name 显示名称或注册名称。
-
-   * @param path 目标文件或目录路径。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 创建新的诊断包：筛选匹配指定类型的记录归入包内，写入存储并通过事件总线通知监听方。
+   * @param name 诊断包显示名称。
+   * @param kinds 要包含的记录类型列表；传空数组则包含全部记录。
+   * @param path 关联的文件或目录路径。
+   * @returns 创建的诊断包副本。
    */
   createBundle(name: string, kinds: Array<string>, path: string): DiagnosticBundle {
     this.bundleCounter += 1;
@@ -186,8 +193,8 @@ export class DiagnosticsRuntime {
   }
 
   /**
-   * 读取Bundles列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取全部诊断包列表的副本。
+   * @returns 诊断包列表副本。
    */
   listBundles(): Array<DiagnosticBundle> {
     const result = new Array<DiagnosticBundle>();
@@ -198,8 +205,8 @@ export class DiagnosticsRuntime {
   }
 
   /**
-   * 读取指定HealthSummary，不存在时抛出错误。
-   * @returns 更新或读取后的记录副本。
+   * 计算当前诊断记录的健康摘要，包含总数、错误数、警告数和整体健康状态。
+   * @returns 健康摘要数据。
    */
   getHealthSummary(): DiagnosticHealthSummary {
     let errors = 0;

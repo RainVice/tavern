@@ -1,255 +1,273 @@
 import type { MediaFormat } from '../contracts/PublicContracts';
 
-// TTS 提供商类型
+/**
+ * TTS 提供商类型：openai、elevenlabs、edge 或 system（系统内置）。
+ */
 export type TTSProvider = 'openai' | 'elevenlabs' | 'edge' | 'system';
 
-// TTS 任务状态
+/**
+ * TTS 合成任务状态：pending（等待中）、running（进行中）、completed（已完成）、failed（失败）、cancelled（已取消）。
+ */
 export type TTSTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
-// TTS 语音配置
+/**
+ * TTS 语音配置，定义一种音色的完整参数。
+ */
 export interface TTSVoiceProfile {
   /**
-   * profile 标识。
+   * 语音配置的唯一标识。
    */
   profileId: string;
   /**
-   * 名称。
+   * 语音配置的名称。
    */
   name: string;
   /**
-   * provider 值，由当前实例内部维护。
+   * 提供商类型。
    */
   provider: TTSProvider;
   /**
-   * voice 标识。
+   * 音色标识，由提供商定义。
    */
   voiceId: string;
   /**
-   * language 值，由当前实例内部维护。
+   * 语言代码。
    */
   language: string;
   /**
-   * speed 值，由当前实例内部维护。
+   * 语速倍率。
    */
   speed: number;
   /**
-   * pitch 值，由当前实例内部维护。
+   * 音高调整值。
    */
   pitch: number;
   /**
-   * format 值，由当前实例内部维护。
+   * 音频格式。
    */
   format: MediaFormat;
   /**
-   * created At 值，由当前实例内部维护。
+   * 配置创建时间戳。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 配置最后更新时间戳。
    */
   updatedAt: number;
 }
 
-// TTS 合成请求参数
+/**
+ * TTS 合成请求参数，指定要合成的文本和音色配置。
+ */
 export interface TTSSynthesisParams {
   /**
-   * 文本内容。
+   * 待合成的文本内容。
    */
   text: string;
   /**
-   * voice Profile 标识。
+   * 使用的语音配置标识。
    */
   voiceProfileId: string;
   /**
-   * skip Code Blocks 列表，由当前实例内部维护。
+   * 是否跳过代码块内容的合成。
    */
   skipCodeBlocks: boolean;
   /**
-   * speed 值，由当前实例内部维护。
+   * 语速倍率。
    */
   speed: number;
   /**
-   * pitch 值，由当前实例内部维护。
+   * 音高调整值。
    */
   pitch: number;
   /**
-   * format 值，由当前实例内部维护。
+   * 音频输出格式。
    */
   format: MediaFormat;
 }
 
-// TTS 合成任务
+/**
+ * TTS 合成任务记录，包含合成过程中的状态和结果信息。
+ */
 export interface TTSTask {
   /**
-   * 任务标识。
+   * 任务唯一标识。
    */
   taskId: string;
   /**
-   * 调用参数。
+   * 合成请求参数。
    */
   params: TTSSynthesisParams;
   /**
-   * 状态值，由当前实例内部维护。
+   * 任务状态。
    */
   status: TTSTaskStatus;
   /**
-   * progress 列表，由当前实例内部维护。
+   * 任务进度百分比（0-100）。
    */
   progress: number;
   /**
-   * result Attachment 标识。
+   * 合成结果附件的标识。
    */
   resultAttachmentId: string;
   /**
-   * duration 值，由当前实例内部维护。
+   * 合成音频的时长（秒）。
    */
   duration: number;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 任务失败时的错误描述。
    */
   error: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 任务创建时间戳。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 任务最后更新时间戳。
    */
   updatedAt: number;
 }
 
-// TTS 音频附件结果
+/**
+ * TTS 合成音频的结果信息。
+ */
 export interface TTSAudioResult {
   /**
-   * 任务标识。
+   * 关联的任务标识。
    */
   taskId: string;
   /**
-   * attachment 标识。
+   * 合成音频的附件标识。
    */
   attachmentId: string;
   /**
-   * duration 值，由当前实例内部维护。
+   * 音频时长（秒）。
    */
   duration: number;
   /**
-   * format 值，由当前实例内部维护。
+   * 音频格式。
    */
   format: MediaFormat;
 }
 
-// OpenAI TTS 请求体
+/**
+ * OpenAI TTS API 的请求体结构。
+ */
 export interface OpenAITTSRequest {
   /**
-   * 模型名称，由当前实例内部维护。
+   * 模型名称。
    */
   model: string;
   /**
-   * 输入数据。
+   * 待合成的输入文本。
    */
   input: string;
   /**
-   * voice 值，由当前实例内部维护。
+   * 音色标识。
    */
   voice: string;
   /**
-   * speed 值，由当前实例内部维护。
+   * 语速倍率。
    */
   speed: number;
   /**
-   * response format 值，由当前实例内部维护。
+   * 响应音频格式。
    */
   response_format: string;
 }
 
-// Edge TTS 请求体
+/**
+ * Edge TTS API 的请求体结构。
+ */
 export interface EdgeTTSRequest {
   /**
-   * 文本内容。
+   * 待合成的文本内容。
    */
   text: string;
   /**
-   * voice 值，由当前实例内部维护。
+   * 音色标识。
    */
   voice: string;
   /**
-   * rate 值，由当前实例内部维护。
+   * 语速调整值。
    */
   rate: number;
   /**
-   * pitch 值，由当前实例内部维护。
+   * 音高调整值。
    */
   pitch: number;
 }
 
-// 事件 payload
+/**
+ * TTS 合成任务启动事件发布时携带的负载。
+ */
 export interface TTSSynthesisStartedPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 已启动的合成任务。
    */
   task: TTSTask;
 }
 
 /**
- * 描述文字转语音事件发布时携带的数据结构。
+ * TTS 合成任务进度更新事件发布时携带的负载。
  */
 export interface TTSSynthesisProgressPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 进度已更新的合成任务。
    */
   task: TTSTask;
 }
 
 /**
- * 描述文字转语音事件发布时携带的数据结构。
+ * TTS 合成任务完成事件发布时携带的负载。
  */
 export interface TTSSynthesisCompletedPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 已完成的合成任务。
    */
   task: TTSTask;
 }
 
 /**
- * 描述文字转语音事件发布时携带的数据结构。
+ * TTS 合成任务失败事件发布时携带的负载。
  */
 export interface TTSSynthesisFailedPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 已失败的合成任务。
    */
   task: TTSTask;
 }
 
 /**
- * 描述文字转语音事件发布时携带的数据结构。
+ * TTS 合成任务取消事件发布时携带的负载。
  */
 export interface TTSSynthesisCancelledPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 已取消的合成任务。
    */
   task: TTSTask;
 }
 
 /**
- * 描述文字转语音事件发布时携带的数据结构。
+ * TTS 语音配置保存事件发布时携带的负载。
  */
 export interface TTSVoiceProfileSavedPayload {
   /**
-   * profile 值，由当前实例内部维护。
+   * 已保存的语音配置。
    */
   profile: TTSVoiceProfile;
 }
 
 /**
- * 描述文字转语音模块在运行时交换的数据结构。
+ * TTS 数据的导出结构，包含所有语音配置和任务记录。
  */
 export interface TTSExportData {
   /**
-   * profiles 列表，由当前实例内部维护。
+   * 所有语音配置列表。
    */
   profiles: Array<TTSVoiceProfile>;
   /**
-   * tasks 列表，由当前实例内部维护。
+   * 所有合成任务列表。
    */
   tasks: Array<TTSTask>;
 }

@@ -33,6 +33,7 @@ export class NetworkPolicyRuntime {
    * 根据网络策略判断目标主机地址是否允许访问，并按配置发布允许或阻断事件。
    * @param host 目标主机名。
    * @param address 解析后的 IP 地址。
+   * @returns 包含是否放行、决策原因及命中规则的评估结果。
    */
   evaluateHost(host: string, address: string): NetworkPolicyDecision {
     if (!this.options.enabled) {
@@ -63,7 +64,7 @@ export class NetworkPolicyRuntime {
 
   /**
    * 合并调用方配置和默认配置，避免外部数组被运行时直接持有。
-   * @param options 控制本次调用行为的选项。
+   * @param options 可选的用户配置，缺失字段将回退为默认值。
    */
   private mergeOptions(options?: NetworkPolicyOptions): NetworkPolicyOptions {
     return {
@@ -76,11 +77,11 @@ export class NetworkPolicyRuntime {
   }
 
   /**
-   * 发布网络策略事件，把状态变化通知给宿主或其他 Runtime。
+   * 构造允许决策并可选地在事件总线上发布 {@link NetworkPolicyAllowedPayload} 事件。
    * @param host 目标主机名。
    * @param address 解析后的 IP 地址。
-   * @param reason 失败、中止或恢复操作的原因说明。
-   * @param matchedRule 命中的白名单或策略规则。
+   * @param reason 放行的策略原因标识（如 "disabled"、"public-address" 等）。
+   * @param matchedRule 命中的白名单规则，无规则命中时传空字符串或标识码。
    */
   private publishAllowed(host: string, address: string, reason: string, matchedRule: string): NetworkPolicyDecision {
     const decision: NetworkPolicyDecision = {
@@ -103,11 +104,11 @@ export class NetworkPolicyRuntime {
   }
 
   /**
-   * 发布网络策略事件，把状态变化通知给宿主或其他 Runtime。
+   * 构造阻断决策并可选地在事件总线上发布 {@link NetworkPolicyBlockedPayload} 事件。
    * @param host 目标主机名。
    * @param address 解析后的 IP 地址。
-   * @param reason 失败、中止或恢复操作的原因说明。
-   * @param matchedRule 命中的白名单或策略规则。
+   * @param reason 阻断的策略原因标识（如 "private-address"、"block-unresolved-host" 等）。
+   * @param matchedRule 命中的白名单规则，无规则命中时传空字符串或标识码。
    */
   private publishBlocked(host: string, address: string, reason: string, matchedRule: string): NetworkPolicyDecision {
     const decision: NetworkPolicyDecision = {
@@ -153,7 +154,7 @@ export class NetworkPolicyRuntime {
    * 判断 IPv4 地址是否命中指定 CIDR 规则。
    * @param address 解析后的 IP 地址。
    * @param rule 待匹配的策略规则。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @returns 地址匹配指定 CIDR 规则时返回 true。
    */
   private matchesCidr(address: string, rule: string): boolean {
     if (rule.indexOf('/') < 0) {
@@ -208,7 +209,7 @@ export class NetworkPolicyRuntime {
   /**
    * 判断地址是否属于私网、环回或链路本地地址。
    * @param address 解析后的 IP 地址。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @returns 地址属于私网、环回或链路本地范围时返回 true。
    */
   private isPrivateAddress(address: string): boolean {
     if (this.isPrivateIpv6(address)) {
@@ -228,7 +229,7 @@ export class NetworkPolicyRuntime {
   /**
    * 判断地址是否属于当前策略能够识别的地址族。
    * @param address 解析后的 IP 地址。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @returns 地址属于当前策略可识别的地址族（IPv4 或含冒号的地址）时返回 true。
    */
   private isKnownAddressFamily(address: string): boolean {
     if (this.parseIpv4(address) !== -1) {
@@ -240,7 +241,7 @@ export class NetworkPolicyRuntime {
   /**
    * 判断 IPv6 地址是否属于本地、私有或链路本地范围。
    * @param address 解析后的 IP 地址。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @returns 地址属于本地/私有/链路本地 IPv6 范围时返回 true。
    */
   private isPrivateIpv6(address: string): boolean {
     const normalized = address.toLowerCase();
@@ -258,7 +259,7 @@ export class NetworkPolicyRuntime {
    * @param value 已转换成数值的 IPv4 地址。
    * @param baseAddress CIDR 或地址段的基准地址。
    * @param prefix CIDR 前缀长度。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @returns 地址落在指定 CIDR 地址段内时返回 true。
    */
   private inIpv4Range(value: number, baseAddress: string, prefix: number): boolean {
     const base = this.parseIpv4(baseAddress);
@@ -295,7 +296,7 @@ export class NetworkPolicyRuntime {
   /**
    * 判断字符串是否只包含十进制数字。
    * @param value 待检查的字符串。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @returns 字符串仅由十进制数字组成时返回 true。
    */
   private isDecimalDigits(value: string): boolean {
     if (value.length === 0) {

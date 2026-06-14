@@ -9,25 +9,25 @@ import type {
 } from './EventModels';
 
 /**
- * 提供事件目录相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 事件目录运行时，管理事件注册、查询、发布及上游名称映射。
  */
 export class EventRuntime {
   /**
-   * 事件总线。
+   * 事件总线实例，用于事件的发布与订阅。
    */
   private events: EventBus;
   /**
-   * catalog 值，由当前实例内部维护。
+   * 事件目录映射，键为事件注册名称，值为目录条目。
    */
   private catalog: Map<string, EventCatalogEntry> = new Map<string, EventCatalogEntry>();
   /**
-   * upstream Map 值，由当前实例内部维护。
+   * 上游事件名称到目录注册名称的映射表。
    */
   private upstreamMap: Map<string, string> = new Map<string, string>();
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化运行时实例并注册默认事件目录。
+   * @param events 事件总线实例。
    */
   constructor(events: EventBus) {
     this.events = events;
@@ -35,8 +35,9 @@ export class EventRuntime {
   }
 
   /**
-   * 执行 emitServerStarted 的内部处理步骤，供当前模块复用。
+   * 发布 server-started 事件，通知运行时启动完成。
    * @param source 来源类型。
+   * @returns 已发布的事件实例。
    */
   emitServerStarted(source: RuntimeSource): RuntimeEvent<ServerStartedPayload> {
     const payload: ServerStartedPayload = {
@@ -46,7 +47,10 @@ export class EventRuntime {
   }
 
   /**
-   * 执行 emitRuntimeSignal 的内部处理步骤，供当前模块复用。
+   * 发布 runtime.signal 事件，传递运行时信号。
+   * @param signal 信号标识。
+   * @param detail 与信号关联的补充信息。
+   * @returns 已发布的事件实例。
    */
   emitRuntimeSignal(signal: string, detail: string): RuntimeEvent<RuntimeSignalPayload> {
     const payload: RuntimeSignalPayload = {
@@ -57,8 +61,8 @@ export class EventRuntime {
   }
 
   /**
-   * 读取Catalog列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取事件目录列表，返回排序后的副本，外部修改不影响内部状态。
+   * @returns 按名称排序的事件目录条目列表。
    */
   listCatalog(): Array<EventCatalogEntry> {
     const entries = Array.from(this.catalog.values());
@@ -71,8 +75,9 @@ export class EventRuntime {
   }
 
   /**
-   * 读取必须存在的Catalog Entry 值，缺失时抛出错误。
-   * @param name 显示名称或注册名称。
+   * 根据名称获取事件目录条目，不存在时抛出异常。
+   * @param name 事件的注册名称。
+   * @returns 事件目录条目的副本。
    */
   requireCatalogEntry(name: string): EventCatalogEntry {
     const entry = this.catalog.get(name);
@@ -83,8 +88,9 @@ export class EventRuntime {
   }
 
   /**
-   * 执行 mapUpstreamEventName 的内部处理步骤，供当前模块复用。
-   * @param upstreamName upstream名称。
+   * 将上游事件名称映射为目录注册名称，未注册时直接返回原名称。
+   * @param upstreamName 上游事件名称。
+   * @returns 目录注册名称，或未注册时返回原名称。
    */
   mapUpstreamEventName(upstreamName: string): string {
     const mapped = this.upstreamMap.get(upstreamName);
@@ -95,8 +101,10 @@ export class EventRuntime {
   }
 
   /**
-   * 发布事件目录事件，把状态变化通知给宿主或其他 Runtime。
-   * @param name 显示名称或注册名称。
+   * 发布事件目录变更事件，将目录状态变化通知给宿主或其他运行时。
+   * @param name 事件的注册名称。
+   * @param detail 事件发布时的附加说明。
+   * @returns 已发布的事件实例。
    */
   publishCatalogEvent(name: string, detail: string): RuntimeEvent<EventCatalogPayload> {
     const payload: EventCatalogPayload = {
@@ -107,7 +115,7 @@ export class EventRuntime {
   }
 
   /**
-   * 注册Default Catalog 值，使其可被后续运行时流程使用。
+   * 注册一组默认事件目录条目，覆盖核心运行时生命周期事件。
    */
   private registerDefaultCatalog(): void {
     this.registerCatalogEntry('app.ready', 'app_ready', 'app', ['runtimeVersion', 'userId'], true, true);
@@ -127,9 +135,13 @@ export class EventRuntime {
   }
 
   /**
-   * 注册Catalog Entry 值，使其可被后续运行时流程使用。
-   * @param name 显示名称或注册名称。
-   * @param upstreamName upstream名称。
+   * 向事件目录注册一条事件记录，同时建立名称映射。
+   * @param name 事件的唯一注册名称。
+   * @param upstreamName 上游插件层使用的事件名称。
+   * @param domain 事件所属领域。
+   * @param payloadFields 事件载荷中包含的字段名称列表。
+   * @param pluginVisible 是否对插件可见。
+   * @param uiVisible 是否在 UI 层可见。
    */
   private registerCatalogEntry(
     name: string,
@@ -152,8 +164,9 @@ export class EventRuntime {
   }
 
   /**
-   * 复制Catalog Entry 值，避免外部修改内部状态。
-   * @param entry 条目记录。
+   * 深拷贝事件目录条目，防止外部修改影响内部状态。
+   * @param entry 待拷贝的事件目录条目。
+   * @returns 拷贝后的新条目。
    */
   private cloneCatalogEntry(entry: EventCatalogEntry): EventCatalogEntry {
     return {

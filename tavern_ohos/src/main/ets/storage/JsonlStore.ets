@@ -1,22 +1,24 @@
 import type { TavernFileStore } from './TavernFileStore';
 
 /**
- * 提供文件存储的存储实现，封装路径规范化和读写细节。
+ * 基于 TavernFileStore 的 JSONL（每行一条 JSON 记录）文件存取。
+ *
+ * 每条记录独占一行，写入时通过 append 追加，读取时逐行解析；
+ * 支持分页读取（readRange）和全量压缩重写（compact）。
  */
 export class JsonlStore<T extends Object> {
   /**
-   * 文件存储适配器。
+   * TavernFileStore 实例，由外部注入。
    */
   private files: TavernFileStore;
   /**
-   * 路径。
+   * 文件的相对存储路径。
    */
   private path: string;
 
   /**
-   * 初始化当前运行时实例。
-   * @param files 文件存储适配器。
-   * @param path 路径。
+   * @param files TavernFileStore 实例。
+   * @param path 文件的相对存储路径。
    */
   constructor(files: TavernFileStore, path: string) {
     this.files = files;
@@ -24,16 +26,16 @@ export class JsonlStore<T extends Object> {
   }
 
   /**
-   * 追加目标对象，保留既有内容并写入新增片段。
-   * @param value 要保存或比较的字段值。
+   * 将一条记录序列化为 JSON 后追加到文件末尾。
+   * @param value 待追加的记录数据。
    */
   async append(value: T): Promise<void> {
     await this.files.appendText(this.path, `${JSON.stringify(value)}\n`);
   }
 
   /**
-   * 读取All 值，并转换为运行时使用的数据结构。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取文件中所有记录并反序列化为数组。
+   * @returns 所有记录列表；返回值是副本，调用方可安全读取。
    */
   async readAll(): Promise<Array<T>> {
     const exists = await this.files.exists(this.path);
@@ -45,10 +47,10 @@ export class JsonlStore<T extends Object> {
   }
 
   /**
-   * 读取Range 值，并转换为运行时使用的数据结构。
-   * @param startIndex 分页起始索引。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按起始索引和数量读取文件中的部分记录。
+   * @param startIndex 分页起始索引（从 0 开始）。
+   * @param count 欲读取的记录数量。
+   * @returns JSON 记录列表副本。
    */
   async readRange(startIndex: number, count: number): Promise<Array<T>> {
     const all = await this.readAll();
@@ -59,8 +61,11 @@ export class JsonlStore<T extends Object> {
   }
 
   /**
-   * 执行 compact 的内部处理步骤，供当前模块复用。
-   * @param values 待处理的值列表。
+   * 以提供的记录列表覆盖整个文件内容。
+   *
+   * 用于日志压缩（compaction）、去重或者重新排序后将结果写回，
+   * 写入后会再次读取并比对数量以确保数据完整。
+   * @param values 覆盖写入的记录列表。
    */
   async compact(values: Array<T>): Promise<void> {
     const lines = new Array<string>();
@@ -76,9 +81,11 @@ export class JsonlStore<T extends Object> {
   }
 
   /**
-   * 解析输入内容并转换为Lines 列表结构。
-   * @param content 要写入或追加的文本内容。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 将文本内容按行解析为记录数组。
+   *
+   * 空行和纯空白行会被跳过。
+   * @param content 待解析的文本内容。
+   * @returns JSON 记录列表副本。
    */
   private parseLines(content: string): Array<T> {
     const records = new Array<T>();

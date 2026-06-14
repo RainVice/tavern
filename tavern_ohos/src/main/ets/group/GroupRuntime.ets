@@ -40,19 +40,19 @@ export class GroupRuntime {
    */
   private userId: string = 'default';
   /**
-   * groups 列表，由当前实例内部维护。
+   * 内存中所有群聊记录的映射表。
    */
   private groups: Map<string, GroupRecord> = new Map<string, GroupRecord>();
   /**
-   * members 列表，由当前实例内部维护。
+   * 内存中每个群聊的成员记录列表映射表。
    */
   private members: Map<string, Array<GroupMemberRecord>> = new Map<string, Array<GroupMemberRecord>>();
   /**
-   * requests 列表，由当前实例内部维护。
+   * 内存中每个群聊的生成请求记录列表映射表。
    */
   private requests: Map<string, Array<GroupGenerationRequest>> = new Map<string, Array<GroupGenerationRequest>>();
   /**
-   * request Counter 值，由当前实例内部维护。
+   * 生成请求的自增计数器，用于生成唯一请求标识。
    */
   private requestCounter: number = 0;
 
@@ -121,8 +121,8 @@ export class GroupRuntime {
 
   /**
    * 创建新的群聊记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * @param params 创建群聊所需的参数。
+   * @returns 新创建的群聊记录副本。
    */
   createGroup(params: GroupCreateParams): GroupRecord {
     if (this.groups.has(params.id)) {
@@ -151,8 +151,8 @@ export class GroupRuntime {
   /**
    * 更新指定群聊，写回存储并按需发布变更事件。
    * @param groupId 目标群聊标识。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * @param params 更新群聊所需的参数。
+   * @returns 更新后的群聊记录副本。
    */
   updateGroup(groupId: string, params: GroupCreateParams): GroupRecord {
     const group = this.requireGroup(groupId);
@@ -167,7 +167,7 @@ export class GroupRuntime {
   }
 
   /**
-   * 删除指定群聊，并清理相关索引或资源引用。
+   * 删除指定群聊，并清理相关成员和请求数据，发布删除事件。
    * @param groupId 目标群聊标识。
    */
   deleteGroup(groupId: string): void {
@@ -182,17 +182,17 @@ export class GroupRuntime {
   }
 
   /**
-   * 读取指定群聊，不存在时抛出错误。
+   * 获取指定群聊的记录副本。
    * @param groupId 目标群聊标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 群聊记录副本；调用方可安全读取，修改不影响内部状态。
    */
   getGroup(groupId: string): GroupRecord {
     return this.cloneGroup(this.requireGroup(groupId));
   }
 
   /**
-   * 读取Groups列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取所有群聊记录的列表副本。
+   * @returns 群聊记录列表副本；调用方可安全读取，修改不影响内部状态。
    */
   listGroups(): Array<GroupRecord> {
     const result = new Array<GroupRecord>();
@@ -204,9 +204,10 @@ export class GroupRuntime {
   }
 
   /**
-   * 创建或写入Member，完成持久化后返回可供调用方使用的结果。
+   * 向指定群聊添加成员。
    * @param groupId 目标群聊标识。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * @param params 成员创建参数。
+   * @returns 新创建的成员记录副本；调用方可安全读取，修改不影响内部状态。
    */
   addMember(groupId: string, params: GroupMemberCreateParams): GroupMemberRecord {
     this.requireGroup(groupId);
@@ -236,7 +237,7 @@ export class GroupRuntime {
   }
 
   /**
-   * 移除成员，用于解除注册、绑定或索引关系。
+   * 从指定群聊移除成员。
    * @param groupId 目标群聊标识。
    * @param characterId 目标角色标识。
    */
@@ -253,10 +254,10 @@ export class GroupRuntime {
   }
 
   /**
-   * 更新Members状态，必要时写回存储并发布对应事件。
+   * 重新排序指定群聊的成员列表。
    * @param groupId 目标群聊标识。
-   * @param characterIds 目标角色标识列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param characterIds 按新顺序排列的角色标识列表，必须包含所有成员。
+   * @returns 重排序后的成员记录列表副本；调用方可安全读取。
    */
   reorderMembers(groupId: string, characterIds: Array<string>): Array<GroupMemberRecord> {
     const members = this.requireMembers(groupId);
@@ -280,18 +281,19 @@ export class GroupRuntime {
   }
 
   /**
-   * 读取Members列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 获取指定群聊的成员列表副本。
    * @param groupId 目标群聊标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 成员记录列表副本；调用方可安全读取，修改不影响内部状态。
    */
   listMembers(groupId: string): Array<GroupMemberRecord> {
     return this.cloneMembers(this.requireMembers(groupId));
   }
 
   /**
-   * 把群聊对象绑定到指定作用域，后续读取会按该绑定解析。
+   * 将指定用户人格绑定到群聊。
    * @param groupId 目标群聊标识。
-   * @param personaId 目标用户人格标识。
+   * @param personaId 用户人格标识。
+   * @returns 新的绑定记录副本；调用方可安全读取。
    */
   bindPersona(groupId: string, personaId: string): GroupPersonaBindingRecord {
     const group = this.requireGroup(groupId);
@@ -307,9 +309,11 @@ export class GroupRuntime {
   }
 
   /**
-   * 读取或解析Speaker，调用方应处理不存在或不匹配的情况。
+   * 从指定群聊中选择发言者。
+   * 若指定角色标识则选择该角色，否则从已启用成员中选出活跃度最高的角色。
    * @param groupId 目标群聊标识。
-   * @param characterId 目标角色标识。
+   * @param characterId 指定角色标识；传入空字符串则自动选择。
+   * @returns 被选中的成员记录副本。
    */
   selectSpeaker(groupId: string, characterId: string): GroupMemberRecord {
     const members = this.requireMembers(groupId);
@@ -330,10 +334,10 @@ export class GroupRuntime {
   }
 
   /**
-   * 根据入参构建Prompt Data 值，仅生成数据结构，不直接执行外部请求。
+   * 根据群聊信息和世界信息构建 Prompt 数据。
    * @param groupId 目标群聊标识。
-
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * @param sharedWorldInfoText 共享的世界信息文本。
+   * @returns 构建好的 Prompt 数据，包含群聊描述、成员和世界信息。
    */
   buildPromptData(groupId: string, sharedWorldInfoText: string): GroupPromptData {
     const group = this.requireGroup(groupId);
@@ -353,47 +357,51 @@ export class GroupRuntime {
   }
 
   /**
-   * 执行 queueRegenerate 的内部处理步骤，供当前模块复用。
+   * 将指定聊天消息排队等待重新生成。
    * @param groupId 目标群聊标识。
    * @param chatId 目标聊天标识。
    * @param messageId 目标消息标识。
+   * @returns 新建的生成请求记录。
    */
   queueRegenerate(groupId: string, chatId: string, messageId: string): GroupGenerationRequest {
     return this.queueRequest(groupId, chatId, messageId, 'regenerate', '', '');
   }
 
   /**
-   * 执行 queueContinue 的内部处理步骤，供当前模块复用。
+   * 将指定聊天排队等待继续生成。
    * @param groupId 目标群聊标识。
    * @param chatId 目标聊天标识。
+   * @returns 新建的生成请求记录。
    */
   queueContinue(groupId: string, chatId: string): GroupGenerationRequest {
     return this.queueRequest(groupId, chatId, '', 'continue', '', '');
   }
 
   /**
-   * 执行 queueToolCall 的内部处理步骤，供当前模块复用。
+   * 将指定工具调用排队等待执行。
    * @param groupId 目标群聊标识。
    * @param chatId 目标聊天标识。
-   * @param toolName tool名称。
+   * @param toolName 工具名称。
+   * @returns 新建的生成请求记录。
    */
   queueToolCall(groupId: string, chatId: string, toolName: string): GroupGenerationRequest {
     return this.queueRequest(groupId, chatId, '', 'tool_call', '', toolName);
   }
 
   /**
-   * 读取GenerationRequests列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 获取指定群聊的生成请求列表副本。
    * @param groupId 目标群聊标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 生成请求记录列表副本；调用方可安全读取，修改不影响内部状态。
    */
   listGenerationRequests(groupId: string): Array<GroupGenerationRequest> {
     return this.cloneRequests(this.requireRequests(groupId));
   }
 
   /**
-   * 导出群聊，用于备份、迁移或与 SillyTavern 数据互通。
+   * 导出群聊完整数据，包含群聊记录、成员列表和生成请求列表。
+   * 可用于备份、迁移或与外部工具数据互通。
    * @param groupId 目标群聊标识。
-   * @returns 可持久化或可传输的导出内容。
+   * @returns 包含群聊、成员和请求的导出数据。
    */
   exportGroup(groupId: string): GroupExportData {
     const group = this.cloneGroup(this.requireGroup(groupId));
@@ -408,10 +416,11 @@ export class GroupRuntime {
   }
 
   /**
-   * 从外部数据导入Group 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
-   * @param newGroupId 目标新记录群聊标识。
-   * @returns 更新或读取后的记录副本。
+   * 从外部导入的群聊数据创建新群聊。
+   * 会为数据分配新的群聊标识，保留成员和请求记录。
+   * @param data 要导入的群聊数据。
+   * @param newGroupId 新群聊的唯一标识。
+   * @returns 导入后创建的群聊记录副本。
    */
   importGroup(data: GroupExportData, newGroupId: string): GroupRecord {
     if (this.groups.has(newGroupId)) {
@@ -475,7 +484,7 @@ export class GroupRuntime {
   /**
    * 读取必须存在的Members 列表，缺失时抛出错误。
    * @param groupId 目标群聊标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 群聊成员记录列表副本
    */
   private requireMembers(groupId: string): Array<GroupMemberRecord> {
     const members = this.members.get(groupId);
@@ -488,7 +497,7 @@ export class GroupRuntime {
   /**
    * 读取必须存在的Requests 列表，缺失时抛出错误。
    * @param groupId 目标群聊标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 群聊成员记录列表副本
    */
   private requireRequests(groupId: string): Array<GroupGenerationRequest> {
     const requests = this.requests.get(groupId);
@@ -502,7 +511,7 @@ export class GroupRuntime {
    * 在当前集合中查找Member 值，未命中时返回空值或默认位置。
 
    * @param characterId 目标角色标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 群聊成员记录列表副本
    */
   private findMember(members: Array<GroupMemberRecord>, characterId: string): GroupMemberRecord {
     for (let index = 0; index < members.length; index += 1) {
@@ -516,7 +525,7 @@ export class GroupRuntime {
   /**
    * 读取或解析MostTalkative，调用方应处理不存在或不匹配的情况。
 
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 群聊成员记录列表副本
    */
   private selectMostTalkative(members: Array<GroupMemberRecord>): GroupMemberRecord {
     if (members.length === 0) {
@@ -582,7 +591,7 @@ export class GroupRuntime {
   /**
    * 复制Members 列表，避免外部修改内部状态。
 
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 群聊成员记录列表副本
    */
   private cloneMembers(members: Array<GroupMemberRecord>): Array<GroupMemberRecord> {
     const cloned = new Array<GroupMemberRecord>();
@@ -613,7 +622,7 @@ export class GroupRuntime {
   /**
    * 复制Requests 列表，避免外部修改内部状态。
 
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 群聊成员记录列表副本
    */
   private cloneRequests(requests: Array<GroupGenerationRequest>): Array<GroupGenerationRequest> {
     const cloned = new Array<GroupGenerationRequest>();

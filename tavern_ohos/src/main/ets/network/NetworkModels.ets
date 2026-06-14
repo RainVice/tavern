@@ -5,11 +5,11 @@ import type { ConnectionHeaderRecord } from '../connection/ConnectionProfileMode
  */
 export interface NetworkHeaderOverrideRule {
   /**
-   * hosts 列表，由当前实例内部维护。
+   * 此规则匹配到的请求应覆写的目标主机列表。
    */
   hosts: Array<string>;
   /**
-   * 请求头列表，由当前实例内部维护。
+   * 匹配命中后应用于请求的请求头列表。
    */
   headers: Array<ConnectionHeaderRecord>;
 }

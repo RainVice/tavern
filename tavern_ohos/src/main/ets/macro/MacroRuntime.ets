@@ -13,43 +13,44 @@ import type {
 } from './MacroModels';
 
 /**
- * 描述宏展开模块在运行时交换的数据结构。
+ * 内部宏定义结构，将宏记录与可执行动作绑定。
  */
 interface MacroDefinitionInternal {
   /**
-   * 记录数据。
+   * 宏记录（不含执行逻辑的元信息）。
    */
   record: MacroRecord;
   /**
-   * action 值，由当前实例内部维护。
+   * 宏对应的可执行动作。
    */
   action: MacroAction;
 }
 
 /**
- * 提供宏展开相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供宏展开相关的无 UI 运行时能力，负责宏注册、展开、诊断和事件发布。
  */
 export class MacroRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于发布 macro.registered / macro.expanded 等事件。
    */
   private events: EventBus;
   /**
-   * variables 列表，由当前实例内部维护。
+   * 变量运行时，供 getvar / setvar 等内置宏读取或写入变量。
    */
   private variables: VariableRuntime;
   /**
-   * macros 列表，由当前实例内部维护。
+   * 已注册的宏映射表，键为宏名称，值为内部定义。
    */
   private macros: Map<string, MacroDefinitionInternal> = new Map<string, MacroDefinitionInternal>();
   /**
-   * max Depth 值，由当前实例内部维护。
+   * 宏展开的最大递归深度，防止无限循环。
    */
   private maxDepth: number = 8;
 
   /**
-   * 注入宏展开运行时依赖并初始化实例状态。
-   * @param events 事件总线。
+   * 构造 MacroRuntime 实例。
+   * @param events 事件总线实例。
+   * @param variables 变量运行时实例。
    */
   constructor(events: EventBus, variables: VariableRuntime) {
     this.events = events;
@@ -58,8 +59,9 @@ export class MacroRuntime {
   }
 
   /**
-   * 注册Macro 值，使其可被后续运行时流程使用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 注册一个宏，使其可被后续展开流程使用。
+   * @param params 宏注册参数。
+   * @returns 注册成功的宏记录副本。
    */
   registerMacro(params: MacroRegistrationParams): MacroRecord {
     const record: MacroRecord = {
@@ -82,24 +84,29 @@ export class MacroRuntime {
   }
 
   /**
-   * 取消注册Macro 值，避免后续流程继续调用。
-   * @param name 显示名称或注册名称。
+   * 取消注册指定名称的宏。
+   * @param name 要移除的宏名称。
    */
   unregisterMacro(name: string): void {
     this.macros.delete(name);
   }
 
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
-   * @param input 待处理的输入对象。
+   * 对输入文本进行宏展开，遇到未知宏时保留原文本。
+   * @param input 待展开的原始文本。
+   * @param context 宏展开上下文。
+   * @returns 展开结果。
    */
   expand(input: string, context: MacroEvaluationContext): MacroExpansionResult {
     return this.expandWithStrategy(input, context, 'keep');
   }
 
   /**
-   * 执行 expandWithStrategy 的内部处理步骤，供当前模块复用。
-   * @param input 待处理的输入对象。
+   * 对输入文本进行宏展开，可通过 unknownStrategy 控制未知宏的处理方式。
+   * @param input 待展开的原始文本。
+   * @param context 宏展开上下文。
+   * @param unknownStrategy 遇到未知宏时的策略：'keep' 保留原文本，'remove' 移除。
+   * @returns 展开结果。
    */
   expandWithStrategy(input: string, context: MacroEvaluationContext, unknownStrategy: string): MacroExpansionResult {
     const diagnostics = new Array<MacroDiagnostic>();
@@ -117,19 +124,19 @@ export class MacroRuntime {
   }
 
   /**
-   * 执行 diagnose 的内部处理步骤，供当前模块复用。
-   * @param input 待处理的输入对象。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 对输入文本进行诊断，仅返回诊断信息，不实际展开文本。
+   * @param input 待诊断的原始文本。
+   * @param context 宏展开上下文。
+   * @returns 诊断列表；返回值是副本，调用方可安全读取。
    */
   diagnose(input: string, context: MacroEvaluationContext): Array<MacroDiagnostic> {
     return this.expandWithStrategy(input, context, 'keep').diagnostics;
   }
 
   /**
-   * 执行 autocomplete 的内部处理步骤，供当前模块复用。
-   * @param prefix CIDR 前缀长度。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 根据前缀自动补全已注册的宏名称。
+   * @param prefix 要匹配的宏名称前缀。
+   * @returns 匹配的宏记录列表，按名称字典序排序；返回值是副本。
    */
   autocomplete(prefix: string): Array<MacroRecord> {
     const result = new Array<MacroRecord>();
@@ -160,8 +167,8 @@ export class MacroRuntime {
   }
 
   /**
-   * 读取Macros列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取当前所有已注册宏的记录列表。
+   * @returns 宏记录列表，按注册顺序排列；返回值是副本。
    */
   listMacros(): Array<MacroRecord> {
     const result = new Array<MacroRecord>();
@@ -258,8 +265,10 @@ export class MacroRuntime {
   }
 
   /**
-   * 在当前集合中查找Macro End 值，未命中时返回空值或默认位置。
-   * @param input 待处理的输入对象。
+   * 从给定位置开始查找宏结束标记 }}。
+   * @param input 原始文本。
+   * @param start 开始搜索的位置。
+   * @returns }} 的位置，未找到时返回 -1。
    */
   private findMacroEnd(input: string, start: number): number {
     let depth = 0;
@@ -311,9 +320,9 @@ export class MacroRuntime {
     return parts;
   }
 
-  /**
-   * 注册Built Ins 列表，使其可被后续运行时流程使用。
-   */
+/**
+ * 初始化内置宏（如 {{char}}、{{user}}、{{random}} 等）。
+ */
   private registerBuiltIns(): void {
     this.registerBuiltin('char', 'names', new CharacterNameMacroAction());
     this.registerBuiltin('user', 'names', new UserNameMacroAction());
@@ -333,10 +342,10 @@ export class MacroRuntime {
   }
 
   /**
-   * 注册Builtin 值，使其可被后续运行时流程使用。
-   * @param name 显示名称或注册名称。
-
-
+   * 注册单个内置宏。
+   * @param name 宏名称。
+   * @param category 宏分类。
+   * @param action 宏对应的动作实现。
    */
   private registerBuiltin(name: string, category: string, action: MacroAction): void {
     // 调用参数。
@@ -352,8 +361,9 @@ export class MacroRuntime {
   }
 
   /**
-   * 复制Record 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深拷贝 MacroRecord，防止外部修改内部状态。
+   * @param record 要复制的宏记录。
+   * @returns 新的宏记录副本。
    */
   private cloneRecord(record: MacroRecord): MacroRecord {
     return {
@@ -366,9 +376,9 @@ export class MacroRuntime {
   }
 
   /**
-   * 复制Diagnostics 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深拷贝诊断列表，防止外部修改内部状态。
+   * @param diagnostics 原始诊断列表。
+   * @returns 新的诊断列表副本。
    */
   private cloneDiagnostics(diagnostics: Array<MacroDiagnostic>): Array<MacroDiagnostic> {
     const cloned = new Array<MacroDiagnostic>();
@@ -385,39 +395,39 @@ export class MacroRuntime {
 }
 
 /**
- * 描述宏展开模块在运行时交换的数据结构。
+ * 内部类型，表示一次单遍宏展开的结果。
  */
 interface MacroExpandStep {
   /**
-   * 文本内容。
+   * 展开后的文本。
    */
   text: string;
   /**
-   * changed 值，由当前实例内部维护。
+   * 此次展开是否至少替换了一个宏。
    */
   changed: boolean;
 }
 
 /**
- * 描述宏展开操作完成后返回给调用方的结果。
+ * 内部类型，表示单个宏替换的结果。
  */
 interface MacroReplaceResult {
   /**
-   * 字段值。
+   * 替换后的文本。
    */
   value: string;
   /**
-   * changed 值，由当前实例内部维护。
+   * 是否发生了替换。
    */
   changed: boolean;
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：展开为角色名称（characterName）。
  */
 class CharacterNameMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回当前上下文的角色名称。
    */
   expand(context: MacroExecutionContext): string {
     return context.context.characterName;
@@ -425,11 +435,11 @@ class CharacterNameMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：展开为用户名称（userName）。
  */
 class UserNameMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回当前上下文的用户名称。
    */
   expand(context: MacroExecutionContext): string {
     return context.context.userName;
@@ -437,11 +447,11 @@ class UserNameMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：展开为 Persona 名称（personaName）。
  */
 class PersonaNameMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回当前上下文的 Persona 名称。
    */
   expand(context: MacroExecutionContext): string {
     return context.context.personaName;
@@ -449,11 +459,11 @@ class PersonaNameMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：展开为对话名称（chatName）。
  */
 class ChatNameMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回当前上下文的对话名称。
    */
   expand(context: MacroExecutionContext): string {
     return context.context.chatName;
@@ -461,11 +471,11 @@ class ChatNameMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：展开为消息文本（messageText）。
  */
 class MessageTextMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回当前上下文的消息文本。
    */
   expand(context: MacroExecutionContext): string {
     return context.context.messageText;
@@ -473,11 +483,11 @@ class MessageTextMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：展开为 World Info 名称（worldInfoName）。
  */
 class WorldInfoNameMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回当前上下文的 World Info 名称。
    */
   expand(context: MacroExecutionContext): string {
     return context.context.worldInfoName;
@@ -485,23 +495,24 @@ class WorldInfoNameMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：读取变量值（{{getvar::key}}）。
  */
 class GetVariableMacroAction implements MacroAction {
   /**
-   * variables 列表，由当前实例内部维护。
+   * 变量运行时实例，用于解析变量值。
    */
   private variables: VariableRuntime;
 
   /**
-   * 注入宏展开运行时依赖并初始化实例状态。
+   * 构造 GetVariableMacroAction。
+   * @param variables 变量运行时实例。
    */
   constructor(variables: VariableRuntime) {
     this.variables = variables;
   }
 
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 根据第一个参数解析变量值并返回。
    */
   expand(context: MacroExecutionContext): string {
     if (context.args.length === 0) {
@@ -512,23 +523,24 @@ class GetVariableMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：设置变量值（{{setvar::key::value}}）。
  */
 class SetVariableMacroAction implements MacroAction {
   /**
-   * variables 列表，由当前实例内部维护。
+   * 变量运行时实例，用于写入变量。
    */
   private variables: VariableRuntime;
 
   /**
-   * 注入宏展开运行时依赖并初始化实例状态。
+   * 构造 SetVariableMacroAction。
+   * @param variables 变量运行时实例。
    */
   constructor(variables: VariableRuntime) {
     this.variables = variables;
   }
 
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 将第一个参数作为变量名、第二个参数作为变量值写入上下文。
    */
   expand(context: MacroExecutionContext): string {
     if (context.args.length < 2) {
@@ -540,11 +552,11 @@ class SetVariableMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：条件判断（{{if::condition::trueValue::falseValue}}）。
  */
 class IfMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 根据条件参数的布尔值选择返回第一个或第二个值参数。
    */
   expand(context: MacroExecutionContext): string {
     if (context.args.length < 2) {
@@ -560,9 +572,9 @@ class IfMacroAction implements MacroAction {
   }
 
   /**
-   * 判断Truthy 值是否满足条件。
-   * @param value 要保存或比较的字段值。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断字符串是否为真值（非空、非 false、非 off、非 0）。
+   * @param value 待判断的字符串。
+   * @returns 值为真时返回 true。
    */
   private isTruthy(value: string): boolean {
     const normalized = value.trim().toLowerCase();
@@ -571,11 +583,11 @@ class IfMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：随机选择（{{random::opt1::opt2::...}}）。
  */
 class RandomMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 从参数列表中随机选择一个返回。
    */
   expand(context: MacroExecutionContext): string {
     if (context.args.length === 0) {
@@ -587,11 +599,11 @@ class RandomMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：生成空格（{{space::n}}，默认为 1 个）。
  */
 class SpaceMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回指定数量的空格字符。
    */
   expand(context: MacroExecutionContext): string {
     // 数量。
@@ -601,11 +613,11 @@ class SpaceMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：生成换行符（{{newline::n}}，默认为 1 个）。
  */
 class NewlineMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回指定数量的换行符。
    */
   expand(context: MacroExecutionContext): string {
     // 数量。
@@ -615,11 +627,11 @@ class NewlineMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：无操作（{{noop}}），始终返回空字符串。
  */
 class NoopMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回空字符串，不产生任何输出。
    */
   expand(context: MacroExecutionContext): string {
     const rawLength = context.raw.length;
@@ -631,11 +643,11 @@ class NoopMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：返回当前 ISO 日期（{{isodate}}，格式 yyyy-MM-dd）。
  */
 class IsoDateMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回当天日期的 ISO 8601 字符串（仅日期部分）。
    */
   expand(context: MacroExecutionContext): string {
     const rawLength = context.raw.length;
@@ -647,11 +659,11 @@ class IsoDateMacroAction implements MacroAction {
 }
 
 /**
- * 实现一个可执行动作，供运行时在对应场景中调用。
+ * 内置宏：返回当前时间（{{time}}，格式 HH:mm）。
  */
 class TimeMacroAction implements MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 返回当前时间的 ISO 8601 字符串（仅时分部分）。
    */
   expand(context: MacroExecutionContext): string {
     const rawLength = context.raw.length;

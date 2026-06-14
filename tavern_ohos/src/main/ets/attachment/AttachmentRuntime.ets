@@ -11,24 +11,24 @@ import type {
 } from './AttachmentModels';
 
 /**
- * 提供附件相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供附件相关的无界面运行时能力，负责附件记录与绑定关系的内存管理，以及事件的发布。
  */
 export class AttachmentRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于向系统广播附件状态变化。
    */
   private events: EventBus;
   /**
-   * attachments 列表，由当前实例内部维护。
+   * 附件记录的内存映射，键为附件标识。
    */
   private attachments: Map<string, AttachmentRecord> = new Map<string, AttachmentRecord>();
   /**
-   * bindings 列表，由当前实例内部维护。
+   * 附件绑定关系的内存映射，键为附件标识。
    */
   private bindings: Map<string, Array<AttachmentBindingRecord>> = new Map<string, Array<AttachmentBindingRecord>>();
 
   /**
-   * 初始化当前运行时实例。
+   * 使用事件总线初始化运行时实例。
    * @param events 事件总线。
    */
   constructor(events: EventBus) {
@@ -36,9 +36,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 创建新的附件记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新的附件记录，写入内存并发布更新事件。
+   * @param params 附件创建参数。
+   * @returns 创建后的附件记录副本。
    */
   createAttachment(params: AttachmentCreateParams): AttachmentRecord {
     const now = Date.now();
@@ -66,17 +66,17 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取指定附件，不存在时抛出错误。
-   * @param attachmentId 目标附件标识。
-   * @returns 更新或读取后的记录副本。
+   * 根据标识读取附件记录，不存在时抛出错误。
+   * @param attachmentId 附件标识。
+   * @returns 附件记录副本。
    */
   getAttachment(attachmentId: string): AttachmentRecord {
     return this.cloneAttachment(this.requireAttachment(attachmentId));
   }
 
   /**
-   * 读取Attachments列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取所有非删除状态的附件记录。
+   * @returns 附件记录副本列表。
    */
   listAttachments(): Array<AttachmentRecord> {
     const result = new Array<AttachmentRecord>();
@@ -90,10 +90,11 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 把附件对象绑定到指定作用域，后续读取会按该绑定解析。
-   * @param attachmentId 目标附件标识。
-
-   * @param targetId 目标目标对象标识。
+   * 将附件绑定到指定作用域，并发布添加事件。
+   * @param attachmentId 附件标识。
+   * @param targetType 目标作用域类型。
+   * @param targetId 目标作用域实体标识。
+   * @returns 新建的绑定记录副本。
    */
   bindAttachment(attachmentId: string, targetType: string, targetId: string): AttachmentBindingRecord {
     const attachment = this.requireAttachment(attachmentId);
@@ -122,9 +123,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取Bindings列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param attachmentId 目标附件标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取指定附件的所有绑定记录。
+   * @param attachmentId 附件标识。
+   * @returns 绑定记录副本列表。
    */
   listBindings(attachmentId: string): Array<AttachmentBindingRecord> {
     const records = this.bindings.get(attachmentId);
@@ -135,10 +136,10 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取AttachmentsForTarget列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @param targetId 目标目标对象标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 查询指定目标作用域下绑定的所有附件记录。
+   * @param targetType 目标作用域类型。
+   * @param targetId 目标作用域实体标识。
+   * @returns 附件记录副本列表。
    */
   listAttachmentsForTarget(targetType: string, targetId: string): Array<AttachmentRecord> {
     const result = new Array<AttachmentRecord>();
@@ -155,8 +156,10 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 更新图片描述Result状态，必要时写回存储并发布对应事件。
-   * @param attachmentId 目标附件标识。
+   * 更新附件的图片描述文本，并发布更新事件。
+   * @param attachmentId 附件标识。
+   * @param captionText 新的描述文本。
+   * @returns 更新后的附件记录副本。
    */
   markCaptionResult(attachmentId: string, captionText: string): AttachmentRecord {
     const attachment = this.requireAttachment(attachmentId);
@@ -167,8 +170,11 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 更新翻译Result状态，必要时写回存储并发布对应事件。
-   * @param attachmentId 目标附件标识。
+   * 更新附件的翻译文本，同时在元数据中记录目标语言，并发布更新事件。
+   * @param attachmentId 附件标识。
+   * @param targetLanguage 翻译目标语言。
+   * @param translationText 翻译后的文本内容。
+   * @returns 更新后的附件记录副本。
    */
   markTranslationResult(attachmentId: string, targetLanguage: string, translationText: string): AttachmentRecord {
     const attachment = this.requireAttachment(attachmentId);
@@ -180,8 +186,8 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取PromptAttachments列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取所有标记为纳入提示词构造的附件记录。
+   * @returns 精简后的提示词附件记录列表。
    */
   listPromptAttachments(): Array<AttachmentPromptRecord> {
     const result = new Array<AttachmentPromptRecord>();
@@ -203,8 +209,8 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取RagDocuments列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取所有标记为纳入 RAG 检索的附件记录。
+   * @returns 附件记录列表。
    */
   listRagDocuments(): Array<AttachmentRecord> {
     const result = new Array<AttachmentRecord>();
@@ -218,9 +224,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 导出附件，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param attachmentId 目标附件标识。
-   * @returns 可持久化或可传输的导出内容。
+   * 导出指定附件及其绑定关系，用于数据备份或跨实例迁移。
+   * @param attachmentId 附件标识。
+   * @returns 附件导出数据包。
    */
   exportAttachment(attachmentId: string): AttachmentExportData {
     const data: AttachmentExportData = {
@@ -231,10 +237,10 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 从外部数据导入Attachment 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
-   * @param newAttachmentId 目标新记录附件标识。
-   * @returns 更新或读取后的记录副本。
+   * 从外部数据导入附件记录，并赋予新的标识。
+   * @param data 待导入的附件数据包。
+   * @param newAttachmentId 导入后的新附件标识。
+   * @returns 导入后的附件记录副本。
    */
   importAttachment(data: AttachmentExportData, newAttachmentId: string): AttachmentRecord {
     if (this.attachments.has(newAttachmentId)) {
@@ -254,8 +260,8 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 删除指定附件，并清理相关索引或资源引用。
-   * @param attachmentId 目标附件标识。
+   * 删除指定附件（逻辑删除），清理绑定关系并发布删除事件。
+   * @param attachmentId 附件标识。
    */
   deleteAttachment(attachmentId: string): void {
     const attachment = this.requireAttachment(attachmentId);
@@ -270,8 +276,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取必须存在的Attachment 值，缺失时抛出错误。
-   * @param attachmentId 目标附件标识。
+   * 读取必须存在的附件记录，缺失或已删除时抛出错误。
+   * @param attachmentId 附件标识。
+   * @returns 附件记录引用。
    */
   private requireAttachment(attachmentId: string): AttachmentRecord {
     const attachment = this.attachments.get(attachmentId);
@@ -282,9 +289,9 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 读取必须存在的Bindings 列表，缺失时抛出错误。
-   * @param attachmentId 目标附件标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取必须存在的绑定记录列表，缺失时抛出错误。
+   * @param attachmentId 附件标识。
+   * @returns 绑定记录列表引用。
    */
   private requireBindings(attachmentId: string): Array<AttachmentBindingRecord> {
     const records = this.bindings.get(attachmentId);
@@ -293,6 +300,9 @@ export class AttachmentRuntime {
     }
     return records;
   }
+  /**
+   * 获取附件用于提示词构造的文本内容：优先取图注文本，否则取原始内容。
+   */
   private promptContent(attachment: AttachmentRecord): string {
     if (attachment.captionText.length > 0) {
       return attachment.captionText;
@@ -301,10 +311,11 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 追加Metadata 值，保留既有内容并写入新增片段。
-   * @param metadataJson metadata JSON 字符串。
-   * @param key 键名。
-   * @param value 要保存或比较的字段值。
+   * 向现有元数据 JSON 中追加键值对。
+   * @param metadataJson 原始元数据 JSON 字符串。
+   * @param key 要追加的键名。
+   * @param value 要追加的字段值。
+   * @returns 追加后的元数据 JSON 字符串。
    */
   private appendMetadata(metadataJson: string, key: string, value: string): string {
     const metadata: Record<string, string> = {};
@@ -323,7 +334,7 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 复制Attachment 值，避免外部修改内部状态。
+   * 深度复制附件记录，防止外部修改影响内部状态。
    */
   private cloneAttachment(attachment: AttachmentRecord): AttachmentRecord {
     const cloned: AttachmentRecord = {
@@ -347,9 +358,8 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 复制Bindings 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深度复制绑定记录列表，防止外部修改影响内部状态。
+   * @returns 绑定记录副本列表。
    */
   private cloneBindings(bindings: Array<AttachmentBindingRecord>): Array<AttachmentBindingRecord> {
     const cloned = new Array<AttachmentBindingRecord>();
@@ -360,7 +370,7 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 复制Binding 值，避免外部修改内部状态。
+   * 深度复制单条绑定记录，防止外部修改影响内部状态。
    */
   private cloneBinding(binding: AttachmentBindingRecord): AttachmentBindingRecord {
     return {
@@ -372,8 +382,7 @@ export class AttachmentRuntime {
   }
 
   /**
-   * 发布附件事件，把状态变化通知给宿主或其他 Runtime。
-
+   * 发布附件更新事件，通知监听者状态已变化。
    */
   private publishUpdated(attachment: AttachmentRecord): void {
     const payload: AttachmentUpdatedPayload = {

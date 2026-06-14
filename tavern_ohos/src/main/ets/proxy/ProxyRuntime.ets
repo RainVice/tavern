@@ -12,7 +12,7 @@ import type {
  */
 export class ProxyRuntime {
   /**
-   * 事件总线。
+   * 事件总线，用于发布代理配置与解析事件。
    */
   private events: EventBus;
   private settings: ProxySettings = {
@@ -25,14 +25,16 @@ export class ProxyRuntime {
 
   /**
    * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * @param events 事件总线实例，用于发布和订阅代理事件。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 执行 configure 的内部处理步骤，供当前模块复用。
+   * 应用传入的代理设置并发布配置变更事件。
+   * @param settings 新的代理设置。
+   * @returns 变更后的代理设置副本。
    */
   configure(settings: ProxySettings): ProxySettings {
     this.settings = this.cloneSettings(settings);
@@ -44,15 +46,17 @@ export class ProxyRuntime {
   }
 
   /**
-   * 读取Settings 列表，不存在时通常抛出错误或返回空值。
-   * @returns 更新或读取后的记录副本。
+   * 获取当前代理设置副本。
+   * @returns 当前代理设置的深拷贝。
    */
   getSettings(): ProxySettings {
     return this.cloneSettings(this.settings);
   }
 
   /**
-   * 根据当前上下文解析目标对象，返回实际可用值。
+   * 根据代理设置解析目标 URL，返回代理解析结果并发布事件。
+   * @param targetUrl 要解析代理的目标 URL。
+   * @returns 代理解析结果记录。
    */
   resolve(targetUrl: string): ProxyResolutionRecord {
     let resolution: ProxyResolutionRecord;

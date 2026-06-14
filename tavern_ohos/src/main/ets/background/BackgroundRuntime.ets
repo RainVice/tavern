@@ -30,19 +30,19 @@ export class BackgroundRuntime {
    */
   private events: EventBus;
   /**
-   * assets 列表，由当前实例内部维护。
+   * 资源运行时实例，用于管理背景图资产。
    */
   private assets: AssetRuntime;
   /**
-   * thumbnails 列表，由当前实例内部维护。
+   * 缩略图运行时实例，用于生成背景图缩略图。
    */
   private thumbnails: ThumbnailRuntime;
   /**
-   * themes 列表，由当前实例内部维护。
+   * 主题运行时实例，用于同步背景图激活。
    */
   private themes: ThemeRuntime;
   /**
-   * 记录副本列表，由当前实例内部维护。
+   * 内存中的背景图记录映射表。
    */
   private records: Map<string, BackgroundRecord> = new Map<string, BackgroundRecord>();
   /**
@@ -66,7 +66,7 @@ export class BackgroundRuntime {
   /**
    * 从外部数据导入Background 值，转换为当前运行时的数据结构。
    * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * @returns 导入的背景图记录副本。
    */
   async importBackground(params: BackgroundImportParams): Promise<BackgroundRecord> {
     const now = Date.now();
@@ -126,7 +126,7 @@ export class BackgroundRuntime {
 
   /**
    * 读取Folders列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 背景图列表副本
    */
   async listFolders(): Promise<Array<BackgroundFolderRecord>> {
     const folderIds = new Set<string>();
@@ -148,7 +148,7 @@ export class BackgroundRuntime {
   }
 
   /**
-   * 更新背景图状态，必要时写回存储并发布对应事件。
+   * 将指定背景图设为当前激活状态，并同步主题。
    * @param fileName 文件名称。
    */
   async activateBackground(fileName: string): Promise<void> {
@@ -242,7 +242,7 @@ export class BackgroundRuntime {
 
   /**
    * 读取Records列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 背景图列表副本
    */
   private async listRecords(): Promise<Array<BackgroundRecord>> {
     const result = new Array<BackgroundRecord>();
@@ -299,7 +299,7 @@ export class BackgroundRuntime {
   /**
    * 复制Strings 列表，避免外部修改内部状态。
    * @param values 待处理的值列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 背景图列表副本
    */
   private copyStrings(values: Array<string>): Array<string> {
     const result = new Array<string>();

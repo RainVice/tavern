@@ -24,7 +24,7 @@ export class ThumbnailRuntime {
    */
   private events: EventBus;
   /**
-   * 记录副本列表，由当前实例内部维护。
+   * 内存中的缩略图记录映射表。
    */
   private records: Map<string, ThumbnailRecord> = new Map<string, ThumbnailRecord>();
   /**
@@ -43,8 +43,9 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 执行 generateThumbnail 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 生成缩略图，持久化后返回生成的记录。
+   * @param params 缩略图创建所需参数。
+   * @returns 生成的缩略图记录副本。
    */
   async generateThumbnail(params: ThumbnailCreateParams): Promise<ThumbnailRecord> {
     const type = params.type;
@@ -80,10 +81,10 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取指定Thumbnail，不存在时抛出错误。
-
-   * @param fileName 文件名称。
-   * @returns 更新或读取后的记录副本。
+   * 按类型和文件名查找缩略图记录。
+   * @param type 缩略图类型。
+   * @param fileName 原始文件名。
+   * @returns 缩略图记录，不存在则返回 undefined。
    */
   async getThumbnail(type: ThumbnailType, fileName: string): Promise<ThumbnailRecord | undefined> {
     const record = this.records.get(this.key(type, safeFileName(fileName)));
@@ -94,9 +95,10 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取Thumbnail Content 值，并转换为运行时使用的数据结构。
-
-   * @param fileName 文件名称。
+   * 读取指定缩略图的文件内容。
+   * @param type 缩略图类型。
+   * @param fileName 原始文件名。
+   * @returns 缩略图文件内容字符串。
    */
   async readThumbnailContent(type: ThumbnailType, fileName: string): Promise<string> {
     const record = this.requireRecord(type, safeFileName(fileName));
@@ -104,9 +106,9 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取ByType列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按类型列出该类型下所有缩略图记录，返回副本。
+   * @param type 缩略图类型。
+   * @returns 该类型的缩略图记录列表副本。
    */
   async listByType(type: ThumbnailType): Promise<Array<ThumbnailRecord>> {
     const result = new Array<ThumbnailRecord>();
@@ -120,8 +122,8 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取Thumbnails列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有缩略图记录，返回副本。
+   * @returns 所有缩略图记录列表副本。
    */
   async listThumbnails(): Promise<Array<ThumbnailRecord>> {
     const result = new Array<ThumbnailRecord>();
@@ -133,9 +135,9 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 删除或清理Thumbnail，并同步维护相关索引或状态。
-
-   * @param fileName 文件名称。
+   * 使指定缩略图失效，删除文件并清理索引。
+   * @param type 缩略图类型。
+   * @param fileName 原始文件名。
    */
   async invalidateThumbnail(type: ThumbnailType, fileName: string): Promise<void> {
     // safe 名称。
@@ -155,9 +157,9 @@ export class ThumbnailRuntime {
   }
 
   /**
-   * 读取Configured Dimensions 列表，不存在时通常抛出错误或返回空值。
-
-   * @returns 更新或读取后的记录副本。
+   * 根据缩略图类型获取预设尺寸配置。
+   * @param type 缩略图类型。
+   * @returns 预设的宽高尺寸。
    */
   getConfiguredDimensions(type: ThumbnailType): ThumbnailDimensions {
     if (type === 'bg') {

@@ -15,15 +15,15 @@ export interface SamplerParams {
    */
   top_k: number;
   /**
-   * repetition penalty 值，由当前实例内部维护。
+   * 重复惩罚系数，抑制已生成 token 的再次出现，值越大惩罚越强。
    */
   repetition_penalty: number;
   /**
-   * frequency penalty 值，由当前实例内部维护。
+   * 频率惩罚系数，根据 token 出现频率降低其再次生成的权重。
    */
   frequency_penalty: number;
   /**
-   * presence penalty 值，由当前实例内部维护。
+   * 存在惩罚系数，对已出现的 token 施加固定惩罚，促进话题多样性。
    */
   presence_penalty: number;
   /**
@@ -35,7 +35,7 @@ export interface SamplerParams {
    */
   typical_p: number;
   /**
-   * cfg scale 值，由当前实例内部维护。
+   * 分类器自由引导（CFG）尺度，控制模型对给定提示的遵从程度。
    */
   cfg_scale: number;
   /**
@@ -57,7 +57,7 @@ export interface LogitBiasEntry {
   bias: number;
 }
 /**
- * 描述采样参数模块在运行时交换的数据结构。
+ * 描述采样参数预设的完整数据结构，包含标识、参数和创建/更新时间。
  */
 export interface SamplerPreset {
   /**
@@ -77,11 +77,11 @@ export interface SamplerPreset {
    */
   logitBias: Array<LogitBiasEntry>;
   /**
-   * created At 值，由当前实例内部维护。
+   * 预设的创建时间戳（毫秒），由创建流程自动记录。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 预设的最后更新时间戳（毫秒），由更新流程自动记录。
    */
   updatedAt: number;
 }
@@ -95,7 +95,7 @@ export interface SamplerPresetSavedPayload {
   preset: SamplerPreset;
 }
 /**
- * 描述采样参数模块在运行时交换的数据结构。
+ * 描述采样参数导出时携带的数据结构，用于备份、迁移或数据互通。
  */
 export interface SamplerExportData {
   /**

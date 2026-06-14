@@ -21,39 +21,39 @@ export interface SwipeCreateParams {
  */
 export interface SwipeRecord {
   /**
-   * 聊天标识。
+   * 所属聊天标识。
    */
   chatId: string;
   /**
-   * 消息标识。
+   * 所属消息标识。
    */
   messageId: string;
   /**
-   * 索引数据或循环位置，由当前实例内部维护。
+   * 在同一条消息的候选回复列表中的索引位置。
    */
   index: number;
   /**
-   * 文本内容。
+   * 候选回复的文本内容。
    */
   text: string;
   /**
-   * active 值，由当前实例内部维护。
+   * 是否为当前激活的候选回复。
    */
   active: boolean;
   /**
-   * state 值，由当前实例内部维护。
+   * 候选回复状态：complete / streaming / failed / interrupted。
    */
   state: string;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 失败或中断时的错误信息描述。
    */
   error: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最近一次更新时间戳。
    */
   updatedAt: number;
 }
@@ -63,19 +63,19 @@ export interface SwipeRecord {
  */
 export interface SwipeStreamState {
   /**
-   * 索引数据或循环位置，由当前实例内部维护。
+   * 在同一条消息的候选回复列表中的索引位置。
    */
   index: number;
   /**
-   * state 值，由当前实例内部维护。
+   * 候选回复状态：complete / streaming / failed / interrupted。
    */
   state: string;
   /**
-   * 文本内容。
+   * 候选回复的文本内容。
    */
   text: string;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 失败或中断时的错误信息描述。
    */
   error: string;
 }
@@ -85,37 +85,37 @@ export interface SwipeStreamState {
  */
 export interface SwipeChangedPayload {
   /**
-   * 聊天标识。
+   * 所属聊天标识。
    */
   chatId: string;
   /**
-   * 消息标识。
+   * 所属消息标识。
    */
   messageId: string;
   /**
-   * swipe Index 值，由当前实例内部维护。
+   * 被变更的候选回复索引。
    */
   swipeIndex: number;
   /**
-   * swipe 值，由当前实例内部维护。
+   * 变更后的候选回复记录。
    */
   swipe: SwipeRecord;
 }
 
 /**
- * 描述消息候选回复事件发布时携带的数据结构。
+ * 描述消息候选回复被删除时事件发布携带的数据结构。
  */
 export interface SwipeDeletedPayload {
   /**
-   * 聊天标识。
+   * 所属聊天标识。
    */
   chatId: string;
   /**
-   * 消息标识。
+   * 所属消息标识。
    */
   messageId: string;
   /**
-   * swipe Index 值，由当前实例内部维护。
+   * 被删除的候选回复索引。
    */
   swipeIndex: number;
 }

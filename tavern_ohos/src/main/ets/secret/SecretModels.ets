@@ -6,227 +6,227 @@ import type {
 } from '../contracts/PublicContracts';
 
 /**
- * 描述调用密钥引用能力时需要传入的参数。
+ * 创建密钥引用时需传入的参数集合。
  */
 export interface SecretCreateParams {
   /**
-   * 标识。
+   * 密钥唯一标识。
    */
   id: string;
   /**
-   * provider 标识。
+   * 密钥所属的模型提供商标识。
    */
   providerId: ProviderId;
   /**
-   * 作用域。
+   * 密钥适用的作用域。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 展示标签，由内部维护。
    */
   label: string;
   /**
-   * 字段值。
+   * 密钥明文值，仅在创建时设置。
    */
   value: string;
   /**
-   * active 值，由当前实例内部维护。
+   * 是否启用，由内部维护。
    */
   active: boolean;
 }
 
 /**
- * 描述密钥引用持久化或内存索引中的一条记录。
+ * 内存索引中的完整密钥记录。
  */
 export interface SecretRecord {
   /**
-   * 标识。
+   * 密钥唯一标识。
    */
   id: string;
   /**
-   * 密钥引用，由当前实例内部维护。
+   * 密钥引用，由内部自动生成。
    */
   secretRef: SecretRef;
   /**
-   * provider 标识。
+   * 密钥所属的模型提供商标识。
    */
   providerId: ProviderId;
   /**
-   * 作用域。
+   * 密钥适用的作用域。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 展示标签，由内部维护。
    */
   label: string;
   /**
-   * active 值，由当前实例内部维护。
+   * 是否启用，由内部维护。
    */
   active: boolean;
   /**
-   * created At 值，由当前实例内部维护。
+   * 创建时间戳，由内部维护。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 最后更新时间戳，由内部维护。
    */
   updatedAt: number;
 }
 
 /**
- * 描述密钥引用持久化或内存索引中的一条记录。
+ * 密钥值与引用之间的映射记录。
  */
 export interface SecretValueRecord {
   /**
-   * 密钥引用，由当前实例内部维护。
+   * 密钥引用。
    */
   secretRef: SecretRef;
   /**
-   * 字段值。
+   * 密钥明文值。
    */
   value: string;
 }
 
 /**
- * 描述密钥引用持久化或内存索引中的一条记录。
+ * 包含脱敏值的密钥状态快照，供 UI 层展示。
  */
 export interface SecretStateRecord {
   /**
-   * 标识。
+   * 密钥唯一标识。
    */
   id: string;
   /**
-   * 密钥引用，由当前实例内部维护。
+   * 密钥引用，由内部自动生成。
    */
   secretRef: SecretRef;
   /**
-   * provider 标识。
+   * 密钥所属的模型提供商标识。
    */
   providerId: ProviderId;
   /**
-   * 作用域。
+   * 密钥适用的作用域。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 展示标签，由内部维护。
    */
   label: string;
   /**
-   * masked Value 值，由当前实例内部维护。
+   * 脱敏后的密钥值，供 UI 安全展示。
    */
   maskedValue: string;
   /**
-   * active 值，由当前实例内部维护。
+   * 是否启用，由内部维护。
    */
   active: boolean;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 最后更新时间戳，由内部维护。
    */
   updatedAt: number;
 }
 
 /**
- * 描述密钥引用持久化或内存索引中的一条记录。
+ * 导出格式的密钥记录，包含脱敏值与备份所需全部字段。
  */
 export interface SecretExportRecord {
   /**
-   * 标识。
+   * 密钥唯一标识。
    */
   id: string;
   /**
-   * 密钥引用，由当前实例内部维护。
+   * 密钥引用，由内部自动生成。
    */
   secretRef: SecretRef;
   /**
-   * provider 标识。
+   * 密钥所属的模型提供商标识。
    */
   providerId: ProviderId;
   /**
-   * 作用域。
+   * 密钥适用的作用域。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 展示标签，由内部维护。
    */
   label: string;
   /**
-   * masked Value 值，由当前实例内部维护。
+   * 脱敏后的密钥值。
    */
   maskedValue: string;
   /**
-   * active 值，由当前实例内部维护。
+   * 是否启用，由内部维护。
    */
   active: boolean;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 最后更新时间戳，由内部维护。
    */
   updatedAt: number;
 }
 
 /**
- * 描述密钥引用模块在运行时交换的数据结构。
+ * 访问密钥时传入的权限和上下文选项。
  */
 export interface SecretAccessOptions {
   /**
-   * requester 标识。
+   * 发起访问的调用方标识。
    */
   requesterId: string;
   /**
-   * permissions 列表，由当前实例内部维护。
+   * 调用方持有的权限列表，由内部维护。
    */
   permissions: Array<SecretPermission>;
 }
 
 /**
- * 描述密钥引用事件发布时携带的数据结构。
+ * 密钥相关事件（创建、更新）携带的数据载荷。
  */
 export interface SecretEventPayload {
   /**
-   * secret 值，由当前实例内部维护。
+   * 受影响的密钥记录。
    */
   secret: SecretRecord;
 }
 
 /**
- * 描述密钥引用事件发布时携带的数据结构。
+ * 密钥删除事件携带的数据载荷。
  */
 export interface SecretDeletedPayload {
   /**
-   * 密钥引用，由当前实例内部维护。
+   * 被删除的密钥引用。
    */
   secretRef: SecretRef;
   /**
-   * provider 标识。
+   * 被删除密钥所属的提供商标识。
    */
   providerId: ProviderId;
 }
 
 /**
- * 描述密钥引用事件发布时携带的数据结构。
+ * 密钥轮换事件携带的数据载荷，包含新旧引用信息。
  */
 export interface SecretRotatedPayload {
   /**
-   * secret 值，由当前实例内部维护。
+   * 轮换后新建的密钥记录。
    */
   secret: SecretRecord;
   /**
-   * previous Secret Ref 值，由当前实例内部维护。
+   * 轮换前的旧密钥引用。
    */
   previousSecretRef: SecretRef;
 }

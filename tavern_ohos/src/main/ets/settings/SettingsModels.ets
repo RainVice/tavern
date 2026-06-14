@@ -8,79 +8,79 @@ import type {
  */
 export interface SettingSchemaCreateParams {
   /**
-   * 键名，由当前实例内部维护。
+   * 要注册的设置键名。
    */
   key: string;
   /**
-   * default Value 值，由当前实例内部维护。
+   * 该设置项未显式赋值时的默认值。
    */
   defaultValue: string;
   /**
-   * value Type 值，由当前实例内部维护。
+   * 值的类型标识，用于序列化与校验。
    */
   valueType: SettingValueType;
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 当前 schema 的版本号，用于迁移追踪。
    */
   schemaVersion: number;
   /**
-   * description 值，由当前实例内部维护。
+   * 该设置项的作用说明。
    */
   description: string;
 }
 
 /**
- * 描述设置持久化或内存索引中的一条记录。
+ * 描述一条设置 schema 的元数据定义记录。
  */
 export interface SettingSchemaRecord {
   /**
-   * 键名，由当前实例内部维护。
+   * 设置键名。
    */
   key: string;
   /**
-   * default Value 值，由当前实例内部维护。
+   * 该设置项未显式赋值时的默认值。
    */
   defaultValue: string;
   /**
-   * value Type 值，由当前实例内部维护。
+   * 值的类型标识。
    */
   valueType: SettingValueType;
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 当前 schema 的版本号。
    */
   schemaVersion: number;
   /**
-   * description 值，由当前实例内部维护。
+   * 该设置项的用途说明。
    */
   description: string;
 }
 
 /**
- * 描述设置持久化或内存索引中的一条记录。
+ * 描述一条具体的设置键值对记录。
  */
 export interface SettingEntry {
   /**
-   * 作用域。
+   * 该记录所属的作用域（global/character/chat 等）。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * 键名，由当前实例内部维护。
+   * 设置键名。
    */
   key: string;
   /**
-   * 字段值。
+   * 设置值。
    */
   value: string;
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 该记录对应的 schema 版本号。
    */
   schemaVersion: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 该记录最后更新的时间戳。
    */
   updatedAt: number;
 }
@@ -90,79 +90,79 @@ export interface SettingEntry {
  */
 export interface SettingChangedPayload {
   /**
-   * 作用域。
+   * 变更发生的作用域。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * 键名，由当前实例内部维护。
+   * 发生变更的设置键名。
    */
   key: string;
   /**
-   * old Value 值，由当前实例内部维护。
+   * 变更前的旧值。
    */
   oldValue: string;
   /**
-   * new Value 值，由当前实例内部维护。
+   * 变更后的新值。
    */
   newValue: string;
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 该设置对应的 schema 版本号。
    */
   schemaVersion: number;
 }
 
 /**
- * 描述设置持久化或内存索引中的一条记录。
+ * 描述一次设置键迁移的历史记录。
  */
 export interface SettingMigrationRecord {
   /**
-   * 作用域。
+   * 迁移发生时的作用域。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * from Key 值，由当前实例内部维护。
+   * 迁移前的原始键名。
    */
   fromKey: string;
   /**
-   * to Key 值，由当前实例内部维护。
+   * 迁移后的目标键名。
    */
   toKey: string;
   /**
-   * from Version 值，由当前实例内部维护。
+   * 迁移前 fromKey 对应的 schema 版本号。
    */
   fromVersion: number;
   /**
-   * to Version 值，由当前实例内部维护。
+   * 迁移后 toKey 对应的 schema 版本号。
    */
   toVersion: number;
   /**
-   * migrated At 值，由当前实例内部维护。
+   * 迁移完成的时间戳。
    */
   migratedAt: number;
 }
 
 /**
- * 描述设置模块在运行时交换的数据结构。
+ * 描述设置模块在某一时刻的快照，包含所有当前有效的配置数据。
  */
 export interface SettingSnapshot {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 快照中包含的最大 schema 版本号。
    */
   schemaVersion: number;
   /**
-   * 条目列表，由当前实例内部维护。
+   * 快照中包含的所有设置条目。
    */
   entries: Array<SettingEntry>;
   /**
-   * migration Metadata 值，由当前实例内部维护。
+   * 快照中包含的历史迁移记录。
    */
   migrationMetadata: Array<SettingMigrationRecord>;
 }

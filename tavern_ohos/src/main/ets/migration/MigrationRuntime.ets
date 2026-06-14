@@ -20,8 +20,8 @@ export class MigrationRuntime {
 
   /**
    * 创建新的迁移计划记录，写入存储并返回副本。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param steps 迁移步骤输入参数列表。
+   * @returns 创建的迁移计划副本。
    */
   createPlan(steps: Array<MigrationStepInput>): MigrationPlan {
     this.counter+=1; const planId=`migrate-${this.counter}`; const now=Date.now();
@@ -36,9 +36,10 @@ export class MigrationRuntime {
   }
 
   /**
-   * 执行 executeStep 的内部处理步骤，供当前模块复用。
+   * 执行指定的迁移步骤，更新状态并发布步骤完成事件。
    * @param planId 目标迁移计划标识。
    * @param stepId 目标迁移步骤标识。
+   * @returns 执行后的迁移步骤副本。
    */
   executeStep(planId: string, stepId: string): MigrationStep {
     const plan = this.requirePlan(planId);
@@ -55,9 +56,10 @@ export class MigrationRuntime {
   }
 
   /**
-   * 执行 rollbackStep 的内部处理步骤，供当前模块复用。
+   * 回滚指定的迁移步骤，标记为已回滚。
    * @param planId 目标迁移计划标识。
    * @param stepId 目标迁移步骤标识。
+   * @returns 回滚后的迁移步骤副本。
    */
   rollbackStep(planId: string, stepId: string): MigrationStep {
     const plan = this.requirePlan(planId);
@@ -67,14 +69,14 @@ export class MigrationRuntime {
   }
 
   /**
-   * 读取指定Plan，不存在时抛出错误。
+   * 读取指定迁移计划，不存在时抛出错误。
    * @param planId 目标迁移计划标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 迁移计划副本。
    */
   getPlan(planId: string): MigrationPlan { return this.copyPlan(this.requirePlan(planId)); }
   /**
-   * 读取Plans列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取全部迁移计划列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * @returns 迁移计划列表副本。
    */
   listPlans(): Array<MigrationPlan> {
     const result = new Array<MigrationPlan>();
@@ -86,8 +88,8 @@ export class MigrationRuntime {
   }
 
   /**
-   * 在当前集合中查找Step 值，未命中时返回空值或默认位置。
-
+   * 在当前集合中查找指定步骤标识对应的步骤。
+   * @param plan 目标迁移计划。
    * @param stepId 目标迁移步骤标识。
    */
   private findStep(plan: MigrationPlan, stepId: string): MigrationStep {
@@ -96,8 +98,7 @@ export class MigrationRuntime {
   }
 
   /**
-   * 检查PlanComplete是否满足当前规则。
-
+   * 检查迁移计划是否所有步骤均已完成，若是则标记计划为完成并发布完成事件。
    */
   private checkPlanComplete(plan: MigrationPlan): void {
     let allDone=true;
@@ -109,7 +110,7 @@ export class MigrationRuntime {
   }
 
   /**
-   * 读取必须存在的Plan 值，缺失时抛出错误。
+   * 根据标识读取迁移计划，不存在时抛出错误。
    * @param planId 目标迁移计划标识。
    */
   private requirePlan(planId: string): MigrationPlan {
@@ -122,8 +123,8 @@ export class MigrationRuntime {
    */
   exportData(): MigrationExportData { return { plans: this.listPlans() }; }
   /**
-   * 从外部数据导入Data 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
+   * 从外部数据导入迁移计划数据，转换为当前运行时的数据结构。
+   * @param data 待导入的序列化数据。
    */
   importData(data: MigrationExportData): void {
     for (let i=0;i<data.plans.length;i++) {
@@ -134,7 +135,7 @@ export class MigrationRuntime {
   }
 
   /**
-   * 复制Plan 值，避免外部修改内部状态。
+   * 复制迁移计划，避免外部修改内部状态。
    */
   private copyPlan(plan: MigrationPlan): MigrationPlan {
     const steps = new Array<MigrationStep>();
@@ -150,7 +151,7 @@ export class MigrationRuntime {
   }
 
   /**
-   * 复制Step 值，避免外部修改内部状态。
+   * 复制迁移步骤，避免外部修改内部状态。
    */
   private copyStep(step: MigrationStep): MigrationStep {
     return {
@@ -166,7 +167,7 @@ export class MigrationRuntime {
   }
 
   /**
-   * 解析Counter，非法输入会返回失败标记或空结果。
+   * 从计划标识中解析计数器值，非法输入返回 0。
    * @param planId 目标迁移计划标识。
    */
   private parseCounter(planId: string): number {

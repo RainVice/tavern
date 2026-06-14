@@ -1,21 +1,21 @@
 /**
- * 限定表情状态模块可接受的字符串取值范围。
+ * 限定表情状态分类的可选字符串字面量类型。
  */
 export type ExpressionClassification = 'joy'|'sadness'|'anger'|'fear'|'surprise'|'disgust'|'neutral'|'love'|'custom';
 /**
- * 描述表情状态模块在运行时交换的数据结构。
+ * 单个表情状态的完整数据结构，包含标识、角色归属、分类、标签、立绘、强度以及时间戳。
  */
 export interface ExpressionState {
   /**
-   * expression 标识。
+   * 全局唯一表达式标识，格式为 "expr-{自增序号}"。
    */
   expressionId: string; characterId: string; classification: ExpressionClassification;
   /**
-   * label 值，由当前实例内部维护。
+   * 展示用标签，用于 UI 中识别当前表情状态。
    */
   label: string; spriteName: string; intensity: number; messageId: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 表情状态创建时的毫秒级时间戳。
    */
   createdAt: number; updatedAt: number;
 }
@@ -29,7 +29,7 @@ export interface ExpressionChangedPayload {
   state: ExpressionState;
 }
 /**
- * 描述表情状态模块在运行时交换的数据结构。
+ * 表情导出/导入时使用的序列化结构，包含所有表情状态的快照。
  */
 export interface ExpressionExportData {
   /**

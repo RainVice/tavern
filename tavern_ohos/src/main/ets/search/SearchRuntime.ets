@@ -20,7 +20,7 @@ export class SearchRuntime {
    */
   private events: EventBus;
   /**
-   * documents 列表，由当前实例内部维护。
+   * 搜索文档映射表，以文档 id 为键维护所有已索引文档的内存缓存。
    */
   private documents: Map<string, SearchDocument> = new Map<string, SearchDocument>();
 
@@ -33,8 +33,10 @@ export class SearchRuntime {
   }
 
   /**
-   * 创建或写入文档，完成持久化后返回可供调用方使用的结果。
-   */
+ * 创建或写入文档，完成持久化后返回可供调用方使用的结果。
+ * @param document 待写入的搜索文档对象。
+ * @returns 写入后的文档副本，调用方可安全读取。
+ */
   upsertDocument(document: SearchDocument): SearchDocument {
     const copy = this.copyDocument(document);
     this.documents.set(copy.id, copy);
@@ -62,9 +64,9 @@ export class SearchRuntime {
   }
 
   /**
-   * 按查询条件检索搜索索引数据，并返回匹配结果。
-   * @param text 文本内容。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按文本关键词快速检索搜索索引数据，并返回匹配结果。
+   * @param text 待搜索的关键词文本。
+   * @returns 符合条件的命中记录列表；返回值是副本，调用方可安全读取。
    */
   searchText(text: string): Array<SearchHit> {
     return this.search({
@@ -78,19 +80,19 @@ export class SearchRuntime {
   }
 
   /**
-   * 判断Filter State 值是否满足条件。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 比较两个过滤状态值在规范化后是否相等。
+   * @param left 参与比较的左操作数。
+   * @param right 参与比较的右操作数。
+   * @returns 规范化后相等时返回 true，否则返回 false。
    */
   isFilterState(left: string, right: string): boolean {
     return this.normalizeFilterState(left) === this.normalizeFilterState(right);
   }
 
   /**
-   * 判断当前对象是否包含Any Filter 值。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断给定的过滤输入是否包含任意有效的过滤条件。
+   * @param filter 待检查的过滤输入对象。
+   * @returns 包含任意过滤条件时返回 true，否则返回 false。
    */
   hasAnyFilter(filter: SearchFilterInput): boolean {
     return filter.search.length > 0 ||
@@ -102,10 +104,10 @@ export class SearchRuntime {
   }
 
   /**
-   * 读取Entities列表，通常返回副本以避免调用方直接修改内部状态。
-
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按过滤条件筛选实体列表，并对匹配结果按相关性排序后返回。
+   * @param entities 待筛选的源实体列表。
+   * @param filter 过滤输入条件。
+   * @returns 符合条件的实体列表；返回值是副本，调用方可安全读取。
    */
   filterEntities(entities: Array<SearchFilterEntity>, filter: SearchFilterInput): Array<SearchFilterEntity> {
     const result = new Array<SearchFilterEntity>();
@@ -126,9 +128,9 @@ export class SearchRuntime {
   }
 
   /**
-   * 按查询条件检索搜索索引数据，并返回匹配结果。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按标签关键词检索搜索索引数据，返回所有包含指定标签的文档命中结果。
+   * @param tag 目标标签值。
+   * @returns 符合条件的命中记录列表；返回值是副本，调用方可安全读取。
    */
   searchByTag(tag: string): Array<SearchHit> {
     return this.search({
@@ -142,10 +144,10 @@ export class SearchRuntime {
   }
 
   /**
-   * 按查询条件检索搜索索引数据，并返回匹配结果。
-   * @param key 键名。
-   * @param value 要保存或比较的字段值。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按元数据键值对检索搜索索引数据，返回匹配的文档命中结果。
+   * @param key 元数据键名。
+   * @param value 元数据键名对应的目标值。
+   * @returns 符合条件的命中记录列表；返回值是副本，调用方可安全读取。
    */
   searchMetadata(key: string, value: string): Array<SearchHit> {
     return this.search({
@@ -159,9 +161,10 @@ export class SearchRuntime {
   }
 
   /**
-   * 按查询条件检索搜索索引数据，并返回匹配结果。
-   * @param query 检索条件。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 按查询条件检索搜索索引数据，并返回匹配结果。查询过程中会按域、标签、元数据、
+   * 关键词依次过滤，最终按相关性分数降序排列并截取上限。
+   * @param query 检索条件对象。
+   * @returns 符合条件的命中记录列表；返回值是副本，调用方可安全读取。
    */
   search(query: SearchQuery): Array<SearchHit> {
     const hits = new Array<SearchHit>();
@@ -201,7 +204,7 @@ export class SearchRuntime {
 
   /**
    * 读取Documents列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 搜索结果列表副本。
    */
   listDocuments(): Array<SearchDocument> {
     const result = new Array<SearchDocument>();
@@ -464,7 +467,7 @@ export class SearchRuntime {
   /**
    * 复制Hits 列表，避免外部修改内部状态。
 
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 搜索结果列表副本。
    */
   private copyHits(hits: Array<SearchHit>): Array<SearchHit> {
     const result = new Array<SearchHit>();
@@ -524,7 +527,7 @@ export class SearchRuntime {
   /**
    * 复制Metadata 值，避免外部修改内部状态。
 
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 搜索结果列表副本。
    */
   private copyMetadata(metadata: Array<SearchDocumentMetadata>): Array<SearchDocumentMetadata> {
     const result = new Array<SearchDocumentMetadata>();
@@ -540,7 +543,7 @@ export class SearchRuntime {
   /**
    * 复制Strings 列表，避免外部修改内部状态。
    * @param values 待处理的值列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 搜索结果列表副本。
    */
   private copyStrings(values: Array<string>): Array<string> {
     const result = new Array<string>();

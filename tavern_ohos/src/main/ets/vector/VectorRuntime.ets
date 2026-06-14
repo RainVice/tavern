@@ -28,11 +28,11 @@ export class VectorRuntime {
    */
   private events: EventBus;
   /**
-   * collections 列表，由当前实例内部维护。
+   * 向量集合记录映射表，以 collectionId 为键维护所有已创建集合的内存索引。
    */
   private collections: Map<string, VectorCollectionRecord> = new Map<string, VectorCollectionRecord>();
   /**
-   * vectors By Collection 值，由当前实例内部维护。
+   * 各集合的向量记录列表，以 collectionId 为键，值为该集合的所有向量记录。
    */
   private vectorsByCollection: Map<string, Array<VectorRecord>> = new Map<string, Array<VectorRecord>>();
   /**
@@ -42,8 +42,8 @@ export class VectorRuntime {
 
   /**
    * 初始化当前运行时实例。
-   * @param files 文件存储适配器。
-   * @param events 事件总线。
+   * @param files 文件存储适配器，用于集合和向量的持久化。
+   * @param events 事件总线，用于发布 upsert/deleted 事件。
    */
   constructor(files: TavernFileStore, events: EventBus) {
     this.files = files;
@@ -51,9 +51,9 @@ export class VectorRuntime {
   }
 
   /**
-   * 创建新的集合记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新的集合记录，写入存储并返回副本。若集合已存在且维度不一致则抛出错误。
+   * @param params 集合创建参数。
+   * @returns 创建或更新后的集合记录副本。
    */
   async createCollection(params: VectorCollectionCreateParams): Promise<VectorCollectionRecord> {
     const now = Date.now();
@@ -81,9 +81,10 @@ export class VectorRuntime {
   }
 
   /**
-   * 创建或写入向量，完成持久化后返回可供调用方使用的结果。
+   * 在指定集合中写入或更新向量记录，完成持久化后发布 vector.upserted 事件。
    * @param collectionId 目标集合标识。
-   * @param input 待处理的输入对象。
+   * @param input 待写入或更新的向量记录。
+   * @returns 写入后的向量记录副本。
    */
   async upsertVector(collectionId: string, input: VectorRecord): Promise<VectorRecord> {
     const collection = this.requireCollection(collectionId);
@@ -118,9 +119,9 @@ export class VectorRuntime {
   }
 
   /**
-   * 读取Vectors列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 读取指定集合中的向量记录列表，返回副本。
    * @param collectionId 目标集合标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 向量记录列表的深拷贝副本。
    */
   async listVectors(collectionId: string): Promise<Array<VectorRecord>> {
     const records = this.requireVectors(collectionId);
@@ -128,8 +129,9 @@ export class VectorRuntime {
   }
 
   /**
-   * 执行 query 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 执行向量检索（余弦相似度），按分数降序排序并截断至 topK 条。
+   * @param params 查询参数，包含目标集合、向量、topK、阈值和作用域。
+   * @returns 排序和截断后的匹配结果集。
    */
   query(params: VectorQueryParams): VectorQueryResult {
     const hits = new Array<VectorHit>();
@@ -171,31 +173,31 @@ export class VectorRuntime {
   }
 
   /**
-   * 删除指定文档，并清理相关索引或资源引用。
+   * 按文档标识删除指定集合中的所有向量记录，并发布 vector.deleted 事件。
    * @param collectionId 目标集合标识。
    * @param documentId 目标文档标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 被删除的向量记录标识列表。
    */
   async deleteByDocument(collectionId: string, documentId: string): Promise<Array<string>> {
     return this.deleteWhere(collectionId, documentId, 'document');
   }
 
   /**
-   * 删除指定ByScope，并清理相关索引或资源引用。
+   * 按作用域删除指定集合中的所有向量记录，并发布 vector.deleted 事件。
    * @param collectionId 目标集合标识。
-   * @param scope 绑定或查询使用的作用域。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param scope 查询过滤使用的作用域。
+   * @returns 被删除的向量记录标识列表。
    */
   async deleteByScope(collectionId: string, scope: TavernScope): Promise<Array<string>> {
     return this.deleteWhere(collectionId, scope, 'scope');
   }
 
   /**
-   * 删除指定Where，并清理相关索引或资源引用。
+   * 按文档标识或作用域删除向量记录的内部实现。
    * @param collectionId 目标集合标识。
-   * @param value 要保存或比较的字段值。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param value 按文档模式时为 documentId，按作用域模式时为 scope 值。
+   * @param mode 'document' 按 documentId 匹配，'scope' 按 scope 匹配。
+   * @returns 被删除的向量记录标识列表。
    */
   private async deleteWhere(collectionId: string, value: string, mode: VectorDeleteMode): Promise<Array<string>> {
     const records = this.requireVectors(collectionId);
@@ -223,8 +225,9 @@ export class VectorRuntime {
   }
 
   /**
-   * 读取必须存在的Collection 值，缺失时抛出错误。
+   * 获取指定集合，不存在时抛出错误。
    * @param collectionId 目标集合标识。
+   * @returns 集合记录。
    */
   private requireCollection(collectionId: string): VectorCollectionRecord {
     const collection = this.collections.get(collectionId);
@@ -235,9 +238,9 @@ export class VectorRuntime {
   }
 
   /**
-   * 读取必须存在的Vectors 列表，缺失时抛出错误。
+   * 获取指定集合的向量列表，集合不存在时抛出错误。
    * @param collectionId 目标集合标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 向量记录列表。
    */
   private requireVectors(collectionId: string): Array<VectorRecord> {
     const records = this.vectorsByCollection.get(collectionId);
@@ -246,11 +249,21 @@ export class VectorRuntime {
     }
     return records;
   }
+  /**
+   * 校验向量维度与集合声明的维度是否一致，不一致则抛出错误。
+   */
   private assertDimension(collection: VectorCollectionRecord, embedding: Array<number>): void {
     if (embedding.length !== collection.dimension) {
       throw new Error(`Vector dimension mismatch: expected ${collection.dimension}, got ${embedding.length}`);
     }
   }
+
+  /**
+   * 计算两个向量的余弦相似度。
+   * @param left 左侧向量。
+   * @param right 右侧向量。
+   * @returns 余弦相似度值（-1 到 1），任一向量为零向量时返回 0。
+   */
   private cosineSimilarity(left: Array<number>, right: Array<number>): number {
     let dot = 0;
     let leftNorm = 0;
@@ -267,10 +280,10 @@ export class VectorRuntime {
   }
 
   /**
-   * 在当前集合中查找Vector Index 值，未命中时返回空值或默认位置。
-   * @param records 记录副本列表。
+   * 在当前集合的向量列表中查找指定标识的索引位置。
+   * @param records 向量记录列表。
    * @param vectorId 目标向量标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 找到时返回索引，未找到返回 -1。
    */
   private findVectorIndex(records: Array<VectorRecord>, vectorId: string): number {
     for (let index = 0; index < records.length; index += 1) {
@@ -280,6 +293,10 @@ export class VectorRuntime {
     }
     return -1;
   }
+  /**
+   * 将集合元数据和向量数据持久化到文件存储。
+   * @param collectionId 目标集合标识。
+   */
   private async persistCollection(collectionId: string): Promise<void> {
     const collection = this.requireCollection(collectionId);
     const records = this.requireVectors(collectionId);
@@ -289,9 +306,9 @@ export class VectorRuntime {
   }
 
   /**
-   * 生成Vectors输出，供请求发送、导出或界面展示使用。
-   * @param records 记录副本列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 将向量记录序列化为 JSONL 格式文本，每行一条 JSON 记录。
+   * @param records 向量记录列表。
+   * @returns JSONL 格式的字符串。
    */
   private serializeVectors(records: Array<VectorRecord>): string {
     let output = '';
@@ -301,12 +318,18 @@ export class VectorRuntime {
     }
     return output;
   }
-  private collectionPath(collectionId: string): string {
-    return `${this.rootPath}/${safePathSegment(collectionId, 'collection')}`;
-  }
 
   /**
-   * 复制Collection 值，避免外部修改内部状态。
+   * 根据集合标识生成持久化存储路径。
+   * @param collectionId 集合标识。
+   * @returns 集合数据的存储路径字符串。
+   */
+  private collectionPath(collectionId: string): string {
+
+  /**
+   * 复制集合记录，避免外部修改内部状态。
+   * @param collection 要复制的集合记录。
+   * @returns 集合记录的深拷贝。
    */
   private copyCollection(collection: VectorCollectionRecord): VectorCollectionRecord {
     return {
@@ -323,9 +346,9 @@ export class VectorRuntime {
   }
 
   /**
-   * 复制Vectors 列表，避免外部修改内部状态。
-   * @param records 记录副本列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 复制向量记录列表，避免外部修改内部状态。
+   * @param records 要复制的向量记录列表。
+   * @returns 向量记录列表的深拷贝。
    */
   private copyVectors(records: Array<VectorRecord>): Array<VectorRecord> {
     const result = new Array<VectorRecord>();
@@ -336,8 +359,9 @@ export class VectorRuntime {
   }
 
   /**
-   * 复制Vector 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 复制单条向量记录（含 embedding 深拷贝），避免外部修改内部状态。
+   * @param record 要复制的向量记录。
+   * @returns 向量记录的深拷贝。
    */
   private copyVector(record: VectorRecord): VectorRecord {
     return {
@@ -353,7 +377,9 @@ export class VectorRuntime {
   }
 
   /**
-   * 复制Hit 值，避免外部修改内部状态。
+   * 复制单条命中结果（含向量记录的深拷贝），避免外部修改内部状态。
+   * @param hit 要复制的命中结果。
+   * @returns 命中结果的深拷贝。
    */
   private copyHit(hit: VectorHit): VectorHit {
     return {

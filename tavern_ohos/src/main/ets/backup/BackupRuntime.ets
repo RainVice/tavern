@@ -24,7 +24,7 @@ export class BackupRuntime {
    */
   private events: EventBus;
   /**
-   * backup Counter 值，由当前实例内部维护。
+   * 创建备份的自增计数器，用作备份标识后缀。
    */
   private backupCounter: number = 0;
 
@@ -39,28 +39,30 @@ export class BackupRuntime {
   }
 
   /**
-   * 创建新的备份记录，写入存储并返回副本。
+   * 创建新的备份归档，写入存储并返回副本。
    * @param rootPath Tavern 数据根路径。
-   * @param destinationPath destination 路径。
-   * @param kind 记录类型。
-   * @returns 更新或读取后的记录副本。
+   * @param destinationPath 备份文件写入路径。
+   * @param kind 备份类型。
+   * @returns 新创建的备份归档副本。
    */
   async createBackup(rootPath: string, destinationPath: string, kind: BackupKind): Promise<BackupArchive> {
     return this.createBackupInternal(rootPath, destinationPath, kind, 'manual');
   }
 
   /**
-   * 创建新的迁移备份记录，写入存储并返回副本。
+   * 创建迁移场景下的备份归档，写入存储并返回副本。
    * @param rootPath Tavern 数据根路径。
-   * @param reason 失败、中止或恢复操作的原因说明。
-   * @returns 更新或读取后的记录副本。
+   * @param reason 触发迁移备份的原因描述。
+   * @returns 新创建的迁移备份归档副本。
    */
   async createMigrationBackup(rootPath: string, reason: string): Promise<BackupArchive> {
     return this.createBackupInternal(rootPath, `backups/migration-${this.backupCounter + 1}.json`, 'migration', reason);
   }
 
   /**
-   * 校验Archive 值是否满足运行时约束。
+   * 校验备份归档中各条目是否满足路径安全、内容一致性和校验和约束。
+   * @param archive 待校验的备份归档。
+   * @returns 校验结果，包含是否通过及错误详情列表。
    */
   validateArchive(archive: BackupArchive): BackupValidationResult {
     const errors = new Array<string>();
@@ -83,9 +85,10 @@ export class BackupRuntime {
   }
 
   /**
-   * 执行 restoreBackup 的内部处理步骤，供当前模块复用。
-
-   * @param targetRootPath target Root 路径。
+   * 还原备份归档到指定目标根路径下。
+   * @param archive 待还原的备份归档。
+   * @param targetRootPath 还原目标根路径。
+   * @returns 还原操作结果，包含已还原和跳过的路径列表。
    */
   async restoreBackup(archive: BackupArchive, targetRootPath: string): Promise<BackupRestoreResult> {
     const validation = this.validateArchive(archive);
@@ -112,12 +115,12 @@ export class BackupRuntime {
   }
 
   /**
-   * 创建内部备份记录，写入存储并返回副本。
+   * 创建内部备份归档，写入存储并返回副本。
    * @param rootPath Tavern 数据根路径。
-   * @param destinationPath destination 路径。
-   * @param kind 记录类型。
-   * @param reason 失败、中止或恢复操作的原因说明。
-   * @returns 更新或读取后的记录副本。
+   * @param destinationPath 备份文件写入路径。
+   * @param kind 备份类型。
+   * @param reason 创建备份的原因描述。
+   * @returns 新创建的备份归档副本。
    */
   private async createBackupInternal(rootPath: string, destinationPath: string, kind: BackupKind, reason: string): Promise<BackupArchive> {
     this.backupCounter += 1;
@@ -154,10 +157,10 @@ export class BackupRuntime {
   }
 
   /**
-   * 创建或写入条目，完成持久化后返回可供调用方使用的结果。
-   * @param rootPath Tavern 数据根路径。
-   * @param path 目标文件或目录路径。
-   * @param entries 条目列表。
+   * 将单个文件条目加入备份清单。
+   * @param rootPath 备份根路径，用于计算相对路径。
+   * @param path 文件绝对路径。
+   * @param entries 待填充的备份条目列表。
    */
   private async addFileEntry(rootPath: string, path: string, entries: Array<BackupManifestEntry>): Promise<void> {
     try {
@@ -175,8 +178,8 @@ export class BackupRuntime {
   }
 
   /**
-   * 检查sum是否满足当前规则。
-   * @param content 要写入或追加的文本内容。
+   * 计算给定文本内容的校验和字符串。
+   * @param content 待计算校验和的文本内容。
    */
   private checksum(content: string): string {
     let sum = 0;
@@ -206,7 +209,8 @@ export class BackupRuntime {
   }
 
   /**
-   * 复制Archive 值，避免外部修改内部状态。
+   * 深拷贝备份归档，避免外部修改内部状态。
+   * @param archive 源归档对象。
    */
   private copyArchive(archive: BackupArchive): BackupArchive {
     const entries = new Array<BackupManifestEntry>();
@@ -224,8 +228,8 @@ export class BackupRuntime {
   }
 
   /**
-   * 复制Entry 值，避免外部修改内部状态。
-   * @param entry 条目记录。
+   * 深拷贝备份条目，避免外部修改内部状态。
+   * @param entry 源条目对象。
    */
   private copyEntry(entry: BackupManifestEntry): BackupManifestEntry {
     return {
@@ -237,8 +241,8 @@ export class BackupRuntime {
   }
 
   /**
-   * 复制Restore Result 值，避免外部修改内部状态。
-   * @param result 返回结果。
+   * 深拷贝还原结果，避免外部修改内部状态。
+   * @param result 源结果对象。
    */
   private copyRestoreResult(result: BackupRestoreResult): BackupRestoreResult {
     return {

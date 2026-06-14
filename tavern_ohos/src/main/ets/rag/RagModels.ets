@@ -5,11 +5,11 @@ import type {
 } from '../contracts/PublicContracts';
 
 /**
- * 描述RAG 检索模块在运行时交换的数据结构。
+ * 表示RAG 检索中单条聊天消息，包含角色和内容。
  */
 export interface RagChatMessage {
   /**
-   * role 值，由当前实例内部维护。
+   * 消息角色（user/assistant/system），标识消息发送者身份。
    */
   role: ChatMessageRole;
   /**
@@ -27,7 +27,7 @@ export interface RagRetrievalInput {
    */
   query: string;
   /**
-   * query Embedding 值，由当前实例内部维护。
+   * 查询文本的向量嵌入，用于语义相似度检索。
    */
   queryEmbedding: Array<number>;
   /**
@@ -35,11 +35,11 @@ export interface RagRetrievalInput {
    */
   collectionIds: Array<string>;
   /**
-   * top K 值，由当前实例内部维护。
+   * 返回的 top-K 命中数上限，控制检索结果的条目数量。
    */
   topK: number;
   /**
-   * score Threshold 值，由当前实例内部维护。
+   * 检索结果的最小相似度阈值，低于该值的命中将被过滤。
    */
   scoreThreshold: number;
   /**
@@ -47,13 +47,13 @@ export interface RagRetrievalInput {
    */
   scope: TavernScope;
   /**
-   * prompt Template 值，由当前实例内部维护。
+   * 用于注入检索结果的 Prompt 模板，拼入最终上下文。
    */
   promptTemplate: string;
 }
 
 /**
- * 描述RAG 检索模块在运行时交换的数据结构。
+ * 表示检索命中的向量片段，包含来源和得分信息。
  */
 export interface RagChunk {
   /**
@@ -77,7 +77,7 @@ export interface RagChunk {
    */
   text: string;
   /**
-   * score 值，由当前实例内部维护。
+   * 相似度得分，由余弦相似度计算得出。
    */
   score: number;
   /**
@@ -87,7 +87,7 @@ export interface RagChunk {
 }
 
 /**
- * 描述RAG 检索操作完成后返回给调用方的结果。
+ * 表示RAG 检索完成后的最终结果，包含命中的片段、得分和生成的 prompt 文本。
  */
 export interface RagRetrievalResult {
   /**
@@ -95,25 +95,25 @@ export interface RagRetrievalResult {
    */
   query: string;
   /**
-   * chunks 列表，由当前实例内部维护。
+   * 检索命中的文本片段列表，按相关性排序。
    */
   chunks: Array<RagChunk>;
   /**
-   * scores 列表，由当前实例内部维护。
+   * 各命中片段对应的相似度得分列表，与 chunks 按索引对应。
    */
   scores: Array<number>;
   /**
-   * prompt Text 值，由当前实例内部维护。
+   * 生成的 Prompt 文本，将命中片段按模板拼入后供模型使用。
    */
   promptText: string;
   /**
-   * debug Trace 值，由当前实例内部维护。
+   * 检索过程的调试追踪信息，用于排查检索链路问题。
    */
   debugTrace: string;
 }
 
 /**
- * 描述RAG 检索事件发布时携带的数据结构。
+ * 表示RAG 检索事件发布时携带的数据结构，供外部订阅者消费。
  */
 export interface RagRetrievedPayload {
   /**
@@ -121,25 +121,25 @@ export interface RagRetrievedPayload {
    */
   query: string;
   /**
-   * chunks 列表，由当前实例内部维护。
+   * 检索命中的文本片段列表，按相关性排序。
    */
   chunks: Array<RagChunk>;
   /**
-   * scores 列表，由当前实例内部维护。
+   * 各命中片段对应的相似度得分列表，与 chunks 按索引对应。
    */
   scores: Array<number>;
   /**
-   * prompt Text 值，由当前实例内部维护。
+   * 生成的 Prompt 文本，将命中片段按模板拼入后供模型使用。
    */
   promptText: string;
 }
 
 /**
- * 描述RAG 检索模块在运行时交换的数据结构。
+ * 包装单条向量检索命中结果，为RAG 层提供适配后的数据视图。
  */
 export interface RagVectorHitSource {
   /**
-   * hit 值，由当前实例内部维护。
+   * 向量检索的命中结果，包含集合标识、向量记录和相似度得分。
    */
   hit: VectorHit;
 }

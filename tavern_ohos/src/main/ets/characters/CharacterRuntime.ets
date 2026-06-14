@@ -49,10 +49,10 @@ export class CharacterRuntime {
   }
 
   /**
-   * 创建新的角色记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
-   */
+ * 创建新的角色记录，写入存储并返回副本。
+ * @param params 创建角色所需的参数。
+ * @returns 新创建的角色记录副本。
+ */
   async createCharacter(params: CharacterCreateParams): Promise<CharacterRecord> {
     const index = await this.readIndex();
     const id = `char-${index.nextId}`;
@@ -92,8 +92,8 @@ export class CharacterRuntime {
   }
 
   /**
-   * 导入 SillyTavern V2 角色卡 JSON，分配新的角色标识并保存为当前 SDK 的角色记录。
-   * @param cardJson 角色卡 JSON 字符串。
+   * 导入 SillyTavern V2 角色卡 JSON，解析后分配新标识并保存。
+   * @param cardJson 符合 SillyTavern V2 规范的角色卡 JSON 字符串。
    * @returns 导入后的角色记录副本。
    */
   async importCharacterJson(cardJson: string): Promise<CharacterRecord> {
@@ -137,9 +137,9 @@ export class CharacterRuntime {
   }
 
   /**
-   * 导出角色卡 JSON；如果角色来自导入文件，会优先返回原始 sourceJson。
-   * @param characterId 目标角色标识。
-   * @returns 可持久化或可传输的导出内容。
+   * 导出角色卡 JSON；若角色来自导入文件，优先返回原始 sourceJson。
+   * @param characterId 目标角色唯一标识。
+   * @returns 角色卡 JSON 字符串。
    */
   async exportCharacterJson(characterId: string): Promise<string> {
     const character = await this.getCharacter(characterId);
@@ -151,9 +151,9 @@ export class CharacterRuntime {
   }
 
   /**
-   * 读取指定角色，不存在时抛出错误。
-   * @param characterId 目标角色标识。
-   * @returns 更新或读取后的记录副本。
+   * 读取指定角色的完整记录，不存在时抛出错误。
+   * @param characterId 目标角色唯一标识。
+   * @returns 角色记录副本。
    */
   async getCharacter(characterId: string): Promise<CharacterRecord> {
     const exists = await this.files.exists(this.characterPath(characterId));
@@ -165,7 +165,7 @@ export class CharacterRuntime {
   }
 
   /**
-   * 读取角色索引列表，用于角色列表页快速展示。
+   * 读取角色索引列表，用于角色列表页快速展示（不含完整记录字段）。
    * @returns 角色索引项副本列表。
    */
   async listCharacters(): Promise<Array<CharacterIndexEntry>> {
@@ -174,10 +174,10 @@ export class CharacterRuntime {
   }
 
   /**
-   * 更新指定角色，写回存储并按需发布变更事件。
-   * @param characterId 目标角色标识。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 更新指定角色的字段，写回存储并按需发布变更事件。
+   * @param characterId 目标角色唯一标识。
+   * @param params 更新角色所需的参数。
+   * @returns 更新后的角色记录副本。
    */
   async updateCharacter(characterId: string, params: CharacterUpdateParams): Promise<CharacterRecord> {
     const character = await this.getCharacter(characterId);
@@ -199,9 +199,9 @@ export class CharacterRuntime {
   }
 
   /**
-   * 复制现有角色，生成新的角色标识、头像路径和创建时间。
-   * @param characterId 目标角色标识。
-   * @param newName 新名称。
+   * 复制现有角色并赋予新的标识和名称。
+   * @param characterId 源角色唯一标识。
+   * @param newName 新角色的名称。
    * @returns 复制后的角色记录副本。
    */
   async duplicateCharacter(characterId: string, newName: string): Promise<CharacterRecord> {
@@ -244,8 +244,8 @@ export class CharacterRuntime {
   }
 
   /**
-   * 删除指定角色，并清理相关索引或资源引用。
-   * @param characterId 目标角色标识。
+   * 删除指定角色及关联资源（头像目录等），并更新索引。
+   * @param characterId 目标角色唯一标识。
    */
   async deleteCharacter(characterId: string): Promise<void> {
     const character = await this.getCharacter(characterId);

@@ -6,28 +6,29 @@ import type { CleanupCompletedPayload, CleanupReport, CleanupResult, CleanupStat
  */
 export class DataCleanupRuntime {
   /**
-   * 事件总线。
+   * 用于发布清理完成事件的事件总线实例。
    */
   private events: EventBus; private orphanFiles: Array<string>=new Array(); private corruptIndexes: Array<string>=new Array();
   /**
    * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * @param events 用于发布事件的事件总线。
    */
   constructor(events: EventBus) { this.events=events; }
 
   /**
-   * 注册Orphan File 值，使其可被后续运行时流程使用。
-   * @param path 目标文件或目录路径。
+   * 记录一条孤儿文件路径，供后续 runCleanup 处理。
+   * @param path 被认定为孤儿的文件或目录路径。
    */
   registerOrphanFile(path: string): void { this.orphanFiles.push(path); }
   /**
-   * 注册Corrupt Index 值，使其可被后续运行时流程使用。
-   * @param path 目标文件或目录路径。
+   * 记录一条损坏索引路径，供后续 runCleanup 处理。
+   * @param path 被认定为损坏的索引文件路径。
    */
   registerCorruptIndex(path: string): void { this.corruptIndexes.push(path); }
 
   /**
-   * 执行 runCleanup 的内部处理步骤，供当前模块复用。
+   * 执行数据清理：汇总已注册的孤儿文件与损坏索引，将其包装为报告发布事件后返回。
+   * @returns 包含清理报告与成功状态的 CleanupResult。
    */
   runCleanup(): CleanupResult {
     const report: CleanupReport = {
@@ -41,8 +42,8 @@ export class DataCleanupRuntime {
   }
 
   /**
-   * 读取Stats 列表，不存在时通常抛出错误或返回空值。
-   * @returns 更新或读取后的记录副本。
+   * 获取当前待处理的孤儿文件与损坏索引数量的快照。
+   * @returns 包含 orphans 和 corrupt 计数的 CleanupStats。
    */
   getStats(): CleanupStats {
     const stats: CleanupStats = { orphans: this.orphanFiles.length, corrupt: this.corruptIndexes.length };

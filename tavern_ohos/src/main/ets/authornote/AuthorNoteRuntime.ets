@@ -25,9 +25,10 @@ export class AuthorNoteRuntime {
   }
 
   /**
-   * 根据入参构建Injection 值，仅生成数据结构，不直接执行外部请求。
-   * @param input 待处理的输入对象。
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * 根据入参构建注入指令，仅生成数据结构，不执行外部请求。
+   * 内部处理元数据回退、角色注释合并以及注入时机计算。
+   * @param input 构建注入所需的所有已知参数集合。
+   * @returns 一次注入的完整指令，含最终 prompt、启用状态和插入位置等。
    */
   buildInjection(input: AuthorNoteBuildInput): AuthorNoteInjection {
     const interval = this.valueOrDefault(input.metadata.interval, input.defaults.interval, 1);

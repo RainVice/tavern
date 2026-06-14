@@ -16,47 +16,48 @@ import type {
 import { CommandInvocation } from './CommandModels';
 
 /**
- * 描述命令模块在运行时交换的数据结构。
+ * 命令注册后的内部定义，包含记录和可执行动作。
  */
 interface CommandDefinitionInternal {
   /**
-   * 记录数据。
+   * 命令记录信息。
    */
   record: CommandRecord;
   /**
-   * action 值，由当前实例内部维护。
+   * 命令的可执行回调。
    */
   action: CommandAction;
 }
 
 /**
- * 提供命令相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 命令运行时的无 UI 能力层，负责命令注册、解析、执行和事件发布。
  */
 export class CommandRuntime {
   /**
-   * 事件总线。
+   * 事件总线实例。
    */
   private events: EventBus;
   /**
-   * commands 列表，由当前实例内部维护。
+   * 已注册的命令定义映射，键为命令名称。
    */
   private commands: Map<string, CommandDefinitionInternal> = new Map<string, CommandDefinitionInternal>();
   /**
-   * aliases 列表，由当前实例内部维护。
+   * 别名到标准名称的映射。
    */
   private aliases: Map<string, string> = new Map<string, string>();
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 构造命令运行时实例。
+   * @param events 事件总线实例。
    */
   constructor(events: EventBus) {
     this.events = events;
   }
 
   /**
-   * 注册Command 值，使其可被后续运行时流程使用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 注册一条命令，使其可被后续运行时流程调用。
+   * @param params 命令注册参数。
+   * @returns 注册成功的命令记录副本。
    */
   registerCommand(params: CommandRegistrationParams): CommandRecord {
     const record: CommandRecord = {
@@ -83,8 +84,8 @@ export class CommandRuntime {
   }
 
   /**
-   * 取消注册Command 值，避免后续流程继续调用。
-   * @param name 显示名称或注册名称。
+   * 取消注册一条命令，使其不再响应调用。
+   * @param name 命令名称或别名。
    */
   unregisterCommand(name: string): void {
     const canonical = this.resolveCommandName(name);
@@ -99,8 +100,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 解析Text，非法输入会返回失败标记或空结果。
-   * @param text 文本内容。
+   * 解析命令文本，提取出结构化的命令输入。
+   * @param text 以斜杠开头的命令文本。
+   * @returns 解析后的命令输入。
    */
   parseText(text: string): CommandParsedInput {
     const trimmed = text.trim();
@@ -112,7 +114,7 @@ export class CommandRuntime {
     if (tokens.length === 0) {
       throw new Error('Command name is missing.');
     }
-    // command 名称。
+    // 命令名称取自第一个 token。
     const commandName = tokens[0];
     const namedArguments = new Array<CommandNamedArgument>();
     const unnamed = new Array<string>();
@@ -137,9 +139,10 @@ export class CommandRuntime {
   }
 
   /**
-   * 执行 executeText 的内部处理步骤，供当前模块复用。
-   * @param text 文本内容。
-   * @param options 控制本次调用行为的选项。
+   * 执行一条命令文本，返回单步执行结果。
+   * @param text 命令文本。
+   * @param options 执行选项。
+   * @returns 命令执行结果。
    */
   async executeText(text: string, options: CommandExecuteOptions): Promise<CommandExecutionResult> {
     const parsed = this.parseText(text);
@@ -147,9 +150,10 @@ export class CommandRuntime {
   }
 
   /**
-   * 执行 executePipeline 的内部处理步骤，供当前模块复用。
-   * @param text 文本内容。
-   * @param options 控制本次调用行为的选项。
+   * 执行命令流水线（按 | 分割的多段命令），每段输出作为下一段输入。
+   * @param text 包含管道符的命令文本。
+   * @param options 执行选项。
+   * @returns 流水线执行结果。
    */
   async executePipeline(text: string, options: CommandExecuteOptions): Promise<CommandPipelineResult> {
     const segments = this.splitPipeline(text);
@@ -180,9 +184,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 执行 autocomplete 的内部处理步骤，供当前模块复用。
-   * @param prefix CIDR 前缀长度。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 根据前缀补全可用的命令名称和别名。
+   * @param prefix 命令名称前缀。
+   * @returns 匹配的命令名称和别名列表，按字典序排序。
    */
   autocomplete(prefix: string): Array<string> {
     const result = new Array<string>();
@@ -203,9 +207,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 读取指定Help，不存在时抛出错误。
-   * @param name 显示名称或注册名称。
-   * @returns 更新或读取后的记录副本。
+   * 获取指定命令的帮助文本。
+   * @param name 命令名称或别名。
+   * @returns 帮助文本，命令不存在时返回空字符串。
    */
   getHelp(name: string): string {
     const definition = this.commands.get(this.resolveCommandName(name));
@@ -216,8 +220,8 @@ export class CommandRuntime {
   }
 
   /**
-   * 读取Commands列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有已注册的命令记录。
+   * @returns 命令记录列表，返回副本以保护内部状态。
    */
   listCommands(): Array<CommandRecord> {
     const result = new Array<CommandRecord>();
@@ -232,7 +236,7 @@ export class CommandRuntime {
     pipeInput: string,
     options: CommandExecuteOptions,
   ): Promise<CommandExecutionResult> {
-    // command 名称。
+    // 通过别名解析出标准命令名称。
     const commandName = this.resolveCommandName(parsed.commandName);
     const invocation = new CommandInvocation(
       commandName,
@@ -280,11 +284,11 @@ export class CommandRuntime {
   }
 
   /**
-   * 发布命令事件，把状态变化通知给宿主或其他 Runtime。
-
-   * @param message 消息记录。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 发布命令错误事件并返回失败结果。
+   * @param invocation 命令调用上下文。
+   * @param message 错误消息。
+   * @param cancelled 是否因取消而失败。
+   * @returns 错误执行结果。
    */
   private publishError(invocation: CommandInvocation, message: string, cancelled: boolean = false): CommandExecutionResult {
     const result: CommandExecutionResult = {
@@ -303,8 +307,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 根据当前上下文解析Command 名称，返回实际可用值。
-   * @param name 显示名称或注册名称。
+   * 解析命令名称，若为别名则返回对应的标准名称。
+   * @param name 命令名称或别名。
+   * @returns 标准命令名称。
    */
   private resolveCommandName(name: string): string {
     const aliasTarget = this.aliases.get(name);
@@ -315,10 +320,10 @@ export class CommandRuntime {
   }
 
   /**
-   * 判断当前对象是否包含Permission 值。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断权限列表中是否包含执行命令所需的指定权限。
+   * @param permission 所需的权限。
+   * @param allowedPermissions 当前可用的权限列表。
+   * @returns 权限满足时返回 true。
    */
   private hasPermission(permission: RuntimePermission, allowedPermissions: Array<RuntimePermission>): boolean {
     if (permission.length === 0) {
@@ -356,7 +361,7 @@ export class CommandRuntime {
   /**
    * 把命令文本拆分为 token 列表。
    * @param text 文本内容。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns token 列表。
    */
   private tokenize(text: string): Array<string> {
     const tokens = new Array<string>();
@@ -382,17 +387,18 @@ export class CommandRuntime {
   }
 
   /**
-   * 判断Whitespace 值是否满足条件。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断指定字符是否为空白字符。
+   * @param char 待检查字符。
+   * @returns 是空白字符时返回 true。
    */
   private isWhitespace(char: string): boolean {
     return char === ' ' || char === '\t' || char === '\n' || char === '\r';
   }
 
   /**
-   * 复制Command 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 复制命令记录，避免外部修改内部状态。
+   * @param record 待复制的命令记录。
+   * @returns 命令记录的深拷贝。
    */
   private copyCommand(record: CommandRecord): CommandRecord {
     return {
@@ -406,8 +412,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 复制Result 值，避免外部修改内部状态。
-   * @param result 返回结果。
+   * 复制命令执行结果，避免外部修改内部状态。
+   * @param result 待复制的执行结果。
+   * @returns 执行结果的副本。
    */
   private copyResult(result: CommandExecutionResult): CommandExecutionResult {
     return {
@@ -420,7 +427,9 @@ export class CommandRuntime {
   }
 
   /**
-   * 复制Invocation 值，避免外部修改内部状态。
+   * 复制命令调用上下文，避免外部修改内部状态。
+   * @param invocation 待复制的调用上下文。
+   * @returns 调用上下文的副本。
    */
   private copyInvocation(invocation: CommandInvocation): CommandInvocation {
     const namedArguments = new Array<CommandNamedArgument>();

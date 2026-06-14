@@ -16,18 +16,19 @@ export class SamplerRuntime {
   constructor(events: EventBus) { this.events=events; }
 
   /**
-   * 执行 defaultParams 的内部处理步骤，供当前模块复用。
+   * 返回采样参数的默认值集合。
+   * @returns 包含各采样参数默认值的 SamplerParams 对象。
    */
   defaultParams(): SamplerParams {
     return { temperature:1.0, top_p:0.9, top_k:40, repetition_penalty:1.1, frequency_penalty:0, presence_penalty:0, min_p:0.05, typical_p:1.0, cfg_scale:1.0, seed:-1 };
   }
 
   /**
-   * 创建或写入预设，完成持久化后返回可供调用方使用的结果。
-   * @param name 显示名称或注册名称。
-   * @param params 创建、更新或执行操作所需的参数对象。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 创建或更新采样参数预设。新预设写入内部 Map，并发布保存事件。
+   * @param name 预设名称。
+   * @param params 采样参数。
+   * @param logitBias logit bias 列表。
+   * @returns 已保存的 SamplerPreset 副本。
    */
   savePreset(name: string, params: SamplerParams, logitBias: Array<LogitBiasEntry>): SamplerPreset {
     this.counter+=1; const presetId=`sampler-${this.counter}`; const now=Date.now();
@@ -45,17 +46,17 @@ export class SamplerRuntime {
   }
 
   /**
-   * 读取指定预设，不存在时抛出错误。
+   * 根据 presetId 读取指定预设。
    * @param presetId 目标预设标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 预设的副本，调用方可安全读取。
    */
   getPreset(presetId: string): SamplerPreset {
     const p=this.presets.get(presetId); if (p===undefined) throw new Error(`采样器预设未找到: ${presetId}`); return this.copyPreset(p);
   }
 
   /**
-   * 读取Presets列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有已保存预设的副本列表。
+   * @returns 预设副本数组，调用方修改返回值不会直接影响内部状态。
    */
   listPresets(): Array<SamplerPreset> {
     const result = new Array<SamplerPreset>();
@@ -67,15 +68,15 @@ export class SamplerRuntime {
   }
 
   /**
-   * 删除指定预设，并清理相关索引或资源引用。
+   * 删除指定预设。
    * @param presetId 目标预设标识。
    */
   deletePreset(presetId: string): void { this.getPreset(presetId); this.presets.delete(presetId); }
 
   /**
-   * 根据入参构建Logit Bias JSON 字符串，仅生成数据结构，不直接执行外部请求。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 根据 logit bias 列表构建 JSON 字符串，用于 API 请求载荷。
+   * @param bias logit bias 条目列表。
+   * @returns 格式化的 JSON 字符串，如 {"token1":-1.0,"token2":2.0}。
    */
   buildLogitBiasJson(bias: Array<LogitBiasEntry>): string {
     const parts=new Array<string>();
@@ -84,8 +85,10 @@ export class SamplerRuntime {
   }
 
   /**
-   * 执行 applyCfgScale 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 对采样参数应用 cfg_scale 值，返回新的 SamplerParams 对象。
+   * @param params 原始采样参数。
+   * @param scale cfg_scale 值（将被限制为 >= 1.0）。
+   * @returns 应用 cfg_scale 后的新 SamplerParams。
    */
   applyCfgScale(params: SamplerParams, scale: number): SamplerParams {
     const p: SamplerParams = {
@@ -104,14 +107,14 @@ export class SamplerRuntime {
   }
 
   /**
-   * 导出数据，用于备份、迁移或与 SillyTavern 数据互通。
-   * @returns 可持久化或可传输的导出内容。
+   * 导出所有预设数据，用于备份、迁移或与 SillyTavern 数据互通。
+   * @returns 包含全部预设的导出数据结构。
    */
   exportData(): SamplerExportData { return { presets: this.listPresets() }; }
 
   /**
-   * 从外部数据导入Data 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
+   * 从外部数据结构导入预设，合并到当前运行时内部状态。
+   * @param data 待导入的导出数据。
    */
   importData(data: SamplerExportData): void {
     for (let i=0;i<data.presets.length;i++) {
@@ -122,7 +125,7 @@ export class SamplerRuntime {
   }
 
   /**
-   * 复制Preset 值，避免外部修改内部状态。
+   * 深拷贝 SamplerPreset 对象。
    */
   private copyPreset(preset: SamplerPreset): SamplerPreset {
     return {
@@ -136,8 +139,7 @@ export class SamplerRuntime {
   }
 
   /**
-   * 复制Params 列表，避免外部修改内部状态。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 深拷贝 SamplerParams 对象。
    */
   private copyParams(params: SamplerParams): SamplerParams {
     return {
@@ -155,9 +157,7 @@ export class SamplerRuntime {
   }
 
   /**
-   * 复制Logit Bias 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深拷贝 LogitBiasEntry 数组。
    */
   private copyLogitBias(logitBias: Array<LogitBiasEntry>): Array<LogitBiasEntry> {
     const result = new Array<LogitBiasEntry>();
@@ -171,8 +171,9 @@ export class SamplerRuntime {
   }
 
   /**
-   * 解析Counter，非法输入会返回失败标记或空结果。
-   * @param presetId 目标预设标识。
+   * 从预设标识中解析计数器数值，用于生成下一个预设 ID。
+   * @param presetId 预设标识字符串，格式为 "sampler-{数字}"。
+   * @returns 解析出的数值，非法格式返回 0。
    */
   private parseCounter(presetId: string): number {
     if (!presetId.startsWith('sampler-')) {
@@ -183,8 +184,9 @@ export class SamplerRuntime {
   }
 
   /**
-   * 规范化JSONString，确保后续存储、比较或展示行为稳定。
-   * @param value 要保存或比较的字段值。
+   * 对字符串中的特殊字符进行 JSON 转义处理。
+   * @param value 原始字符串。
+   * @returns 转义后的安全 JSON 字符串片段。
    */
   private escapeJsonString(value: string): string {
     let output = '';

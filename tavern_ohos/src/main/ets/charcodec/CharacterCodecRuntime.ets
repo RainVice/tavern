@@ -11,8 +11,9 @@ import { ImageMetadataRuntime } from '../imagemetadata/ImageMetadataRuntime';
  */
 export class CharacterCodecRuntime {
   /**
-   * 解析输入内容并转换为Character JSON 字符串结构。
-   * @param json 外部传入的 JSON 字符串。
+   * 将输入 JSON 解析为统一结构 CharacterCodecResult，自动检测 V1 / V2 / charx 格式。
+   * @param json 角色卡原始 JSON 字符串。
+   * @returns 解析后的统一结果结构。
    */
   parseCharacterJson(json: string): CharacterCodecResult {
     const obj = JSON.parse(json) as CharacterCardV2Input;
@@ -24,8 +25,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 解析PngCharacterCard，非法输入会返回失败标记或空结果。
-   * @param data 导入或恢复使用的序列化数据。
+   * 从 PNG 图片中提取并解析角色卡数据。
+   * @param data PNG 图片的 ArrayBuffer 数据。
+   * @returns 解析后的统一结果结构。
    */
   parsePngCharacterCard(data: ArrayBuffer): CharacterCodecResult {
     const metadata = new ImageMetadataRuntime();
@@ -38,8 +40,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 解析 WebP Character Card，非法输入会返回失败标记或空结果。
-   * @param data 导入或恢复使用的序列化数据。
+   * 从 WebP 图片中提取并解析角色卡数据。
+   * @param data WebP 图片的 ArrayBuffer 数据。
+   * @returns 解析后的统一结果结构。
    */
   parseWebpCharacterCard(data: ArrayBuffer): CharacterCodecResult {
     const metadata = new ImageMetadataRuntime();
@@ -52,9 +55,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 导出为角色卡 V2 结构，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param result 返回结果。
-   * @returns 可持久化或可传输的导出内容。
+   * 将 CharacterCodecResult 导出为 V2 格式的 JSON 字符串。
+   * @param result 待导出的角色卡结果。
+   * @returns V2 格式 JSON 字符串，可用于持久化或传输。
    */
   exportToV2(result: CharacterCodecResult): string {
     const data: CharacterCardV2ExportData = {
@@ -74,10 +77,10 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 导出为 PNG 角色卡，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param result 返回结果。
-
-   * @returns 可持久化或可传输的导出内容。
+   * 将角色卡数据写入 PNG 图片中，生成携带 metadata 的 PNG 文件。
+   * @param result 待导出的角色卡结果。
+   * @param sourcePng 源 PNG 图片的 ArrayBuffer 数据。
+   * @returns 写入角色卡后的 PNG 图片数据。
    */
   exportToPng(result: CharacterCodecResult, sourcePng: ArrayBuffer): ArrayBuffer {
     const metadata = new ImageMetadataRuntime();
@@ -85,9 +88,10 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 导出为 WebP 角色卡，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param result 返回结果。
-   * @param sourceWebp 源 WebP 图片数据。
+   * 将角色卡数据写入 WebP 图片中，生成携带 metadata 的 WebP 文件。
+   * @param result 待导出的角色卡结果。
+   * @param sourceWebp 源 WebP 图片的 ArrayBuffer 数据。
+   * @returns 写入角色卡后的 WebP 图片数据。
    */
   exportToWebp(result: CharacterCodecResult, sourceWebp: ArrayBuffer): ArrayBuffer {
     const metadata = new ImageMetadataRuntime();
@@ -95,8 +99,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 识别输入数据的Format 值，供导入流程选择后续解析方式。
-   * @param data 导入或恢复使用的序列化数据。
+   * 检测 JSON 字符串所属的角色卡格式类型，供导入流程选择后续解析方式。
+   * @param data 角色卡原始 JSON 字符串。
+   * @returns 格式标识，如 'v1'、'v2'、'charx' 或 'unknown'。
    */
   detectFormat(data: string): CharacterCardFormat {
     try { const obj = JSON.parse(data) as CharacterCardV2Input;
@@ -109,8 +114,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 识别输入数据的Binary Format 值，供导入流程选择后续解析方式。
-   * @param data 导入或恢复使用的序列化数据。
+   * 检测二进制数据（PNG/WebP）中是否嵌入了角色卡 metadata。
+   * @param data 图片文件的 ArrayBuffer 数据。
+   * @returns 格式标识，如 'png_metadata'、'webp_metadata' 或 'unknown'。
    */
   detectBinaryFormat(data: ArrayBuffer): CharacterCardFormat {
     const metadata = new ImageMetadataRuntime();
@@ -125,8 +131,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 解析CharacterBook，非法输入会返回失败标记或空结果。
-   * @param json 外部传入的 JSON 字符串。
+   * 解析角色书 JSON，将输入结构转换为运行时使用的 CharacterBook。
+   * @param json 角色书原始 JSON 字符串。
+   * @returns 解析后的角色书结构。
    */
   parseCharacterBook(json: string): CharacterBook {
     const obj = JSON.parse(json) as CharacterBookInput;
@@ -141,9 +148,9 @@ export class CharacterCodecRuntime {
   }
 
   /**
-   * 导出角色Book，用于备份、迁移或与 SillyTavern 数据互通。
-
-   * @returns 可持久化或可传输的导出内容。
+   * 将 CharacterBook 序列化为 JSON 字符串。
+   * @param book 待导出的角色书。
+   * @returns 角色书 JSON 字符串。
    */
   exportCharacterBook(book: CharacterBook): string { return JSON.stringify(book); }
 

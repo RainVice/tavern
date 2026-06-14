@@ -2,187 +2,189 @@ import type { RuntimeSource } from '../contracts/PublicContracts';
 import type { VariableResolveContext } from '../variable/VariableModels';
 
 /**
- * 描述宏展开模块在运行时交换的数据结构。
+ * 宏展开上下文，记录当前展开操作所涉及的各类名称和消息文本。
  */
 export interface MacroEvaluationContext {
   /**
-   * user 名称。
+   * 当前对话的用户名称。
    */
   userName: string;
   /**
-   * character 名称。
+   * 当前对话的角色名称。
    */
   characterName: string;
   /**
-   * persona 名称。
+   * 当前使用的 Persona 名称。
    */
   personaName: string;
   /**
-   * chat 名称。
+   * 当前对话（chat）的名称。
    */
   chatName: string;
   /**
-   * message Text 值，由当前实例内部维护。
+   * 当前待展开的消息文本。
    */
   messageText: string;
   /**
-   * world Info 名称。
+   * 当前生效的 World Info 条目名称。
    */
   worldInfoName: string;
   /**
-   * variable Context 值，由当前实例内部维护。
+   * 变量解析上下文，供宏内部按需查询或设置变量。
    */
   variableContext: VariableResolveContext;
 }
 
 /**
- * 描述宏展开模块在运行时交换的数据结构。
+ * 单个宏在展开阶段所需的执行上下文，包含宏名称和参数。
  */
 export interface MacroExecutionContext {
   /**
-   * 名称。
+   * 宏名称。
    */
   name: string;
   /**
-   * args 列表，由当前实例内部维护。
+   * 宏调用时传入的参数列表。
    */
   args: Array<string>;
   /**
-   * raw 值，由当前实例内部维护。
+   * 宏调用的原始输入文本（包含 {{}} 包围符）。
    */
   raw: string;
   /**
-   * context 值，由当前实例内部维护。
+   * 当前宏展开的评估上下文。
    */
   context: MacroEvaluationContext;
 }
 
 /**
- * 描述宏展开模块在运行时交换的数据结构。
+ * 可执行的宏动作接口，实现方应在此完成宏的替换逻辑。
  */
 export interface MacroAction {
   /**
-   * 执行 expand 的内部处理步骤，供当前模块复用。
+   * 根据执行上下文计算宏的替换结果。
+   * @param context 宏执行上下文。
+   * @returns 替换后的文本。
    */
   expand(context: MacroExecutionContext): string;
 }
 
 /**
- * 描述调用宏展开能力时需要传入的参数。
+ * 注册宏时需要提供的参数集合。
  */
 export interface MacroRegistrationParams {
   /**
-   * 名称。
+   * 宏名称。
    */
   name: string;
   /**
-   * category 值，由当前实例内部维护。
+   * 宏所属分类（如 names、chat、variable、utility）。
    */
   category: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 宏的功能描述。
    */
   description: string;
   /**
-   * 来源类型，由当前实例内部维护。
+   * 宏的来源类型（builtin / plugin）。
    */
   source: RuntimeSource;
   /**
-   * plugin 标识。
+   * 注册该宏的插件标识，空字符串表示内置宏。
    */
   pluginId: string;
   /**
-   * action 值，由当前实例内部维护。
+   * 宏对应的可执行动作。
    */
   action: MacroAction;
 }
 
 /**
- * 描述宏展开持久化或内存索引中的一条记录。
+ * 持久化或内存索引中的一条宏记录，不含执行逻辑。
  */
 export interface MacroRecord {
   /**
-   * 名称。
+   * 宏名称。
    */
   name: string;
   /**
-   * category 值，由当前实例内部维护。
+   * 宏所属分类。
    */
   category: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 宏的功能描述。
    */
   description: string;
   /**
-   * 来源类型，由当前实例内部维护。
+   * 宏的来源类型。
    */
   source: RuntimeSource;
   /**
-   * plugin 标识。
+   * 注册该宏的插件标识。
    */
   pluginId: string;
 }
 
 /**
- * 描述宏展开模块在运行时交换的数据结构。
+ * 宏展开诊断项，记录展开过程中出现的异常或未知宏引用。
  */
 export interface MacroDiagnostic {
   /**
-   * macro 名称。
+   * 引用的宏名称。
    */
   macroName: string;
   /**
-   * 消息数据。
+   * 诊断消息，描述具体问题。
    */
   message: string;
   /**
-   * offset 值，由当前实例内部维护。
+   * 宏在原始输入中的起始偏移量。
    */
   offset: number;
   /**
-   * raw 值，由当前实例内部维护。
+   * 宏原始文本内容（包含 {{}}）。
    */
   raw: string;
 }
 
 /**
- * 描述宏展开操作完成后返回给调用方的结果。
+ * 宏展开操作完成后返回给调用方的结果。
  */
 export interface MacroExpansionResult {
   /**
-   * 文本内容。
+   * 展开后的最终文本。
    */
   text: string;
   /**
-   * diagnostics 列表，由当前实例内部维护。
+   * 展开过程中产生的诊断列表。
    */
   diagnostics: Array<MacroDiagnostic>;
 }
 
 /**
- * 描述宏展开事件发布时携带的数据结构。
+ * 宏展开完成后发布事件时所携带的数据。
  */
 export interface MacroExpandedPayload {
   /**
-   * 输入数据。
+   * 展开前的输入文本。
    */
   input: string;
   /**
-   * output 值，由当前实例内部维护。
+   * 展开后的输出文本。
    */
   output: string;
   /**
-   * diagnostics 列表，由当前实例内部维护。
+   * 展开过程中产生的诊断列表。
    */
   diagnostics: Array<MacroDiagnostic>;
 }
 
 /**
- * 描述宏展开事件发布时携带的数据结构。
+ * 宏注册完成后发布事件时所携带的数据。
  */
 export interface MacroRegisteredPayload {
   /**
-   * macro 值，由当前实例内部维护。
+   * 注册的宏记录。
    */
   macro: MacroRecord;
 }

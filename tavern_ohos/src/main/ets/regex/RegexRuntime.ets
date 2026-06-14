@@ -16,7 +16,7 @@ export class RegexRuntime {
    */
   private events: EventBus;
   /**
-   * scripts 列表，由当前实例内部维护。
+   * 已注册的正则脚本列表，按注册顺序依次执行以处理消息文本。
    */
   private scripts: Array<RegexScriptRecord> = new Array<RegexScriptRecord>();
 
@@ -29,7 +29,9 @@ export class RegexRuntime {
   }
 
   /**
-   * 注册Script 值，使其可被后续运行时流程使用。
+   * 注册一条正则脚本记录到运行时，如果已存在相同 id 则覆盖。
+   * @param script 待注册的脚本记录。
+   * @returns 注册后的深拷贝副本，调用方修改返回值不影响内部状态。
    */
   registerScript(script: RegexScriptRecord): RegexScriptRecord {
     const existingIndex = this.findScriptIndex(script.id);
@@ -43,8 +45,8 @@ export class RegexRuntime {
   }
 
   /**
-   * 取消注册Script 值，避免后续流程继续调用。
-   * @param scriptId 目标脚本标识。
+   * 根据脚本标识从运行时移除已注册的脚本。
+   * @param scriptId 要移除的目标脚本标识。
    */
   unregisterScript(scriptId: string): void {
     const index = this.findScriptIndex(scriptId);
@@ -54,8 +56,8 @@ export class RegexRuntime {
   }
 
   /**
-   * 读取Scripts列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取当前所有已注册脚本的深拷贝列表。
+   * @returns 注册脚本列表的副本，调用方修改返回值不影响内部状态。
    */
   listScripts(): Array<RegexScriptRecord> {
     const result = new Array<RegexScriptRecord>();
@@ -66,7 +68,7 @@ export class RegexRuntime {
   }
 
   /**
-   * 移除临时脚本列表，用于解除注册、绑定或索引关系。
+   * 移除所有标记为临时脚本的记录，仅保留持久化脚本。
    */
   removeEphemeralScripts(): void {
     const kept = new Array<RegexScriptRecord>();
@@ -80,8 +82,9 @@ export class RegexRuntime {
   }
 
   /**
-   * 执行 applyScripts 的内部处理步骤，供当前模块复用。
-   * @param input 待处理的输入对象。
+   * 对输入文本依次执行所有已注册且符合条件的正则脚本，并收集每次变更的跟踪信息。
+   * @param input 待处理的输入参数。
+   * @returns 处理后的最终文本及所有脚本的变更轨迹列表。
    */
   applyScripts(input: RegexApplyInput): RegexApplyResult {
     let current = input.text;

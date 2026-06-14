@@ -1,37 +1,37 @@
 import type { BackupKind } from '../contracts/PublicContracts';
 
 /**
- * 描述备份恢复持久化或内存索引中的一条记录。
+ * 描述备份恢复持久化或内存索引中的一条文件记录。
  */
 export interface BackupManifestEntry {
   /**
-   * 路径。
+   * 文件相对于备份根目录的相对路径。
    */
   path: string;
   /**
-   * 内容。
+   * 文件原始文本内容。
    */
   content: string;
   /**
-   * checksum 值，由当前实例内部维护。
+   * 校验和，由当前实例根据内容自动生成。
    */
   checksum: string;
   /**
-   * size 值，由当前实例内部维护。
+   * 内容字节长度。
    */
   size: number;
 }
 
 /**
- * 描述备份恢复模块在运行时交换的数据结构。
+ * 描述备份恢复模块在运行时交换的归档数据结构。
  */
 export interface BackupArchive {
   /**
-   * 标识。
+   * 归档唯一标识符，格式为 backup-{自增序号}。
    */
   id: string;
   /**
-   * kind 值，由当前实例内部维护。
+   * 归档类型，区分手动备份与迁移备份。
    */
   kind: BackupKind;
   /**
@@ -39,75 +39,75 @@ export interface BackupArchive {
    */
   rootPath: string;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 创建此归档的原因描述。
    */
   reason: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 归档创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * 条目列表，由当前实例内部维护。
+   * 归档中包含的文件条目列表。
    */
   entries: Array<BackupManifestEntry>;
 }
 
 /**
- * 描述备份恢复操作完成后返回给调用方的结果。
+ * 描述备份归档校验操作的结果。
  */
 export interface BackupValidationResult {
   /**
-   * valid 值，由当前实例内部维护。
+   * 归档是否通过校验。
    */
   valid: boolean;
   /**
-   * errors 列表，由当前实例内部维护。
+   * 校验过程中发现的错误信息列表。
    */
   errors: Array<string>;
 }
 
 /**
- * 描述备份恢复操作完成后返回给调用方的结果。
+ * 描述备份还原操作的结果。
  */
 export interface BackupRestoreResult {
   /**
-   * backup 标识。
+   * 所还原的备份归档标识符。
    */
   backupId: string;
   /**
-   * restored Paths 列表，由当前实例内部维护。
+   * 成功还原的文件路径列表。
    */
   restoredPaths: Array<string>;
   /**
-   * skipped Paths 列表，由当前实例内部维护。
+   * 因校验未通过等原因被跳过的文件路径列表。
    */
   skippedPaths: Array<string>;
 }
 
 /**
- * 描述备份恢复事件发布时携带的数据结构。
+ * 描述备份完成事件（backup.completed）发布时携带的载荷。
  */
 export interface BackupCompletedPayload {
   /**
-   * backup 标识。
+   * 所完成备份的归档标识符。
    */
   backupId: string;
   /**
-   * 路径。
+   * 备份文件写入的物理路径。
    */
   path: string;
   /**
-   * archive 值，由当前实例内部维护。
+   * 备份归档的不可变副本。
    */
   archive: BackupArchive;
 }
 
 /**
- * 描述备份恢复事件发布时携带的数据结构。
+ * 描述备份还原事件（backup.restored）发布时携带的载荷。
  */
 export interface BackupRestoredPayload {
   /**
-   * 处理结果。
+   * 还原操作的执行结果。
    */
   result: BackupRestoreResult;
 }

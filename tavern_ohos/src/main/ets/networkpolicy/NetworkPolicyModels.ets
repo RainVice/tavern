@@ -1,95 +1,95 @@
 /**
- * 描述网络策略模块在运行时交换的数据结构。
+ * 网络策略运行时的配置选项，控制策略开关、白名单及日志行为。
  */
 export interface NetworkPolicyOptions {
   /**
-   * enabled 值，由当前实例内部维护。
+   * 是否启用网络策略过滤。关闭后所有请求直接放行。
    */
   enabled: boolean;
   /**
-   * whitelist 值，由当前实例内部维护。
+   * 私网地址白名单列表，命中白名单的私有地址请求将被放行。
    */
   whitelist: Array<string>;
   /**
-   * allow Unresolved Hosts 列表，由当前实例内部维护。
+   * 是否放行 DNS 解析失败（未解析出地址）的请求。
    */
   allowUnresolvedHosts: boolean;
   /**
-   * log Allowed 值，由当前实例内部维护。
+   * 是否在事件总线上发布「允许」事件。
    */
   logAllowed?: boolean;
   /**
-   * log Blocked 值，由当前实例内部维护。
+   * 是否在事件总线上发布「阻断」事件。
    */
   logBlocked?: boolean;
 }
 
 /**
- * 描述网络策略模块在运行时交换的数据结构。
+ * 网络策略评估结果，包含目标是否放行及其匹配的规则信息。
  */
 export interface NetworkPolicyDecision {
   /**
-   * host 值，由当前实例内部维护。
+   * 被评估的目标主机名。
    */
   host: string;
   /**
-   * address 列表，由当前实例内部维护。
+   * 解析后的 IP 地址。
    */
   address: string;
   /**
-   * allowed 值，由当前实例内部维护。
+   * 是否允许访问。
    */
   allowed: boolean;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 决策原因描述，如 "public-address"、"whitelisted-private-address" 等。
    */
   reason: string;
   /**
-   * matched Rule 值，由当前实例内部维护。
+   * 命中的白名单规则，无规则命中时为空字符串。
    */
   matchedRule: string;
 }
 
 /**
- * 描述网络策略事件发布时携带的数据结构。
+ * 网络策略「允许」事件发布时携带的载荷数据。
  */
 export interface NetworkPolicyAllowedPayload {
   /**
-   * host 值，由当前实例内部维护。
+   * 被评估的目标主机名。
    */
   host: string;
   /**
-   * address 列表，由当前实例内部维护。
+   * 解析后的 IP 地址。
    */
   address: string;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 放行的原因描述。
    */
   reason: string;
   /**
-   * matched Rule 值，由当前实例内部维护。
+   * 命中的白名单规则，无规则命中时为空字符串。
    */
   matchedRule: string;
 }
 
 /**
- * 描述网络策略事件发布时携带的数据结构。
+ * 网络策略「阻断」事件发布时携带的载荷数据。
  */
 export interface NetworkPolicyBlockedPayload {
   /**
-   * host 值，由当前实例内部维护。
+   * 被评估的目标主机名。
    */
   host: string;
   /**
-   * address 列表，由当前实例内部维护。
+   * 解析后的 IP 地址。
    */
   address: string;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 阻断的原因描述。
    */
   reason: string;
   /**
-   * matched Rule 值，由当前实例内部维护。
+   * 命中的白名单规则，无规则命中时为空字符串。
    */
   matchedRule: string;
 }

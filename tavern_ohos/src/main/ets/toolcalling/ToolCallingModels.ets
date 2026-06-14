@@ -4,282 +4,282 @@ import type {
 } from '../contracts/PublicContracts';
 
 /**
- * 描述工具调用操作完成后返回给调用方的结果。
+ * 工具调用操作执行完毕后返回给调用方的结果。
  */
 export interface ToolExecutionResult {
   /**
-   * ok 值，由当前实例内部维护。
+   * 执行是否成功。
    */
   ok: boolean;
   /**
-   * 处理结果。
+   * 执行返回的文本结果。
    */
   result: string;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 执行失败时的错误描述。
    */
   error: string;
 }
 
 /**
- * 描述工具调用模块在运行时交换的数据结构。
+ * 定义一个可注册到运行时中的工具操作，包含执行逻辑。
  */
 export interface ToolAction {
   /**
-   * 执行 execute 的内部处理步骤，供当前模块复用。
-   * @param argumentsJson arguments JSON 字符串。
+   * 执行工具操作。
+   * @param argumentsJson 工具参数的 JSON 字符串。
    */
   execute(argumentsJson: string): Promise<ToolExecutionResult>;
 }
 
 /**
- * 描述调用工具调用能力时需要传入的参数。
+ * 注册一个工具时需提供的完整参数。
  */
 export interface ToolRegistrationParams {
   /**
-   * 名称。
+   * 工具名称，用于内部标识和索引。
    */
   name: string;
   /**
-   * display 名称。
+   * 工具显示名称，用于界面展示。
    */
   displayName: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 工具功能描述，供模型理解何时调用此工具。
    */
   description: string;
   /**
-   * parameters JSON 字符串。
+   * 工具参数的 JSON Schema 字符串。
    */
   parametersJson: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 调用此工具所需的运行时权限。
    */
   permission: RuntimePermission;
   /**
-   * stealth 值，由当前实例内部维护。
+   * 是否隐藏调用结果，不将其作为消息返回。
    */
   stealth: boolean;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 工具是否已启用，禁用后不会出现在调用列表中。
    */
   enabled: boolean;
   /**
-   * action 值，由当前实例内部维护。
+   * 工具的执行逻辑。
    */
   action: ToolAction;
 }
 
 /**
- * 描述工具调用持久化或内存索引中的一条记录。
+ * 持久化或内存索引中存储的一条工具定义记录。
  */
 export interface ToolDefinitionRecord {
   /**
-   * 名称。
+   * 工具名称，用于内部标识。
    */
   name: string;
   /**
-   * display 名称。
+   * 工具显示名称。
    */
   displayName: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 工具功能描述。
    */
   description: string;
   /**
-   * parameters JSON 字符串。
+   * 工具参数的 JSON Schema 字符串。
    */
   parametersJson: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 调用此工具所需的运行时权限。
    */
   permission: RuntimePermission;
   /**
-   * stealth 值，由当前实例内部维护。
+   * 是否隐藏调用结果。
    */
   stealth: boolean;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 工具是否已启用。
    */
   enabled: boolean;
 }
 
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * 发送给外部服务或宿主层的一次工具调用请求。
  */
 export interface ToolCallRequest {
   /**
-   * 标识。
+   * 本次调用请求的唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 目标工具名称。
    */
   name: string;
   /**
-   * arguments JSON 字符串。
+   * 调用参数的 JSON 字符串。
    */
   argumentsJson: string;
   /**
-   * signature 值，由当前实例内部维护。
+   * 调用签名，用于校验或追踪。
    */
   signature: string;
   /**
-   * reasoning 值，由当前实例内部维护。
+   * 触发此次调用的推理文本。
    */
   reasoning: string;
 }
 
 /**
- * 描述工具调用模块在运行时交换的数据结构。
+ * 一条工具调用的执行记录，包含输入、输出及状态。
  */
 export interface ToolInvocation {
   /**
-   * 标识。
+   * 调用记录的唯一标识。
    */
   id: string;
   /**
-   * display 名称。
+   * 工具的显示名称。
    */
   displayName: string;
   /**
-   * 名称。
+   * 工具名称。
    */
   name: string;
   /**
-   * parameters 列表，由当前实例内部维护。
+   * 传入的参数文本。
    */
   parameters: string;
   /**
-   * 处理结果。
+   * 执行返回的结果文本。
    */
   result: string;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 执行是否出错。
    */
   error: boolean;
   /**
-   * signature 值，由当前实例内部维护。
+   * 调用签名。
    */
   signature: string;
   /**
-   * reasoning 值，由当前实例内部维护。
+   * 触发此次调用的推理文本。
    */
   reasoning: string;
 }
 
 /**
- * 描述工具调用持久化或内存索引中的一条记录。
+ * 工具调用过程中产生的错误记录。
  */
 export interface ToolErrorRecord {
   /**
-   * tool 名称。
+   * 产生错误的工具名称。
    */
   toolName: string;
   /**
-   * 消息数据。
+   * 错误消息。
    */
   message: string;
 }
 
 /**
- * 描述工具调用操作完成后返回给调用方的结果。
+ * 一批工具调用执行后的汇总结果。
  */
 export interface ToolInvocationResult {
   /**
-   * invocations 列表，由当前实例内部维护。
+   * 所有工具调用的执行记录。
    */
   invocations: Array<ToolInvocation>;
   /**
-   * errors 列表，由当前实例内部维护。
+   * 执行过程中产生的所有错误记录。
    */
   errors: Array<ToolErrorRecord>;
   /**
-   * stealth Calls 列表，由当前实例内部维护。
+   * 隐藏调用的工具名称列表。
    */
   stealthCalls: Array<string>;
   /**
-   * result Messages 列表，由当前实例内部维护。
+   * 格式化后的结果消息列表，可直接用于消息展示。
    */
   resultMessages: Array<string>;
 }
 
 /**
- * 描述调用工具调用能力时需要传入的参数。
+ * 工具调用循环的入参，包含多批调用请求和深度限制。
  */
 export interface ToolCallLoopParams {
   /**
-   * batches 列表，由当前实例内部维护。
+   * 按批次组织的工具调用请求列表。
    */
   batches: Array<Array<ToolCallRequest>>;
   /**
-   * max Depth 值，由当前实例内部维护。
+   * 循环调用的最大深度，防止无限递归。
    */
   maxDepth: number;
   /**
-   * reasoning Text 值，由当前实例内部维护。
+   * 触发调用的推理文本，将透传给每个请求。
    */
   reasoningText: string;
 }
 
 /**
- * 描述工具调用模块在运行时交换的数据结构。
+ * OpenAI 格式的工具函数定义。
  */
 export interface ToolOpenAIFunction {
   /**
-   * 名称。
+   * 函数名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 函数功能描述。
    */
   description: string;
   /**
-   * parameters JSON 字符串。
+   * 函数参数的 JSON Schema 字符串。
    */
   parametersJson: string;
 }
 
 /**
- * 描述工具调用模块在运行时交换的数据结构。
+ * OpenAI 格式的工具定义，包含类型和函数描述。
  */
 export interface ToolOpenAITool {
   /**
-   * type 值，由当前实例内部维护。
+   * 工具类型（固定为 'function'）。
    */
   type: ToolCallContentType;
   /**
-   * function 值，由当前实例内部维护。
+   * 工具所对应的函数定义。
    */
   function: ToolOpenAIFunction;
 }
 
 /**
- * 描述工具调用事件发布时携带的数据结构。
+ * 工具调用事件发布时携带的负载，表示一次工具已被执行。
  */
 export interface ToolCalledPayload {
   /**
-   * invocation 值，由当前实例内部维护。
+   * 被执行的工具调用记录。
    */
   invocation: ToolInvocation;
 }
 
 /**
- * 描述工具调用事件发布时携带的数据结构。
+ * 工具调用错误事件发布时携带的负载。
  */
 export interface ToolErrorPayload {
   /**
-   * 错误信息，由当前实例内部维护。
+   * 错误详情。
    */
   error: ToolErrorRecord;
 }
 
 /**
- * 描述工具调用事件发布时携带的数据结构。
+ * 工具注册事件发布时携带的负载，表示一个新工具已注册到运行时。
  */
 export interface ToolRegisteredPayload {
   /**
-   * tool 值，由当前实例内部维护。
+   * 已注册的工具定义记录。
    */
   tool: ToolDefinitionRecord;
 }

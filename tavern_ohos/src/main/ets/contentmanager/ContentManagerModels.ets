@@ -1,26 +1,34 @@
-// 内容类型
+/**
+ * 内容类型枚举值。
+ */
 export type ContentType = 'extension' | 'asset' | 'character' | 'background' | 'theme';
-// 内容来源
+/**
+ * 内容来源类型枚举值。
+ */
 export type ContentSource = 'url' | 'file' | 'github' | 'marketplace';
-// 安装状态
+/**
+ * 安装状态枚举值。
+ */
 export type InstallStatus = 'pending' | 'downloading' | 'installing' | 'installed' | 'failed';
 
-// 内容条目
+/**
+ * 内容条目数据结构，描述单个内容项的全部属性。
+ */
 export interface ContentItem {
   /**
    * item 标识。
    */
   itemId: string;
   /**
-   * content Type 值，由当前实例内部维护。
+   * 内容类型（如 extension/asset/character 等），标记该条目属于哪种内容品类。
    */
   contentType: ContentType;
   /**
-   * 来源类型，由当前实例内部维护。
+   * 内容的来源类型（url/file/github/marketplace），决定安装和更新策略。
    */
   source: ContentSource;
   /**
-   * source Url 值，由当前实例内部维护。
+   * 来源的 URL 地址，供下载模块读取内容数据。
    */
   sourceUrl: string;
   /**
@@ -28,11 +36,11 @@ export interface ContentItem {
    */
   displayName: string;
   /**
-   * version 值，由当前实例内部维护。
+   * 内容条目的版本号，用于版本比较和更新判断。
    */
   version: string;
   /**
-   * 状态值，由当前实例内部维护。
+   * 安装状态（pending/downloading/installing/installed/failed）。
    */
   status: InstallStatus;
   /**
@@ -40,35 +48,37 @@ export interface ContentItem {
    */
   installPath: string;
   /**
-   * size 值，由当前实例内部维护。
+   * 内容条目的大小（字节），用于进度计算和空间检查。
    */
   size: number;
   /**
-   * metadata 值，由当前实例内部维护。
+   * 附加的元数据键值对，存储与内容类型相关的额外属性。
    */
   metadata: Record<string, string>;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 安装失败时记录的错误信息，成功时为空字符串。
    */
   error: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 条目的创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 条目的最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
-// 包管理条目
+/**
+ * 内容包记录数据结构，描述一个内容包的全部属性。
+ */
 export interface PackageRecord {
   /**
    * package 标识。
    */
   packageId: string;
   /**
-   * content Type 值，由当前实例内部维护。
+   * 内容包的类型（extension/asset/character/background/theme）。
    */
   contentType: ContentType;
   /**
@@ -76,15 +86,15 @@ export interface PackageRecord {
    */
   displayName: string;
   /**
-   * version 值，由当前实例内部维护。
+   * 内容包的版本号，用于版本管理和更新检查。
    */
   version: string;
   /**
-   * author 值，由当前实例内部维护。
+   * 内容包作者的信息或名称。
    */
   author: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 内容包的描述文本，提供功能说明。
    */
   description: string;
   /**
@@ -92,24 +102,26 @@ export interface PackageRecord {
    */
   installPath: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 内容包是否已启用，未启用时不影响应用运行。
    */
   enabled: boolean;
   /**
-   * dependencies 列表，由当前实例内部维护。
+   * 内容包所依赖的其他包标识列表，安装时先行处理。
    */
   dependencies: Array<string>;
   /**
-   * created At 值，由当前实例内部维护。
+   * 内容包的创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 内容包的最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
-// 事件
+/**
+ * 内容下载开始事件发布时携带的数据结构。
+ */
 export interface ContentDownloadStartedPayload {
   /**
    * 内容项。
@@ -117,7 +129,7 @@ export interface ContentDownloadStartedPayload {
   item: ContentItem;
 }
 /**
- * 描述内容安装事件发布时携带的数据结构。
+ * 内容下载进度事件发布时携带的数据结构。
  */
 export interface ContentDownloadProgressPayload {
   /**
@@ -130,7 +142,7 @@ export interface ContentDownloadProgressPayload {
   progress: number;
 }
 /**
- * 描述内容安装事件发布时携带的数据结构。
+ * 内容安装完成事件发布时携带的数据结构。
  */
 export interface ContentInstalledPayload {
   /**
@@ -139,7 +151,7 @@ export interface ContentInstalledPayload {
   item: ContentItem;
 }
 /**
- * 描述内容安装事件发布时携带的数据结构。
+ * 内容安装失败事件发布时携带的数据结构。
  */
 export interface ContentInstallFailedPayload {
   /**
@@ -148,7 +160,7 @@ export interface ContentInstallFailedPayload {
   item: ContentItem;
 }
 /**
- * 描述内容安装事件发布时携带的数据结构。
+ * 内容移除事件发布时携带的数据结构。
  */
 export interface ContentRemovedPayload {
   /**
@@ -157,7 +169,7 @@ export interface ContentRemovedPayload {
   itemId: string;
 }
 /**
- * 描述内容安装模块在运行时交换的数据结构。
+ * 内容管理器导出数据结构，包含所有内容项和包信息。
  */
 export interface ContentExportData {
   /**

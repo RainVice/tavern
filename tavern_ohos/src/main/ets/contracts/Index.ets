@@ -1,3 +1,7 @@
+/**
+ * 合约模块入口。将 PublicContracts 中所有导出的值类型和类型别名统一汇聚导出，
+ * 外部模块只需 `import { ... } from './contracts'` 即可引用全部公共常量和类型定义。
+ */
 export {
   ASRProviders,
   ASRTaskStatuses,

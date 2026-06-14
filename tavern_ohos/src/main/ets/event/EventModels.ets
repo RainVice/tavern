@@ -1,69 +1,69 @@
 import type { RuntimeSource } from '../contracts/PublicContracts';
 
 /**
- * 描述事件目录事件发布时携带的数据结构。
+ * server-started 事件发布时携带的数据载荷。
  */
 export interface ServerStartedPayload {
   /**
-   * 来源类型，由当前实例内部维护。
+   * 触发事件的运行时来源类型。
    */
   source: RuntimeSource;
 }
 
 /**
- * 描述事件目录事件发布时携带的数据结构。
+ * runtime.signal 事件发布时携带的数据载荷。
  */
 export interface RuntimeSignalPayload {
   /**
-   * signal 值，由当前实例内部维护。
+   * 信号标识。
    */
   signal: string;
   /**
-   * detail 值，由当前实例内部维护。
+   * 与信号关联的补充信息。
    */
   detail: string;
 }
 
 /**
- * 描述事件目录持久化或内存索引中的一条记录。
+ * 事件目录中的一条注册记录，描述事件的元信息。
  */
 export interface EventCatalogEntry {
   /**
-   * 名称。
+   * 事件的唯一注册名称。
    */
   name: string;
   /**
-   * upstream 名称。
+   * 事件在上游（插件层）对应的名称，用于上下游映射。
    */
   upstreamName: string;
   /**
-   * domain 值，由当前实例内部维护。
+   * 事件所属领域。
    */
   domain: string;
   /**
-   * payload Fields 列表，由当前实例内部维护。
+   * 事件载荷中包含的字段名称列表。
    */
   payloadFields: Array<string>;
   /**
-   * plugin Visible 值，由当前实例内部维护。
+   * 是否对插件可见。
    */
   pluginVisible: boolean;
   /**
-   * ui Visible 值，由当前实例内部维护。
+   * 是否在 UI 层可见。
    */
   uiVisible: boolean;
 }
 
 /**
- * 描述事件目录事件发布时携带的数据结构。
+ * event.catalog.published 事件发布时携带的数据载荷。
  */
 export interface EventCatalogPayload {
   /**
-   * 条目记录，由当前实例内部维护。
+   * 对应的事件目录条目。
    */
   entry: EventCatalogEntry;
   /**
-   * detail 值，由当前实例内部维护。
+   * 事件发布时的附加说明。
    */
   detail: string;
 }

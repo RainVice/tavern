@@ -17,7 +17,7 @@ import type {
 } from './WorldInfoModels';
 
 /**
- * 描述世界书模块在运行时交换的数据结构。
+ * 世界书激活过程中的内部中转结构，将匹配的条目与匹配详情配对。
  */
 interface WorldInfoActivationCandidate {
   /**
@@ -66,9 +66,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 创建新的世界书记录，写入存储并返回副本。
-   * @param name 显示名称或注册名称。
-   * @returns 更新或读取后的记录副本。
+   * 创建一个新的世界书，写入存储并返回副本，同时发布 worldinfo.created 事件。
+   * @param name 世界书的显示名称。
+   * @returns 新创建的世界书记录副本。
    */
   async createWorldBook(name: string): Promise<WorldBook> {
     const index = await this.readIndex();
@@ -92,8 +92,8 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 读取世界书索引列表，用于世界书管理页快速展示。
-   * @returns 世界书索引项副本列表。
+   * 读取所有世界书的索引列表，返回副本列表。
+   * @returns 世界书索引摘要项副本列表，用于列表页快速展示。
    */
   async listWorldBooks(): Promise<Array<WorldBookIndexEntry>> {
     const index = await this.readIndex();
@@ -101,9 +101,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 读取指定世界书，不存在时抛出错误。
+   * 读取指定世界书的完整数据，不存在时抛出错误。
    * @param worldBookId 世界书标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 完整世界书记录的副本。
    */
   async getWorldBook(worldBookId: string): Promise<WorldBook> {
     const exists = await this.files.exists(this.worldBookPath(worldBookId));
@@ -115,7 +115,7 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 删除指定世界书文件，并从世界书索引中移除该记录。
+   * 删除指定世界书及其所有条目数据，并从索引中移除该记录。
    * @param worldBookId 世界书标识。
    */
   async deleteWorldBook(worldBookId: string): Promise<void> {
@@ -134,10 +134,10 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 在指定世界书中创建条目，并发布 worldinfo.updated 事件。
+   * 在指定世界书中创建条目，新增条目设为递增 uid，发布 worldinfo.updated 事件。
    * @param worldBookId 世界书标识。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 新建条目的副本。
+   * @param params 条目创建参数。
+   * @returns 新建条目的深拷贝副本。
    */
   async createEntry(worldBookId: string, params: WorldInfoEntryCreateParams): Promise<WorldInfoEntry> {
     const book = await this.getWorldBook(worldBookId);
@@ -168,11 +168,11 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 更新指定条目，写回存储并按需发布变更事件。
+   * 更新指定世界书条目的所有参数，写回存储并按需发布 worldinfo.updated 事件。
    * @param worldBookId 世界书标识。
    * @param entryId 条目标识。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * @param params 条目更新参数。
+   * @returns 更新后条目的深拷贝副本。
    */
   async updateEntry(worldBookId: string, entryId: string, params: WorldInfoEntryUpdateParams): Promise<WorldInfoEntry> {
     const book = await this.getWorldBook(worldBookId);
@@ -205,7 +205,7 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 删除指定世界书条目，并更新世界书索引里的条目数量。
+   * 删除指定世界书中的条目，更新世界书最后更新时间，并按需更新索引中的条目计数。
    * @param worldBookId 世界书标识。
    * @param entryId 条目标识。
    */
@@ -231,9 +231,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 导出世界书 JSON 字符串，用于备份、迁移或与 SillyTavern 数据互通。
+   * 将世界书导出为 JSON 字符串，用于备份或与 SillyTavern 数据互通。
    * @param worldBookId 世界书标识。
-   * @returns 可持久化或可传输的导出内容。
+   * @returns 序列化后的 JSON 字符串。
    */
   async exportWorldBookJson(worldBookId: string): Promise<string> {
     const book = await this.getWorldBook(worldBookId);
@@ -241,10 +241,10 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 从外部数据导入World Book JSON 字符串，转换为当前运行时的数据结构。
-   * @param json 外部传入的 JSON 字符串。
-   * @param name 显示名称或注册名称。
-   * @returns 更新或读取后的记录副本。
+   * 从外部 JSON 数据导入世界书，为运行时重新生成标识和时间戳，并发布 worldinfo.imported 事件。
+   * @param json 外部传入的世界书 JSON 字符串。
+   * @param name 导入后的世界书显示名称。
+   * @returns 导入后的世界书记录副本。
    */
   async importWorldBookJson(json: string, name: string): Promise<WorldBook> {
     const imported = JSON.parse(json) as WorldInfoImportData;
@@ -270,10 +270,10 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 更新条目状态，必要时写回存储并发布对应事件。
-   * @param worldBookIds 目标世界书标识列表。
-   * @param messages 消息列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 对给定的消息文本执行世界书条目匹配激活，返回匹配的条目和拼接后的提示词文本。
+   * @param worldBookIds 要参与激活的世界书标识列表。
+   * @param messages 用于关键词匹配的消息文本列表。
+   * @returns 激活结果，包含命中的条目、匹配详情和提示词文本。
    */
   async activateEntries(worldBookIds: Array<string>, messages: Array<string>): Promise<WorldInfoActivation> {
     const buffer = messages.join('\n');
@@ -313,6 +313,13 @@ export class WorldInfoRuntime {
     this.events.publish<WorldInfoActivationPayload>('worldinfo.activated', payload);
     return activation;
   }
+  /**
+   * 将条目与消息缓冲区进行关键词匹配，返回匹配结果。
+   * @param worldBookId 世界书标识。
+   * @param entry 待匹配的条目。
+   * @param buffer 文本缓冲区。
+   * @returns 匹配结果；未匹配时返回空值匹配。
+   */
   private matchEntry(worldBookId: string, entry: WorldInfoEntry, buffer: string): WorldInfoMatch {
     if (!entry.enabled) {
       return this.emptyMatch();
@@ -343,11 +350,11 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 在当前集合中查找First Match 值，未命中时返回空值或默认位置。
-
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 在缓冲区文本中查找第一个命中的关键词。
+   * @param keys 待匹配的关键词列表。
+   * @param buffer 要搜索的文本缓冲区。
+   * @param caseSensitive 是否区分大小写。
+   * @returns 第一个命中的关键词原文；未命中则返回空字符串。
    */
   private findFirstMatch(keys: Array<string>, buffer: string, caseSensitive: boolean): string {
     const haystack = caseSensitive ? buffer : buffer.toLowerCase();
@@ -363,9 +370,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 根据入参构建Prompt Text 值，仅生成数据结构，不直接执行外部请求。
-   * @param entries 条目列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 将所有激活条目的内容以换行符拼接为提示词文本。
+   * @param entries 已激活的条目列表。
+   * @returns 拼接后的提示词文本字符串。
    */
   private buildPromptText(entries: Array<WorldInfoEntry>): string {
     const chunks = new Array<string>();
@@ -374,6 +381,10 @@ export class WorldInfoRuntime {
     }
     return chunks.join('\n');
   }
+  /**
+   * 返回一个空的匹配结果，表示未命中任何关键词。
+   * @returns 所有字段为空字符串的匹配结果。
+   */
   private emptyMatch(): WorldInfoMatch {
     return {
       worldBookId: '',
@@ -381,6 +392,10 @@ export class WorldInfoRuntime {
       key: '',
     };
   }
+  /**
+   * 更新世界书在索引中的摘要信息，若不存在则新增。
+   * @param book 更新后的世界书记录。
+   */
   private async replaceIndexEntry(book: WorldBook): Promise<void> {
     const index = await this.readIndex();
     const entry = this.toIndexEntry(book);
@@ -398,9 +413,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 发布世界书事件，把状态变化通知给宿主或其他 Runtime。
-   * @param eventName 要订阅或发布的事件名。
-
+   * 发布世界书变更事件，把状态变化通知给宿主或其他 Runtime。
+   * @param eventName 要发布的事件名称。
+   * @param book 变更后的世界书记录。
    */
   private publishWorldBookEvent(eventName: string, book: WorldBook): void {
     const payload: WorldInfoEventPayload = {
@@ -410,7 +425,8 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 读取Index 值，并转换为运行时使用的数据结构。
+   * 读取世界书索引文件，若文件不存在则使用默认索引。
+   * @returns 解析后的世界书索引对象。
    */
   private async readIndex(): Promise<WorldBookIndex> {
     const store = new JsonStore<WorldBookIndex>(this.files, this.indexPath());
@@ -418,8 +434,8 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 写入Index 值，持久化当前运行时状态。
-   * @param index 索引数据或循环位置。
+   * 将世界书索引对象写回持久化文件。
+   * @param index 要持久化的索引对象。
    */
   private async writeIndex(index: WorldBookIndex): Promise<void> {
     const store = new JsonStore<WorldBookIndex>(this.files, this.indexPath());
@@ -427,8 +443,8 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 写入World Book 值，持久化当前运行时状态。
-
+   * 将世界书记录写回持久化文件。
+   * @param book 要持久化的世界书籍对象。
    */
   private async writeWorldBook(book: WorldBook): Promise<void> {
     await this.files.ensureDirectory(this.worldBooksRoot());
@@ -437,7 +453,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 把世界书完整记录转换为列表索引项。
+   * 将世界书完整记录转换为索引列表中的摘要项。
+   * @param book 世界书记录。
+   * @returns 索引摘要项。
    */
   private toIndexEntry(book: WorldBook): WorldBookIndexEntry {
     return {
@@ -448,6 +466,10 @@ export class WorldInfoRuntime {
       updatedAt: book.updatedAt,
     };
   }
+  /**
+   * 生成默认的世界书索引结构，包含 schemaVersion 为 1、nextId 为 1、空条目列表。
+   * @returns 默认的世界书索引对象。
+   */
   private defaultIndex(): WorldBookIndex {
     return {
       schemaVersion: 1,
@@ -455,6 +477,11 @@ export class WorldInfoRuntime {
       items: new Array<WorldBookIndexEntry>(),
     };
   }
+  /**
+   * 生成指定标识的默认世界书结构（空条目）。
+   * @param worldBookId 世界书标识。
+   * @returns 默认世界书对象。
+   */
   private defaultWorldBook(worldBookId: string): WorldBook {
     return {
       schemaVersion: 1,
@@ -466,21 +493,38 @@ export class WorldInfoRuntime {
       updatedAt: 0,
     };
   }
+  /**
+   * 生成世界书索引文件的存储路径。
+   * @returns 索引文件路径字符串。
+   */
   private indexPath(): string {
     return `${this.worldBooksRoot()}/index.json`;
   }
+
+  /**
+   * 根据世界书标识生成对应的存储文件路径。
+   * @param worldBookId 世界书标识。
+   * @returns 世界书 JSON 文件路径字符串。
+   */
   private worldBookPath(worldBookId: string): string {
     return `${this.worldBooksRoot()}/${safePathSegment(worldBookId, 'worldbook')}.json`;
   }
+
+  /**
+   * 生成世界书数据的根目录路径。
+   * @returns 世界书根目录路径字符串。
+   */
   private worldBooksRoot(): string {
     return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/worldbooks`;
   }
   /**
-   * 更新条目Recursive状态，必要时写回存储并发布对应事件。
+   * 递归执行世界书条目激活扫描：每轮激活后将匹配条目内容加入下一轮扫描缓冲区，
+   * 支持多轮深度匹配，最终去重合并所有轮次的结果。
    * @param worldBookIds 目标世界书标识列表。
-   * @param messages 消息列表。
-
-   * @param maxTokens token 数量或 token 内容。
+   * @param messages 消息列表，作为关键词匹配的文本缓冲区。
+   * @param maxDepth 递归扫描的最大深度。
+   * @param maxTokens 提示词文本的最大字符数限制（近似值，按 token 数 * 3 截断）。
+   * @returns 合并去重后的激活结果。
    */
   async activateEntriesRecursive(
     worldBookIds: Array<string>,
@@ -519,8 +563,13 @@ export class WorldInfoRuntime {
       promptText: this.buildPromptText(merged).substring(0, maxTokens * 3),
     };
   }
+  /**
+   * 根据导入的 nextEntryId 和现有条目，计算导入后合理的下一条目序号。
+   * @param importedNextEntryId 导入数据中的 nextEntryId。
+   * @param entries 导入的条目列表。
+   * @returns 合并后的下一条目序号。
+   */
   private nextEntryIdAfterImport(importedNextEntryId: number, entries: Array<WorldInfoEntry>): number {
-    // next Entry 标识。
     let nextEntryId = importedNextEntryId > 0 ? importedNextEntryId : 1;
     for (let index = 0; index < entries.length; index += 1) {
       nextEntryId = Math.max(nextEntryId, entries[index].uid + 1);
@@ -533,12 +582,20 @@ export class WorldInfoRuntime {
     }
     return nextEntryId;
   }
+  /**
+   * 生成条目去重标识键（格式："{worldBookId}:{entryId}"）。
+   * @param worldBookId 世界书标识。
+   * @param entryId 条目标识。
+   * @returns 去重键字符串。
+   */
   private entryActivationKey(worldBookId: string, entryId: string): string {
     return `${worldBookId}:${entryId}`;
   }
 
   /**
-   * 复制Book 值，避免外部修改内部状态。
+   * 复制完整世界书记录（含条目深拷贝），避免外部修改内部状态。
+   * @param book 要复制的世界书。
+   * @returns 世界书的深拷贝副本。
    */
   private copyBook(book: WorldBook): WorldBook {
     return {
@@ -553,9 +610,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 复制Entries 列表，避免外部修改内部状态。
-   * @param entries 条目列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 复制条目列表（含每个条目的深拷贝），避免外部修改内部状态。
+   * @param entries 要复制的条目列表。
+   * @returns 条目列表的深拷贝副本。
    */
   private copyEntries(entries: Array<WorldInfoEntry>): Array<WorldInfoEntry> {
     const result = new Array<WorldInfoEntry>();
@@ -566,8 +623,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 复制Entry 值，避免外部修改内部状态。
-   * @param entry 条目记录。
+   * 复制单条条目记录（含 keys 数组深拷贝），避免外部修改内部状态。
+   * @param entry 要复制的条目记录。
+   * @returns 条目记录的深拷贝副本。
    */
   private copyEntry(entry: WorldInfoEntry): WorldInfoEntry {
     return {
@@ -589,9 +647,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 复制Matches 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 复制匹配结果列表（含每条匹配的深拷贝），避免外部修改内部状态。
+   * @param matches 要复制的匹配结果列表。
+   * @returns 匹配结果列表的深拷贝副本。
    */
   private copyMatches(matches: Array<WorldInfoMatch>): Array<WorldInfoMatch> {
     const result = new Array<WorldInfoMatch>();
@@ -602,7 +660,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 复制Match 值，避免外部修改内部状态。
+   * 复制单条匹配结果，避免外部修改内部状态。
+   * @param match 要复制的匹配结果。
+   * @returns 匹配结果的深拷贝副本。
    */
   private copyMatch(match: WorldInfoMatch): WorldInfoMatch {
     return {
@@ -613,9 +673,9 @@ export class WorldInfoRuntime {
   }
 
   /**
-   * 复制Index Entries 列表，避免外部修改内部状态。
-   * @param entries 条目列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 复制索引摘要项列表（无需深拷贝条目字段），避免外部修改内部状态。
+   * @param entries 要复制的索引摘要项列表。
+   * @returns 索引摘要项列表的副本。
    */
   private copyIndexEntries(entries: Array<WorldBookIndexEntry>): Array<WorldBookIndexEntry> {
     const result = new Array<WorldBookIndexEntry>();

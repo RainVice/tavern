@@ -19,11 +19,11 @@ export class BranchRuntime {
    */
   private events: EventBus;
   /**
-   * branches 列表，由当前实例内部维护。
+   * 内存中的分支记录映射表。
    */
   private branches: Map<string, BranchRecord> = new Map<string, BranchRecord>();
   /**
-   * checkpoints 列表，由当前实例内部维护。
+   * 内存中的检查点记录映射表。
    */
   private checkpoints: Map<string, CheckpointRecord> = new Map<string, CheckpointRecord>();
 
@@ -36,9 +36,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 创建新的分支记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新的分支记录，写入内存并返回副本。
+   * @param params 新分支的创建参数。
+   * @returns 新创建的分支记录副本。
    */
   createBranch(params: BranchCreateParams): BranchRecord {
     if (this.branches.has(params.id)) {
@@ -61,9 +61,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 创建新的检查点记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新的检查点记录，写入内存并返回副本。
+   * @param params 新检查点的创建参数。
+   * @returns 新创建的检查点记录副本。
    */
   createCheckpoint(params: CheckpointCreateParams): CheckpointRecord {
     this.requireBranch(params.branchId);
@@ -87,8 +87,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 更新分支状态，必要时写回存储并发布对应事件。
+   * 激活指定分支，同时取消同一父级下其他分支的激活状态。
    * @param branchId 目标分支标识。
+   * @returns 激活后的分支记录副本。
    */
   activateBranch(branchId: string): BranchRecord {
     const branch = this.requireBranch(branchId);
@@ -103,9 +104,10 @@ export class BranchRuntime {
   }
 
   /**
-   * 读取指定分支，不存在时抛出错误。
+   * 获取指定父级聊天下当前激活的分支。
+   * 不存在时抛出错误。
    * @param parentChatId 目标父聊天标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 激活分支的记录副本。
    */
   getActiveBranch(parentChatId: string): BranchRecord {
     const branches = Array.from(this.branches.values());
@@ -119,9 +121,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 读取Branches列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param parentChatId 目标父聊天标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出指定父级聊天下的所有分支。
+   * @param parentChatId 目标父聊天标识；传入空字符串则返回全部分支。
+   * @returns 分支记录副本列表。
    */
   listBranches(parentChatId: string): Array<BranchRecord> {
     const result = new Array<BranchRecord>();
@@ -136,13 +138,13 @@ export class BranchRuntime {
   }
 
   /**
-   * 读取指定Lineage，不存在时抛出错误。
-   * @param chatId 目标聊天标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 从指定聊天标识沿 parentChatId 链向上追溯，获取完整分支谱系。
+   * @param chatId 起始聊天标识。
+   * @returns 从根到叶排列的分支记录列表。
    */
   getLineage(chatId: string): Array<BranchRecord> {
     const reversed = new Array<BranchRecord>();
-    // current Chat 标识。
+    // 当前聊天标识。
     let currentChatId = chatId;
     let found = true;
     while (found) {
@@ -187,10 +189,11 @@ export class BranchRuntime {
   }
 
   /**
-   * 执行 restoreBranch 的内部处理步骤，供当前模块复用。
-   * @param data 导入或恢复使用的序列化数据。
-   * @param newBranchId 目标新分支标识。
-   * @param newChildChatId 目标新子聊天标识。
+   * 恢复分支及其关联的检查点，将导出的数据重新导入实例。
+   * @param data 待恢复的导出数据。
+   * @param newBranchId 恢复后使用的新分支标识。
+   * @param newChildChatId 恢复后使用的新子聊天标识。
+   * @returns 恢复后的分支记录副本。
    */
   restoreBranch(data: BranchExportData, newBranchId: string, newChildChatId: string): BranchRecord {
     if (this.branches.has(newBranchId)) {
@@ -213,8 +216,9 @@ export class BranchRuntime {
   }
 
   /**
-   * 读取必须存在的Branch 值，缺失时抛出错误。
+   * 获取指定分支，不存在时抛出错误。
    * @param branchId 目标分支标识。
+   * @returns 分支记录。
    */
   private requireBranch(branchId: string): BranchRecord {
     const branch = this.branches.get(branchId);
@@ -225,7 +229,7 @@ export class BranchRuntime {
   }
 
   /**
-   * 更新Siblings状态，必要时写回存储并发布对应事件。
+   * 取消指定父级聊天下所有分支的激活状态。
    * @param parentChatId 目标父聊天标识。
    */
   private deactivateSiblings(parentChatId: string): void {
@@ -239,7 +243,7 @@ export class BranchRuntime {
   }
 
   /**
-   * 复制Branch 值，避免外部修改内部状态。
+   * 深拷贝 BranchRecord，避免外部修改内部状态。
    */
   private cloneBranch(branch: BranchRecord): BranchRecord {
     const cloned: BranchRecord = {
@@ -256,7 +260,7 @@ export class BranchRuntime {
   }
 
   /**
-   * 复制Checkpoint 值，避免外部修改内部状态。
+   * 深拷贝 CheckpointRecord，避免外部修改内部状态。
    */
   private cloneCheckpoint(checkpoint: CheckpointRecord): CheckpointRecord {
     const cloned: CheckpointRecord = {
@@ -269,6 +273,14 @@ export class BranchRuntime {
     };
     return cloned;
   }
+
+  /**
+   * 生成恢复后的检查点标识，避免与已有标识冲突。
+   * @param branchId 分支标识。
+   * @param checkpointId 原始检查点标识。
+   * @param index 检查点在列表中的索引。
+   * @returns 不重复的检查点标识。
+   */
   private restoredCheckpointId(branchId: string, checkpointId: string, index: number): string {
     const base = `${branchId}:${checkpointId}`;
     if (!this.checkpoints.has(base)) {
@@ -285,8 +297,7 @@ export class BranchRuntime {
 
   /**
    * 发布聊天分支事件，把状态变化通知给宿主或其他 Runtime。
-   * @param eventName 要订阅或发布的事件名。
-
+   * @param eventName 要发布的事件名称。
    */
   private publishBranchEvent(eventName: string, branch: BranchRecord): void {
     const payload: BranchEventPayload = {

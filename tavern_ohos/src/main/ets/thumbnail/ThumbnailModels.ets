@@ -5,45 +5,45 @@ import type { ThumbnailType } from '../contracts/PublicContracts';
  */
 export interface ThumbnailCreateParams {
   /**
-   * type 值，由当前实例内部维护。
+   * 缩略图类型。
    */
   type: ThumbnailType;
   /**
-   * file 名称。
+   * 原始文件名。
    */
   fileName: string;
   /**
-   * source 路径。
+   * 原始文件路径。
    */
   sourcePath: string;
   /**
-   * 内容。
+   * 缩略图内容（Base64 或 JSON 序列化数据）。
    */
   content: string;
   /**
-   * width 值，由当前实例内部维护。
+   * 缩略图宽度，单位 px。
    */
   width: number;
   /**
-   * height 值，由当前实例内部维护。
+   * 缩略图高度，单位 px。
    */
   height: number;
   /**
-   * animated 值，由当前实例内部维护。
+   * 该缩略图是否包含动画帧。
    */
   animated: boolean;
 }
 
 /**
- * 描述缩略图模块在运行时交换的数据结构。
+ * 描述缩略图的尺寸配置。
  */
 export interface ThumbnailDimensions {
   /**
-   * width 值，由当前实例内部维护。
+   * 缩略图宽度，单位 px。
    */
   width: number;
   /**
-   * height 值，由当前实例内部维护。
+   * 缩略图高度，单位 px。
    */
   height: number;
 }
@@ -53,93 +53,93 @@ export interface ThumbnailDimensions {
  */
 export interface ThumbnailRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * Schema 版本号。
    */
   schemaVersion: number;
   /**
-   * type 值，由当前实例内部维护。
+   * 缩略图类型。
    */
   type: ThumbnailType;
   /**
-   * file 名称。
+   * 原始文件名。
    */
   fileName: string;
   /**
-   * source 路径。
+   * 原始文件路径。
    */
   sourcePath: string;
   /**
-   * 路径。
+   * 缩略图文件存储路径。
    */
   path: string;
   /**
-   * 内容。
+   * 缩略图内容（Base64 或 JSON 序列化数据）。
    */
   content: string;
   /**
-   * width 值，由当前实例内部维护。
+   * 缩略图宽度，单位 px。
    */
   width: number;
   /**
-   * height 值，由当前实例内部维护。
+   * 缩略图高度，单位 px。
    */
   height: number;
   /**
-   * aspect Ratio 值，由当前实例内部维护。
+   * 宽高比。
    */
   aspectRatio: number;
   /**
-   * resolution 值，由当前实例内部维护。
+   * 分辨率（宽 * 高）。
    */
   resolution: number;
   /**
-   * animated 值，由当前实例内部维护。
+   * 该缩略图是否包含动画帧。
    */
   animated: boolean;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间戳（单位 ms）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间戳（单位 ms）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述缩略图事件发布时携带的数据结构。
+ * 描述缩略图事件发布时携带的数据结构：缩略图已生成。
  */
 export interface ThumbnailGeneratedPayload {
   /**
-   * thumbnail 值，由当前实例内部维护。
+   * 已生成的缩略图记录。
    */
   thumbnail: ThumbnailRecord;
 }
 
 /**
- * 描述缩略图事件发布时携带的数据结构。
+ * 描述缩略图事件发布时携带的数据结构：缩略图已失效。
  */
 export interface ThumbnailInvalidatedPayload {
   /**
-   * type 值，由当前实例内部维护。
+   * 失效的缩略图类型。
    */
   type: ThumbnailType;
   /**
-   * file 名称。
+   * 失效的原始文件名。
    */
   fileName: string;
   /**
-   * 路径。
+   * 失效的缩略图文件路径。
    */
   path: string;
 }
 
 /**
- * 描述缩略图模块在运行时交换的数据结构。
+ * 描述缩略图索引持久化时的数据格式。
  */
 export interface ThumbnailIndexData {
   /**
-   * thumbnails 列表，由当前实例内部维护。
+   * 所有缩略图记录列表。
    */
   thumbnails: Array<ThumbnailRecord>;
 }

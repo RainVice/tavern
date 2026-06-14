@@ -27,31 +27,31 @@ interface QuickReplyStorageSnapshot {
 }
 
 /**
- * 提供快捷回复相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供快捷回复相关的无 UI 运行时能力，负责集合/项目的状态管理、数据持久化和事件发布。
  */
 export class QuickReplyRuntime {
   /**
-   * 事件总线。
+   * 事件总线实例，用于发布集合变更和执行结果事件。
    */
   private events: EventBus;
   /**
-   * commands 列表，由当前实例内部维护。
+   * 命令运行时实例，用于执行按钮绑定的命令。
    */
   private commands: CommandRuntime;
   /**
-   * 文件存储适配器；未传入时仅使用内存态。
+   * 文件存储适配器；未传入时仅使用内存态，不进行持久化。
    */
   private files: TavernFileStore | undefined = undefined;
   /**
-   * 数据根路径。
+   * 数据存储根路径。
    */
   private rootPath: string = 'tavern-data';
   /**
-   * 用户标识。
+   * 用户标识，用于隔离不同用户的数据。
    */
   private userId: string = 'default';
   /**
-   * sets 列表，由当前实例内部维护。
+   * 集合字典，以集合 ID 为键存储所有快捷回复集合。
    */
   private sets: Map<string, QuickReplySetRecord> = new Map<string, QuickReplySetRecord>();
 
@@ -87,7 +87,7 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 把当前快捷回复集合写入 SDK 内部文件存储。
+   * 将快捷回复集合持久化到文件存储中。
    */
   async saveToStore(): Promise<void> {
     const sets = this.cloneSets(Array.from(this.sets.values()));
@@ -99,9 +99,9 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 创建新的快捷回复集合记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新的快捷回复集合，写入持久化存储并返回副本。
+   * @param params 创建集合所需的参数。
+   * @returns 创建后的集合记录副本。
    */
   createSet(params: QuickReplySetCreateParams): QuickReplySetRecord {
     if (this.sets.has(params.id)) {
@@ -121,17 +121,17 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 读取指定Set，不存在时抛出错误。
-   * @param setId 目标快捷回复集合标识。
-   * @returns 更新或读取后的记录副本。
+   * 根据标识读取集合记录，不存在时抛出错误。
+   * @param setId 目标集合标识。
+   * @returns 集合记录副本。
    */
   getSet(setId: string): QuickReplySetRecord {
     return this.cloneSet(this.requireSet(setId));
   }
 
   /**
-   * 读取Sets列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有集合的副本列表，调用方修改返回值不影响内部状态。
+   * @returns 集合列表副本。
    */
   listSets(): Array<QuickReplySetRecord> {
     const result = new Array<QuickReplySetRecord>();
@@ -143,8 +143,8 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 删除指定Set，并清理相关索引或资源引用。
-   * @param setId 目标快捷回复集合标识。
+   * 删除指定集合，同时清理内部索引。
+   * @param setId 目标集合标识。
    */
   deleteSet(setId: string): void {
     this.requireSet(setId);
@@ -152,9 +152,10 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 创建或写入Item，完成持久化后返回可供调用方使用的结果。
-   * @param setId 目标快捷回复集合标识。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 在指定集合中创建或更新一个项目，写入持久化存储后返回副本。
+   * @param setId 目标集合标识。
+   * @param params 创建项目所需的参数。
+   * @returns 创建或更新后的项目副本。
    */
   addItem(setId: string, params: QuickReplyItemCreateParams): QuickReplyItemRecord {
     const set = this.requireSet(setId);
@@ -180,11 +181,11 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 设置快捷回复项可见状态，用于切换运行时状态或保存配置。
-   * @param setId 目标快捷回复集合标识。
-   * @param itemId 目标内容项标识。
-   * @param visible 是否显示对应 UI。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 设置快捷回复项的可见状态，用于运行时动态控制按钮显隐。
+   * @param setId 目标集合标识。
+   * @param itemId 目标项目标识。
+   * @param visible 是否显示对应按钮。
+   * @returns 更新后的项目副本。
    */
   setItemVisible(setId: string, itemId: string, visible: boolean): QuickReplyItemRecord {
     const set = this.requireSet(setId);
@@ -195,9 +196,9 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 移除内容项，用于解除注册、绑定或索引关系。
-   * @param setId 目标快捷回复集合标识。
-   * @param itemId 目标内容项标识。
+   * 从指定集合中移除一个项目。
+   * @param setId 目标集合标识。
+   * @param itemId 目标项目标识。
    */
   removeItem(setId: string, itemId: string): void {
     const set = this.requireSet(setId);
@@ -210,10 +211,10 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 读取Buttons列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 根据作用域和标识筛选出所有匹配的按钮数据，用于 UI 层渲染。
    * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 匹配的按钮数据列表；返回值是副本，调用方可安全读取。
    */
   listButtons(scope: TavernScope, scopeId: string): Array<QuickReplyButtonData> {
     const buttons = new Array<QuickReplyButtonData>();
@@ -234,10 +235,11 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 执行 executeItem 的内部处理步骤，供当前模块复用。
-   * @param setId 目标快捷回复集合标识。
-   * @param itemId 目标内容项标识。
-   * @param options 控制本次调用行为的选项。
+   * 执行指定集合中的快捷回复项目命令，并发布执行结果事件。
+   * @param setId 目标集合标识。
+   * @param itemId 目标项目标识。
+   * @param options 命令执行选项。
+   * @returns 包含执行状态和命令结果的对象。
    */
   async executeItem(
     setId: string,
@@ -280,11 +282,12 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 执行 executeAutoTrigger 的内部处理步骤，供当前模块复用。
-
+   * 扫描所有集合，自动执行 trigger 匹配的启用项目。
+   * @param trigger 触发自动执行的关键字。
    * @param scope 绑定或查询使用的作用域。
    * @param scopeId 作用域下的具体对象标识。
-   * @param options 控制本次调用行为的选项。
+   * @param options 命令执行选项。
+   * @returns 所有匹配项目的执行结果列表。
    */
   async executeAutoTrigger(
     trigger: string,
@@ -312,7 +315,7 @@ export class QuickReplyRuntime {
 
   /**
    * 导出快捷回复集合，用于备份、迁移或与 SillyTavern 数据互通。
-   * @param setId 目标快捷回复集合标识。
+   * @param setId 目标集合标识。
    * @returns 可持久化或可传输的导出内容。
    */
   exportSet(setId: string): QuickReplyExportData {
@@ -324,10 +327,10 @@ export class QuickReplyRuntime {
   }
 
   /**
-   * 从外部数据导入Set 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
-   * @param newId 目标新记录标识。
-   * @returns 更新或读取后的记录副本。
+   * 从外部数据导入集合，将外部格式转换为运行时内部数据结构。
+   * @param data 导入的序列化数据。
+   * @param newId 导入后新的集合标识。
+   * @returns 导入后的集合记录副本。
    */
   importSet(data: QuickReplyExportData, newId: string): QuickReplySetRecord {
     if (this.sets.has(newId)) {

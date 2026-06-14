@@ -1,351 +1,351 @@
 /**
- * 描述调用角色卡能力时需要传入的参数。
+ * 调用 `createCharacter()` 时所需参数的完整定义。
  */
 export interface CharacterCreateParams {
   /**
-   * 名称。
+   * 角色名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 角色描述。
    */
   description: string;
   /**
-   * personality 值，由当前实例内部维护。
+   * 角色性格设定。
    */
   personality: string;
   /**
-   * scenario 值，由当前实例内部维护。
+   * 角色场景设定。
    */
   scenario: string;
   /**
-   * first Message 值，由当前实例内部维护。
+   * 角色首发消息。
    */
   firstMessage: string;
   /**
-   * example Dialogue 值，由当前实例内部维护。
+   * 角色示例对话。
    */
   exampleDialogue: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 角色标签列表。
    */
   tags: Array<string>;
   /**
-   * favorite 值，由当前实例内部维护。
+   * 是否标记为收藏。
    */
   favorite?: boolean;
   /**
-   * talkativeness 列表，由当前实例内部维护。
+   * 话痨程度 (0-1 区间)。
    */
   talkativeness?: number;
   /**
-   * world 值，由当前实例内部维护。
+   * 关联的世界设定标识。
    */
   world?: string;
 }
 
 /**
- * 描述调用角色卡能力时需要传入的参数。
+ * 调用 `updateCharacter()` 时所需参数的完整定义。
  */
 export interface CharacterUpdateParams {
   /**
-   * 名称。
+   * 角色名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 角色描述。
    */
   description: string;
   /**
-   * personality 值，由当前实例内部维护。
+   * 角色性格设定。
    */
   personality: string;
   /**
-   * scenario 值，由当前实例内部维护。
+   * 角色场景设定。
    */
   scenario: string;
   /**
-   * first Message 值，由当前实例内部维护。
+   * 角色首发消息。
    */
   firstMessage: string;
   /**
-   * example Dialogue 值，由当前实例内部维护。
+   * 角色示例对话。
    */
   exampleDialogue: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 角色标签列表。
    */
   tags: Array<string>;
   /**
-   * favorite 值，由当前实例内部维护。
+   * 是否标记为收藏。
    */
   favorite: boolean;
 }
 
 /**
- * 描述角色卡持久化或内存索引中的一条记录。
+ * 一条持久化的完整角色记录，包含角色卡所有字段及元信息。
  */
 export interface CharacterRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据格式版本号。
    */
   schemaVersion: number;
   /**
-   * 标识。
+   * 角色唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 角色名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 角色描述。
    */
   description: string;
   /**
-   * personality 值，由当前实例内部维护。
+   * 角色性格设定。
    */
   personality: string;
   /**
-   * scenario 值，由当前实例内部维护。
+   * 角色场景设定。
    */
   scenario: string;
   /**
-   * first Message 值，由当前实例内部维护。
+   * 角色首发消息。
    */
   firstMessage: string;
   /**
-   * example Dialogue 值，由当前实例内部维护。
+   * 角色示例对话。
    */
   exampleDialogue: string;
   /**
-   * creator Notes 列表，由当前实例内部维护。
+   * 创作者备注。
    */
   creatorNotes: string;
   /**
-   * system Prompt 值，由当前实例内部维护。
+   * 系统提示词。
    */
   systemPrompt: string;
   /**
-   * post History Instructions 列表，由当前实例内部维护。
+   * 对话历史结束后的附加指令。
    */
   postHistoryInstructions: string;
   /**
-   * creator 值，由当前实例内部维护。
+   * 创作者名称。
    */
   creator: string;
   /**
-   * character Version 值，由当前实例内部维护。
+   * 角色卡版本号。
    */
   characterVersion: string;
   /**
-   * avatar 路径。
+   * 头像文件路径。
    */
   avatarPath: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 角色标签列表。
    */
   tags: Array<string>;
   /**
-   * alternate Greetings 列表，由当前实例内部维护。
+   * 备选首发消息列表。
    */
   alternateGreetings: Array<string>;
   /**
-   * favorite 值，由当前实例内部维护。
+   * 是否标记为收藏。
    */
   favorite: boolean;
   /**
-   * talkativeness 列表，由当前实例内部维护。
+   * 话痨程度 (0-1 区间)。
    */
   talkativeness: number;
   /**
-   * world 值，由当前实例内部维护。
+   * 关联的世界设定标识。
    */
   world: string;
   /**
-   * source Format 值，由当前实例内部维护。
+   * 数据来源格式，如 `runtime_json` 或 `character_card_v2_json`。
    */
   sourceFormat: string;
   /**
-   * source JSON 字符串。
+   * 原始导入的 JSON 字符串；运行时创建的角色此值为空。
    */
   sourceJson: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述角色卡持久化或内存索引中的一条记录。
+ * 角色索引中用于快速列表展示的摘要条目。
  */
 export interface CharacterIndexEntry {
   /**
-   * 标识。
+   * 角色唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 角色名称。
    */
   name: string;
   /**
-   * avatar 路径。
+   * 头像文件路径。
    */
   avatarPath: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 角色标签列表。
    */
   tags: Array<string>;
   /**
-   * favorite 值，由当前实例内部维护。
+   * 是否标记为收藏。
    */
   favorite: boolean;
   /**
-   * created At 值，由当前实例内部维护。
+   * 创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述角色卡模块在运行时交换的数据结构。
+ * 角色索引的顶层结构，包含版本号和条目列表。
  */
 export interface CharacterIndex {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 索引格式版本号。
    */
   schemaVersion: number;
   /**
-   * next 标识。
+   * 下一个可用的角色标识数字编号。
    */
   nextId: number;
   /**
-   * 项目列表，由当前实例内部维护。
+   * 索引条目列表。
    */
   items: Array<CharacterIndexEntry>;
 }
 
 /**
- * 描述角色卡事件发布时携带的数据结构。
+ * 角色创建/更新/导入/删除事件发布时携带的载荷。
  */
 export interface CharacterEventPayload {
   /**
-   * 角色记录，由当前实例内部维护。
+   * 受影响的完整角色记录副本。
    */
   character: CharacterRecord;
 }
 
 /**
- * 描述角色卡事件发布时携带的数据结构。
+ * 角色删除事件（仅携带 ID 的轻量版本）的载荷。
  */
 export interface CharacterDeletedPayload {
   /**
-   * 角色标识。
+   * 被删除角色的唯一标识。
    */
   characterId: string;
 }
 
 /**
- * 描述角色卡模块在运行时交换的数据结构。
+ * SillyTavern Character Card V2 格式的顶层结构。
  */
 export interface CharacterCardV2 {
   /**
-   * spec 值，由当前实例内部维护。
+   * 规范标识，固定为 `chara_card_v2`。
    */
   spec: string;
   /**
-   * spec version 值，由当前实例内部维护。
+   * 规范版本号，如 `2.0`。
    */
   spec_version: string;
   /**
-   * 数据内容。
+   * 角色卡数据内容。
    */
   data: CharacterCardV2Data;
 }
 
 /**
- * 描述角色卡模块在运行时交换的数据结构。
+ * SillyTavern Character Card V2 格式的数据部分。
  */
 export interface CharacterCardV2Data {
   /**
-   * 名称。
+   * 角色名称。
    */
   name: string;
   /**
-   * description 值，由当前实例内部维护。
+   * 角色描述。
    */
   description: string;
   /**
-   * personality 值，由当前实例内部维护。
+   * 角色性格设定。
    */
   personality: string;
   /**
-   * scenario 值，由当前实例内部维护。
+   * 角色场景设定。
    */
   scenario: string;
   /**
-   * first mes 列表，由当前实例内部维护。
+   * 角色首发消息。
    */
   first_mes: string;
   /**
-   * mes example 值，由当前实例内部维护。
+   * 角色示例对话。
    */
   mes_example: string;
   /**
-   * creator notes 列表，由当前实例内部维护。
+   * 创作者备注。
    */
   creator_notes?: string;
   /**
-   * system prompt 值，由当前实例内部维护。
+   * 系统提示词。
    */
   system_prompt?: string;
   /**
-   * post history instructions 列表，由当前实例内部维护。
+   * 对话历史结束后的附加指令。
    */
   post_history_instructions?: string;
   /**
-   * creator 值，由当前实例内部维护。
+   * 创作者名称。
    */
   creator?: string;
   /**
-   * character version 值，由当前实例内部维护。
+   * 角色卡版本号。
    */
   character_version?: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 角色标签列表。
    */
   tags?: Array<string>;
   /**
-   * alternate greetings 列表，由当前实例内部维护。
+   * 备选首发消息列表。
    */
   alternate_greetings?: Array<string>;
   /**
-   * extensions 列表，由当前实例内部维护。
+   * 自定义扩展字段。
    */
   extensions?: CharacterCardV2Extensions;
 }
 
 /**
- * 描述角色卡模块在运行时交换的数据结构。
+ * SillyTavern Character Card V2 自定义扩展字段。
  */
 export interface CharacterCardV2Extensions {
   /**
-   * fav 值，由当前实例内部维护。
+   * 是否标记为收藏。
    */
   fav?: boolean;
   /**
-   * talkativeness 列表，由当前实例内部维护。
+   * 话痨程度 (0-1 区间)。
    */
   talkativeness?: number;
   /**
-   * world 值，由当前实例内部维护。
+   * 关联的世界设定标识。
    */
   world?: string;
 }

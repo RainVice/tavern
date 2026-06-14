@@ -1,22 +1,24 @@
 import type { TavernFileStore } from './TavernFileStore';
 
 /**
- * 提供文件存储的存储实现，封装路径规范化和读写细节。
+ * 基于 TavernFileStore 的 JSON 文件存取。
+ *
+ * 以 JSON.stringify / JSON.parse 完成序列化与反序列化，
+ * 每次写入后会读取文件内容进行校验，确保数据安全落盘。
  */
 export class JsonStore<T extends Object> {
   /**
-   * 文件存储适配器。
+   * TavernFileStore 实例，由外部注入。
    */
   private files: TavernFileStore;
   /**
-   * 路径。
+   * 文件的相对存储路径。
    */
   private path: string;
 
   /**
-   * 初始化当前运行时实例。
-   * @param files 文件存储适配器。
-   * @param path 路径。
+   * @param files TavernFileStore 实例。
+   * @param path 文件的相对存储路径。
    */
   constructor(files: TavernFileStore, path: string) {
     this.files = files;
@@ -24,8 +26,10 @@ export class JsonStore<T extends Object> {
   }
 
   /**
-   * 读取目标对象，并转换为运行时使用的数据结构。
-   * @param defaultValue 未输入时使用的默认值。
+   * 读取 JSON 文件内容并反序列化为指定类型。
+   *
+   * 文件不存在或内容为空时返回 defaultValue，不会抛出异常。
+   * @param defaultValue 文件不存在或为空时返回的默认值。
    */
   async read(defaultValue: T): Promise<T> {
     const exists = await this.files.exists(this.path);
@@ -41,8 +45,10 @@ export class JsonStore<T extends Object> {
   }
 
   /**
-   * 写入目标对象，持久化当前运行时状态。
-   * @param value 要保存或比较的字段值。
+   * 将数据序列化后写入 JSON 文件。
+   *
+   * 写入后会重新读取文件内容进行比对，内容不一致时抛错。
+   * @param value 待序列化并写入的数据。
    */
   async write(value: T): Promise<void> {
     const content = JSON.stringify(value);

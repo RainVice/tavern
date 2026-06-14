@@ -1,65 +1,88 @@
-// 向量提供商类型
+/**
+ * 支持的向量化服务提供商类型。
+ * - openai: OpenAI Embeddings API
+ * - ollama: Ollama 本地模型服务
+ * - google: Google Gemini Embeddings API
+ * - cohere: Cohere Embed API
+ * - llamacpp: llama.cpp 内嵌向量化
+ * - vllm: vLLM 推理框架
+ * - local_http: 自定义 HTTP 端点
+ */
 export type EmbeddingProvider = 'openai' | 'ollama' | 'google' | 'cohere' | 'llamacpp' | 'vllm' | 'local_http';
-// 向量请求
+/**
+ * 向量化请求参数。
+ */
 export interface EmbeddingRequest {
   /**
-   * provider 值，由当前实例内部维护。
+   * 服务提供商类型。
    */
   provider: EmbeddingProvider; model: string; input: Array<string>;
   /**
-   * dimensions 列表，由当前实例内部维护。
+   * 输出向量的维度数。未指定时由服务端决定。
    */
   dimensions?: number;
 }
-// 向量结果
+
+/**
+ * 向量化处理结果。
+ */
 export interface EmbeddingResult {
   /**
-   * provider 值，由当前实例内部维护。
+   * 服务提供商类型。
    */
   provider: EmbeddingProvider; model: string; vectors: Array<Array<number>>;
   /**
-   * dimensions 列表，由当前实例内部维护。
+   * 输出向量的维度数。
    */
   dimensions: number; usageTokens: number;
 }
-// 模型元数据
+
+/**
+ * 向量模型在系统中的注册记录。
+ */
 export interface EmbeddingModelRecord {
   /**
-   * model 标识。
+   * 模型唯一标识，格式为 `${provider}:${modelName}`。
    */
   modelId: string; provider: EmbeddingProvider; modelName: string;
   /**
-   * dimensions 列表，由当前实例内部维护。
+   * 模型输出向量的维度数。
    */
   dimensions: number; description: string; enabled: boolean;
 }
-// 各提供商请求体
+
+/**
+ * OpenAI Embeddings API 的请求体结构。
+ */
 export interface OpenAIEmbeddingRequest {
   /**
-   * 模型名称，由当前实例内部维护。
+   * 模型名称。
    */
   model: string; input: Array<string>; encoding_format: string;
 }
+
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * Ollama Embeddings API 的请求体结构。
  */
 export interface OllamaEmbeddingRequest {
   /**
-   * 模型名称，由当前实例内部维护。
+   * 模型名称。
    */
   model: string; prompt: string;
 }
+
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * Cohere Embed API 的请求体结构。
  */
 export interface CohereEmbeddingRequest {
   /**
-   * 模型名称，由当前实例内部维护。
+   * 模型名称。
    */
   model: string; texts: Array<string>; input_type: string;
 }
+
 /**
- * 描述Embedding模块在运行时交换的数据结构。
+ * Google Gemini Embeddings 请求中的文本片段。
  */
 export interface GoogleEmbeddingPart {
   /**
@@ -67,46 +90,53 @@ export interface GoogleEmbeddingPart {
    */
   text: string;
 }
+
 /**
- * 描述Embedding模块在运行时交换的数据结构。
+ * Google Gemini Embeddings 请求中的内容容器，包含多个文本片段。
  */
 export interface GoogleEmbeddingContent {
   /**
-   * parts 列表。
+   * 文本片段列表。
    */
   parts: Array<GoogleEmbeddingPart>;
 }
+
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * Google Gemini Embeddings API 的请求体结构。
  */
 export interface GoogleEmbeddingRequest {
   /**
-   * 模型名称，由当前实例内部维护。
+   * 模型名称。
    */
   model: string; content: GoogleEmbeddingContent;
 }
-// 事件
+
+/**
+ * 模型注册事件携带的数据。
+ */
 export interface EmbeddingModelRegisteredPayload {
   /**
-   * 模型记录。
+   * 已注册的模型记录。
    */
   model: EmbeddingModelRecord;
 }
+
 /**
- * 描述Embedding事件发布时携带的数据结构。
+ * 向量化结果事件携带的数据。
  */
 export interface EmbeddingResultPayload {
   /**
-   * 处理结果。
+   * 向量化处理结果。
    */
   result: EmbeddingResult;
 }
+
 /**
- * 描述Embedding模块在运行时交换的数据结构。
+ * Embedding 模块导出数据的结构。
  */
 export interface EmbeddingExportData {
   /**
-   * 模型列表。
+   * 所有已注册的模型记录列表。
    */
   models: Array<EmbeddingModelRecord>;
 }

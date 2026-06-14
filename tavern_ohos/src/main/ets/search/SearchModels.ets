@@ -1,227 +1,227 @@
 import type { SearchResultType } from '../contracts/PublicContracts';
 
 /**
- * 描述搜索索引模块在运行时交换的数据结构。
+ * 搜索文档中可附加的元数据键值对，用于存储文档的额外属性。
  */
 export interface SearchDocumentMetadata {
   /**
-   * 键名，由当前实例内部维护。
+   * 元数据键名，用于标识该条目的含义。
    */
   key: string;
   /**
-   * 字段值。
+   * 元数据键名对应的值。
    */
   value: string;
 }
 
 /**
- * 描述搜索索引模块在运行时交换的数据结构。
+ * 表示需要被索引的完整文档单元，包含搜索所需的所有字段与元数据。
  */
 export interface SearchDocument {
   /**
-   * 标识。
+   * 文档唯一标识。
    */
   id: string;
   /**
-   * domain 值，由当前实例内部维护。
+   * 文档所属领域分类，用于按范围过滤搜索结果。
    */
   domain: string;
   /**
-   * 标题，由当前实例内部维护。
+   * 文档标题，用作搜索匹配及结果展示。
    */
   title: string;
   /**
-   * body 值，由当前实例内部维护。
+   * 文档正文全文，用于关键词匹配与摘要生成。
    */
   body: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 文档关联的标签列表，用于按标签筛选和计分。
    */
   tags: Array<string>;
   /**
-   * 路径。
+   * 文档在系统中的存储路径。
    */
   path: string;
   /**
-   * metadata 值，由当前实例内部维护。
+   * 文档附加元数据列表，用于按元数据过滤索引。
    */
   metadata: Array<SearchDocumentMetadata>;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 文档最后更新时间戳，用于增量同步或过期判断。
    */
   updatedAt: number;
 }
 
 /**
- * 描述搜索索引模块在运行时交换的数据结构。
+ * 表示可参与本地过滤的实体对象，包含搜索展示与按类型筛选所需的字段。
  */
 export interface SearchFilterEntity {
   /**
-   * 标识。
+   * 实体唯一标识。
    */
   id: string;
   /**
-   * type 值，由当前实例内部维护。
+   * 实体搜索结果类型，影响图标、排序及分组行为。
    */
   type: SearchResultType;
   /**
-   * 标题，由当前实例内部维护。
+   * 实体标题，用于搜索匹配与展示。
    */
   title: string;
   /**
-   * body 值，由当前实例内部维护。
+   * 实体正文，参与搜索关键词计分。
    */
   body: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 实体关联标签，支持按标签包含或排除过滤。
    */
   tags: Array<string>;
   /**
-   * favorite 值，由当前实例内部维护。
+   * 是否被标记为收藏。
    */
   favorite: boolean;
   /**
-   * group 值，由当前实例内部维护。
+   * 是否为群组类型实体。
    */
   group: boolean;
   /**
-   * folder 值，由当前实例内部维护。
+   * 是否为文件夹类型实体。
    */
   folder: boolean;
 }
 
 /**
- * 描述调用搜索索引能力时需要传入的参数。
+ * 调用本地搜索过滤功能时需传入的参数集合。
  */
 export interface SearchFilterInput {
   /**
-   * search 值，由当前实例内部维护。
+   * 搜索关键词，用于匹配实体标题、正文与标签。
    */
   search: string;
   /**
-   * selected Tags 列表，由当前实例内部维护。
+   * 必须包含的标签列表，实体需命中其中至少一个标签。
    */
   selectedTags: Array<string>;
   /**
-   * excluded Tags 列表，由当前实例内部维护。
+   * 必须排除的标签列表，包含其中任一标签的实体将被过滤掉。
    */
   excludedTags: Array<string>;
   /**
-   * favorite Only 值，由当前实例内部维护。
+   * 是否仅返回标记为收藏的实体。
    */
   favoriteOnly: boolean;
   /**
-   * group Only 值，由当前实例内部维护。
+   * 是否仅返回群组类型的实体。
    */
   groupOnly: boolean;
   /**
-   * folder Only 值，由当前实例内部维护。
+   * 是否仅返回文件夹类型的实体。
    */
   folderOnly: boolean;
 }
 
 /**
- * 描述搜索索引模块在运行时交换的数据结构。
+ * 提交给搜索索引引擎的查询条件，用于精准定位索引中文档。
  */
 export interface SearchQuery {
   /**
-   * 文本内容。
+   * 搜索关键词，用于对文档标题、正文、路径等字段进行全文匹配与计分。
    */
   text: string;
   /**
-   * domains 列表，由当前实例内部维护。
+   * 按领域分类过滤，命中指定 domain 的文档才会被返回；为空时不作限制。
    */
   domains: Array<string>;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 要求文档必须包含的标签列表，非空时所有标签必须全部命中。
    */
   tags: Array<string>;
   /**
-   * metadata Key 值，由当前实例内部维护。
+   * 元数据键名过滤条件，配合 metadataValue 按元数据精确筛选。
    */
   metadataKey: string;
   /**
-   * metadata Value 值，由当前实例内部维护。
+   * 元数据值过滤条件，与 metadataKey 配合使用；为空时不校验值。
    */
   metadataValue: string;
   /**
-   * limit 值，由当前实例内部维护。
+   * 返回结果数量上限。
    */
   limit: number;
 }
 
 /**
- * 描述搜索索引模块在运行时交换的数据结构。
+ * 一次搜索命中记录，包含匹配到的文档摘要与相关性分数。
  */
 export interface SearchHit {
   /**
-   * document 标识。
+   * 命中文档的唯一标识。
    */
   documentId: string;
   /**
-   * domain 值，由当前实例内部维护。
+   * 命中文档所属领域分类。
    */
   domain: string;
   /**
-   * 标题，由当前实例内部维护。
+   * 命中文档的标题。
    */
   title: string;
   /**
-   * snippet 值，由当前实例内部维护。
+   * 根据查询文本生成的匹配摘要片段。
    */
   snippet: string;
   /**
-   * score 值，由当前实例内部维护。
+   * 相关性评分，数值越高表示匹配度越高。
    */
   score: number;
   /**
-   * 路径。
+   * 命中文档在系统中的存储路径。
    */
   path: string;
   /**
-   * tags 列表，由当前实例内部维护。
+   * 命中文档的标签列表。
    */
   tags: Array<string>;
   /**
-   * metadata 值，由当前实例内部维护。
+   * 命中文档的附加元数据。
    */
   metadata: Array<SearchDocumentMetadata>;
 }
 
 /**
- * 描述搜索索引操作完成后返回给调用方的结果。
+ * 搜索操作完成后的结构化结果，包含原始查询与命中文档集合。
  */
 export interface SearchResult {
   /**
-   * 查询条件。
+   * 产生该结果所使用的原始查询条件副本。
    */
   query: SearchQuery;
   /**
-   * total 值，由当前实例内部维护。
+   * 满足条件的文档总数（不受 limit 影响）。
    */
   total: number;
   /**
-   * hits 列表，由当前实例内部维护。
+   * 本次返回的命中记录列表（受 limit 截断）。
    */
   hits: Array<SearchHit>;
 }
 
 /**
- * 描述搜索索引事件发布时携带的数据结构。
+ * 搜索索引完成事件负载，包含被索引的完整文档。
  */
 export interface SearchIndexedPayload {
   /**
-   * document 值，由当前实例内部维护。
+   * 已被写入索引的文档对象副本。
    */
   document: SearchDocument;
 }
 
 /**
- * 描述搜索索引事件发布时携带的数据结构。
+ * 搜索索引移除事件负载，包含被移除文档的唯一标识。
  */
 export interface SearchRemovedPayload {
   /**
-   * document 标识。
+   * 被移除文档的唯一标识。
    */
   documentId: string;
 }

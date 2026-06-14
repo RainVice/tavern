@@ -11,30 +11,18 @@ import type {
 } from './DataBankModels';
 
 /**
- * 提供Data Bank 文档相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供 Data Bank 文档管理能力，负责内存索引、文件读写与事件发布。
  */
 export class DataBankRuntime {
-  /**
-   * 文件存储适配器。
-   */
   private files: TavernFileStore;
-  /**
-   * 事件总线。
-   */
   private events: EventBus;
-  /**
-   * documents 列表，由当前实例内部维护。
-   */
   private documents: Map<string, DataBankDocumentRecord> = new Map<string, DataBankDocumentRecord>();
-  /**
-   * 数据根路径。
-   */
   private rootPath: string = 'tavern-data/users/default/databank';
 
   /**
-   * 初始化当前运行时实例。
-   * @param files 文件存储适配器。
-   * @param events 事件总线。
+   * 初始化运行时实例。
+   * @param files 文件存储适配器，用于读写文档内容和索引文件。
+   * @param events 事件总线实例，用于发布文档变更事件。
    */
   constructor(files: TavernFileStore, events: EventBus) {
     this.files = files;
@@ -42,9 +30,9 @@ export class DataBankRuntime {
   }
 
   /**
-   * 创建新的文档记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新的文档，写入文件存储并更新内存索引。
+   * @param params 文档创建参数。
+   * @returns 创建成功的文档记录副本。
    */
   async createDocument(params: DataBankDocumentCreateParams): Promise<DataBankDocumentRecord> {
     const now = Date.now();
@@ -73,9 +61,9 @@ export class DataBankRuntime {
   }
 
   /**
-   * 读取指定文档，不存在时抛出错误。
+   * 根据 ID 查询文档，不存在时返回 undefined。
    * @param documentId 目标文档标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 文档记录副本，未找到则为 undefined。
    */
   async getDocument(documentId: string): Promise<DataBankDocumentRecord | undefined> {
     const record = this.documents.get(documentId);
@@ -86,8 +74,9 @@ export class DataBankRuntime {
   }
 
   /**
-   * 读取Document Content 值，并转换为运行时使用的数据结构。
+   * 读取指定文档的正文内容。
    * @param documentId 目标文档标识。
+   * @returns 文档的文本内容。
    */
   async readDocumentContent(documentId: string): Promise<string> {
     const record = this.documents.get(documentId);
@@ -98,9 +87,9 @@ export class DataBankRuntime {
   }
 
   /**
-   * 读取Documents列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 列出所有文档记录，可按是否启用过滤。
+   * @param includeDisabled 是否包含已禁用的文档。
+   * @returns 文档记录副本数组。
    */
   async listDocuments(includeDisabled: boolean): Promise<Array<DataBankDocumentRecord>> {
     const result = new Array<DataBankDocumentRecord>();
@@ -113,10 +102,10 @@ export class DataBankRuntime {
   }
 
   /**
-   * 读取ByScope列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param scope 绑定或查询使用的作用域。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 按作用域筛选文档记录。
+   * @param scope 作用域。
+   * @param includeDisabled 是否包含已禁用的文档。
+   * @returns 匹配的文档记录副本数组。
    */
   async listByScope(scope: TavernScope, includeDisabled: boolean): Promise<Array<DataBankDocumentRecord>> {
     const result = new Array<DataBankDocumentRecord>();
@@ -129,10 +118,10 @@ export class DataBankRuntime {
   }
 
   /**
-   * 读取标签列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 按标签筛选文档记录。
+   * @param tag 标签名称。
+   * @param includeDisabled 是否包含已禁用的文档。
+   * @returns 匹配的文档记录副本数组。
    */
   async listByTag(tag: string, includeDisabled: boolean): Promise<Array<DataBankDocumentRecord>> {
     const result = new Array<DataBankDocumentRecord>();
@@ -145,10 +134,10 @@ export class DataBankRuntime {
   }
 
   /**
-   * 设置文档启用状态，用于切换运行时状态或保存配置。
+   * 设置文档的启用或禁用状态。
    * @param documentId 目标文档标识。
-   * @param enabled 是否启用该能力。
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @param enabled 是否启用。
+   * @returns 更新后的文档记录副本。
    */
   async setDocumentEnabled(documentId: string, enabled: boolean): Promise<DataBankDocumentRecord> {
     const record = this.requireRecord(documentId);
@@ -162,11 +151,11 @@ export class DataBankRuntime {
   }
 
   /**
-   * 更新指定元数据，写回存储并按需发布变更事件。
+   * 更新文档的元数据和标签。
    * @param documentId 目标文档标识。
-   * @param metadataJson metadata JSON 字符串。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param metadataJson 新的元数据 JSON 字符串。
+   * @param tags 新的标签列表。
+   * @returns 更新后的文档记录副本。
    */
   async updateMetadata(documentId: string, metadataJson: string, tags: Array<string>): Promise<DataBankDocumentRecord> {
     const record = this.requireRecord(documentId);
@@ -181,7 +170,7 @@ export class DataBankRuntime {
   }
 
   /**
-   * 删除指定文档，并清理相关索引或资源引用。
+   * 删除指定文档，清理文件存储并更新索引。
    * @param documentId 目标文档标识。
    */
   async deleteDocument(documentId: string): Promise<void> {
@@ -196,9 +185,9 @@ export class DataBankRuntime {
   }
 
   /**
-   * 导出数据，用于备份、迁移或与 SillyTavern 数据互通。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 导出当前所有文档数据，用于备份或迁移。
+   * @param includeDisabled 是否包含已禁用的文档。
+   * @returns 包含所有文档记录的导出数据。
    */
   async exportData(includeDisabled: boolean): Promise<DataBankExportData> {
     const documents = await this.listDocuments(includeDisabled);
@@ -208,10 +197,10 @@ export class DataBankRuntime {
   }
 
   /**
-   * 从外部数据导入Data 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 从外部导入文档数据，可选择替换或追加。
+   * @param data 待导入的文档数据。
+   * @param replace 为 true 时清空现有数据再导入，为 false 时追加。
+   * @returns 导入成功的文档记录副本数组。
    */
   async importData(data: DataBankExportData, replace: boolean): Promise<Array<DataBankDocumentRecord>> {
     if (replace) {
@@ -231,8 +220,9 @@ export class DataBankRuntime {
   }
 
   /**
-   * 读取必须存在的Record 值，缺失时抛出错误。
+   * 获取指定文档记录，不存在则抛出错误。
    * @param documentId 目标文档标识。
+   * @returns 文档记录。
    */
   private requireRecord(documentId: string): DataBankDocumentRecord {
     const record = this.documents.get(documentId);
@@ -243,8 +233,8 @@ export class DataBankRuntime {
   }
 
   /**
-   * 写入Record Content 值，持久化当前运行时状态。
-   * @param record 记录副本。
+   * 将文档内容写入文件存储。
+   * @param record 文档记录。
    */
   private async writeRecordContent(record: DataBankDocumentRecord): Promise<void> {
     await this.files.writeText(record.path, record.content, false);
@@ -256,9 +246,9 @@ export class DataBankRuntime {
   }
 
   /**
-   * 发布Data Bank 文档事件，把状态变化通知给宿主或其他 Runtime。
-   * @param eventName 要订阅或发布的事件名。
-   * @param record 记录副本。
+   * 发布文档变更事件，通知宿主或其他运行时模块。
+   * @param eventName 事件名称。
+   * @param record 变更后的文档记录。
    */
   private publishUpdated(eventName: string, record: DataBankDocumentRecord): void {
     const payload: DataBankUpdatedPayload = {
@@ -272,8 +262,8 @@ export class DataBankRuntime {
   }
 
   /**
-   * 删除指定DirectoryTree，并清理相关索引或资源引用。
-   * @param path 目标文件或目录路径。
+   * 递归删除指定目录树。
+   * @param path 目标目录路径。
    */
   private async deleteDirectoryTree(path: string): Promise<void> {
     const children = await this.files.list(path);
@@ -284,10 +274,10 @@ export class DataBankRuntime {
   }
 
   /**
-   * 判断当前对象是否包含Tag 值。
-   * @param record 记录副本。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * 判断文档记录是否包含指定标签。
+   * @param record 文档记录。
+   * @param tag 待检查的标签。
+   * @returns 包含返回 true，否则返回 false。
    */
   private hasTag(record: DataBankDocumentRecord, tag: string): boolean {
     for (let index = 0; index < record.tags.length; index += 1) {
@@ -303,8 +293,9 @@ export class DataBankRuntime {
   }
 
   /**
-   * 复制Record 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深拷贝文档记录，防止外部修改内部状态。
+   * @param record 原始记录。
+   * @returns 副本。
    */
   private copyRecord(record: DataBankDocumentRecord): DataBankDocumentRecord {
     return {

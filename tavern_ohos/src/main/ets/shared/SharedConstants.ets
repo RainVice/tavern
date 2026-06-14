@@ -1,53 +1,53 @@
 // 全局常量（对齐 SillyTavern constants.js）
 export interface SharedConstants {
   /**
-   * APP NAME 值，由当前实例内部维护。
+   * 应用名称，用于日志和用户界面显示。
    */
   APP_NAME: string;
   /**
-   * VERSION 值，由当前实例内部维护。
+   * 当前运行时版本号。
    */
   VERSION: string;
   /**
-   * MAX CONTEXT TOKENS 值，由当前实例内部维护。
+   * 单次请求的最大上下文 token 数限制。
    */
   MAX_CONTEXT_TOKENS: number;
   /**
-   * DEFAULT USER ID 值，由当前实例内部维护。
+   * 默认用户标识符。
    */
   DEFAULT_USER_ID: string;
   /**
-   * DATA ROOT 值，由当前实例内部维护。
+   * 数据存储的根目录名称。
    */
   DATA_ROOT: string;
   /**
-   * CHARACTERS DIR 值，由当前实例内部维护。
+   * 角色数据文件存放的目录名称。
    */
   CHARACTERS_DIR: string;
   /**
-   * CHATS DIR 值，由当前实例内部维护。
+   * 聊天记录文件存放的目录名称。
    */
   CHATS_DIR: string;
   /**
-   * GROUPS DIR 值，由当前实例内部维护。
+   * 群组数据文件存放的目录名称。
    */
   GROUPS_DIR: string;
   /**
-   * WORLD BOOKS DIR 值，由当前实例内部维护。
+   * 世界书数据文件存放的目录名称。
    */
   WORLD_BOOKS_DIR: string;
   /**
-   * PRESETS DIR 值，由当前实例内部维护。
+   * 预设配置数据文件存放的目录名称。
    */
   PRESETS_DIR: string;
   /**
-   * PLUGINS DIR 值，由当前实例内部维护。
+   * 插件数据文件存放的目录名称。
    */
   PLUGINS_DIR: string;
 }
 
 /**
- * 定义共享工具模块使用的固定配置值。
+ * 应用运行时使用的固定配置值集合。
  */
 export const SHARED_CONSTANTS: SharedConstants = {
   APP_NAME: 'Tavern Headless Runtime',
@@ -64,7 +64,7 @@ export const SHARED_CONSTANTS: SharedConstants = {
 };
 
 /**
- * 定义共享工具模块使用的固定配置值。
+ * 提示词中各节（system、character_description、personality 等）的标准排列顺序。
  */
 export const PROMPT_SECTION_ORDER: Array<string> = [
   'system', 'character_description', 'personality', 'scenario',
@@ -73,22 +73,22 @@ export const PROMPT_SECTION_ORDER: Array<string> = [
 ];
 
 /**
- * 定义共享工具模块使用的固定配置值。
+ * 默认的停止字符串列表，用于提前终止模型生成。
  */
 export const DEFAULT_STOP_STRINGS: Array<string> = [
   '</s>', '<|eot_id|>', '<|end|>', '<|endoftext|>',
 ];
 
 /**
- * 读取指定Version，不存在时抛出错误。
- * @returns 更新或读取后的记录副本。
+ * 返回当前运行时的版本号。
+ * @returns 版本号字符串，例如 `"1.0.0"`。
  */
 export function getVersion(): string { return SHARED_CONSTANTS.VERSION; }
 
 /**
- * 判断Valid Stop String 值是否满足条件。
- * @param token 待处理的 token。
- * @returns 条件命中时返回 true，否则返回 false。
+ * 判断给定的 token 是否为合法自定义停止字符串（非空且不在默认停止字符串列表中）。
+ * @param token 待检查的 token。
+ * @returns 合法时返回 true，否则返回 false。
  */
 export function isValidStopString(token: string): boolean {
   return token.length > 0 && DEFAULT_STOP_STRINGS.indexOf(token) < 0;

@@ -3,65 +3,65 @@
  */
 export type MigrationStatus = 'pending' | 'running' | 'completed' | 'failed' | 'rolled_back';
 /**
- * 描述迁移计划模块在运行时交换的数据结构。
+ * 迁移计划中的单个步骤，包含步骤标识、版本区间、执行状态和错误信息。
  */
 export interface MigrationStep {
   /**
-   * step 标识。
+   * 步骤唯一标识。
    */
   stepId: string; fromVersion: number; toVersion: number; description: string;
   /**
-   * 状态值，由当前实例内部维护。
+   * 执行状态。
    */
   status: MigrationStatus; startedAt: number; completedAt: number; error: string;
 }
 /**
- * 描述调用迁移计划能力时需要传入的参数。
+ * 创建迁移步骤时所需提供的参数：版本区间和步骤说明。
  */
 export interface MigrationStepInput {
   /**
-   * description 值，由当前实例内部维护。
+   * 步骤说明。
    */
   description: string; fromVersion: number; toVersion: number;
 }
 /**
- * 描述迁移计划模块在运行时交换的数据结构。
+ * 完整的迁移计划，包含计划标识、步骤列表、整体状态和创建时间。
  */
 export interface MigrationPlan {
   /**
-   * plan 标识。
+   * 计划唯一标识。
    */
   planId: string; steps: Array<MigrationStep>; status: MigrationStatus; createdAt: number;
 }
 /**
- * 描述迁移计划事件发布时携带的数据结构。
+ * 迁移计划开始事件携带的载荷。
  */
 export interface MigrationStartedPayload {
   /**
-   * plan 值，由当前实例内部维护。
+   * 关联的迁移计划。
    */
   plan: MigrationPlan;
 }
 /**
- * 描述迁移计划事件发布时携带的数据结构。
+ * 迁移步骤完成事件携带的载荷。
  */
 export interface MigrationStepCompletedPayload {
   /**
-   * step 值，由当前实例内部维护。
+   * 已完成的迁移步骤。
    */
   step: MigrationStep;
 }
 /**
- * 描述迁移计划事件发布时携带的数据结构。
+ * 迁移计划完成事件携带的载荷。
  */
 export interface MigrationCompletedPayload {
   /**
-   * plan 值，由当前实例内部维护。
+   * 已完成的迁移计划。
    */
   plan: MigrationPlan;
 }
 /**
- * 描述迁移计划模块在运行时交换的数据结构。
+ * 迁移导出数据结构，包含全部迁移计划，用于备份或跨平台数据互通。
  */
 export interface MigrationExportData {
   /**

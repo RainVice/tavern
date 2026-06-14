@@ -20,11 +20,11 @@ import type {
  */
 interface ToolDefinitionInternal {
   /**
-   * 记录数据。
+   * 工具定义的持久化记录。
    */
   record: ToolDefinitionRecord;
   /**
-   * action 值，由当前实例内部维护。
+   * 工具的执行逻辑。
    */
   action: ToolAction;
 }
@@ -38,7 +38,7 @@ export class ToolCallingRuntime {
    */
   private events: EventBus;
   /**
-   * tools 列表，由当前实例内部维护。
+   * tools 映射表，以工具名称为键，存储完整的工具定义。
    */
   private tools: Map<string, ToolDefinitionInternal> = new Map<string, ToolDefinitionInternal>();
 
@@ -51,8 +51,8 @@ export class ToolCallingRuntime {
   }
 
   /**
-   * 注册Tool 值，使其可被后续运行时流程使用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 向运行时注册一个工具，使其可在后续的调用循环中使用。
+   * @param params 工具的注册参数，包含名称、描述、执行逻辑等。
    */
   registerTool(params: ToolRegistrationParams): ToolDefinitionRecord {
     const record: ToolDefinitionRecord = {
@@ -77,8 +77,8 @@ export class ToolCallingRuntime {
   }
 
   /**
-   * 取消注册Tool 值，避免后续流程继续调用。
-   * @param name 显示名称或注册名称。
+   * 从运行时移除一个已注册的工具，使其不再被后续流程调用。
+   * @param name 要移除的工具名称。
    */
   unregisterTool(name: string): void {
     this.tools.delete(name);
@@ -86,7 +86,7 @@ export class ToolCallingRuntime {
 
   /**
    * 读取Tools列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 工具调用记录列表副本。
    */
   listTools(): Array<ToolDefinitionRecord> {
     const records = new Array<ToolDefinitionRecord>();
@@ -99,7 +99,7 @@ export class ToolCallingRuntime {
 
   /**
    * 读取OpenAITools列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 工具调用记录列表副本。
    */
   listOpenAITools(): Array<ToolOpenAITool> {
     const result = new Array<ToolOpenAITool>();
@@ -122,10 +122,9 @@ export class ToolCallingRuntime {
   }
 
   /**
-   * 执行 invokeToolCalls 的内部处理步骤，供当前模块复用。
-
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 执行一批工具调用请求，汇总所有结果。
+   * @param calls 需要执行的工具调用请求列表。
+   * @param reasoningText 触发本次调用的推理文本，透传给每条调用记录。
    */
   async invokeToolCalls(calls: Array<ToolCallRequest>, reasoningText: string): Promise<ToolInvocationResult> {
     const result = this.createEmptyResult();
@@ -136,8 +135,8 @@ export class ToolCallingRuntime {
   }
 
   /**
-   * 执行 executeCallLoop 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 执行工具调用的多层循环，按批次依次调用，受 maxDepth 限制。
+   * @param params 包含按批次组织的请求列表和深度限制的循环参数。
    */
   async executeCallLoop(params: ToolCallLoopParams): Promise<ToolInvocationResult> {
     const result = this.createEmptyResult();
@@ -153,7 +152,7 @@ export class ToolCallingRuntime {
   }
 
   /**
-   * 生成消息输出，供请求发送、导出或界面展示使用。
+   * 将一次工具调用结果格式化为可读文本，供消息展示使用。
    */
   formatInvocationMessage(invocation: ToolInvocation): string {
     return `Tool calls: ${invocation.displayName}\n${invocation.name}: ${invocation.result}`;
@@ -249,7 +248,7 @@ export class ToolCallingRuntime {
 
   /**
    * 创建新的空结果记录，写入存储并返回副本。
-   * @returns 更新或读取后的记录副本。
+   * @returns 工具调用结果记录副本。
    */
   private createEmptyResult(): ToolInvocationResult {
     return {

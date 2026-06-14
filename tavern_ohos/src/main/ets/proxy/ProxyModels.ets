@@ -5,23 +5,23 @@ import type { ProxyResolutionMode } from '../contracts/PublicContracts';
  */
 export interface ProxySettings {
   /**
-   * enabled 值，由当前实例内部维护。
+   * 代理开关，是否启用代理功能。
    */
   enabled: boolean;
   /**
-   * url 值，由当前实例内部维护。
+   * 代理服务器 URL 地址。
    */
   url: string;
   /**
-   * bypass 列表，由当前实例内部维护。
+   * 不走代理的直连域名列表。
    */
   bypass: Array<string>;
   /**
-   * enable Keep Alive 值，由当前实例内部维护。
+   * 是否开启 Keep Alive 长连接。
    */
   enableKeepAlive: boolean;
   /**
-   * private Request Filter Enabled 值，由当前实例内部维护。
+   * 是否启用私有请求过滤（仅过滤私有/内网地址的请求）。
    */
   privateRequestFilterEnabled: boolean;
 }
@@ -31,31 +31,31 @@ export interface ProxySettings {
  */
 export interface ProxyResolutionRecord {
   /**
-   * target Url 值，由当前实例内部维护。
+   * 目标 URL，需要解析代理的目标地址。
    */
   targetUrl: string;
   /**
-   * mode 值，由当前实例内部维护。
+   * 代理解析模式，如直接连接或通过代理连接。
    */
   mode: ProxyResolutionMode;
   /**
-   * proxy Url 值，由当前实例内部维护。
+   * 代理服务器 URL（仅当 mode 为 proxy 时有效）。
    */
   proxyUrl: string;
   /**
-   * bypassed 值，由当前实例内部维护。
+   * 是否被直连规则命中而跳过代理。
    */
   bypassed: boolean;
   /**
-   * keep Alive 值，由当前实例内部维护。
+   * 是否启用 Keep Alive 长连接。
    */
   keepAlive: boolean;
   /**
-   * 原因说明，由当前实例内部维护。
+   * 代理解析结果的原因描述文本。
    */
   reason: string;
   /**
-   * warning 值，由当前实例内部维护。
+   * 解析过程中产生的警告信息。
    */
   warning: string;
 }
@@ -65,17 +65,17 @@ export interface ProxyResolutionRecord {
  */
 export interface ProxyConfiguredPayload {
   /**
-   * settings 列表，由当前实例内部维护。
+   * 代理配置完成后的设置快照。
    */
   settings: ProxySettings;
 }
 
 /**
- * 描述代理配置事件发布时携带的数据结构。
+ * 描述代理已解析事件发布时携带的数据结构。
  */
 export interface ProxyResolvedPayload {
   /**
-   * resolution 值，由当前实例内部维护。
+   * 代理解析完成后的记录结果。
    */
   resolution: ProxyResolutionRecord;
 }

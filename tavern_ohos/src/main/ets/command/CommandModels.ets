@@ -5,238 +5,238 @@ import type { RuntimePermission } from '../contracts/PublicContracts';
  */
 export interface CommandExecutionResult {
   /**
-   * ok 值，由当前实例内部维护。
+   * 命令是否执行成功。
    */
   ok: boolean;
   /**
-   * command 名称。
+   * 所执行命令的名称。
    */
   commandName: string;
   /**
-   * output 值，由当前实例内部维护。
+   * 命令执行后输出的文本内容。
    */
   output: string;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 命令执行失败时的错误描述。
    */
   error: string;
   /**
-   * cancelled 值，由当前实例内部维护。
+   * 命令是否已被取消。
    */
   cancelled: boolean;
 }
 
 /**
- * 描述命令模块在运行时交换的数据结构。
+ * 定义命令执行时的回调行为，由命令注册方提供。
  */
 export interface CommandAction {
   /**
-   * 执行 execute 的内部处理步骤，供当前模块复用。
+   * 执行命令并返回结果。
    */
   execute(invocation: CommandInvocation): Promise<CommandExecutionResult>;
 }
 
 /**
- * 描述调用命令能力时需要传入的参数。
+ * 注册命令时需要提供的参数。
  */
 export interface CommandRegistrationParams {
   /**
-   * 名称。
+   * 命令名称。
    */
   name: string;
   /**
-   * aliases 列表，由当前实例内部维护。
+   * 命令别名列表。
    */
   aliases: Array<string>;
   /**
-   * help Text 值，由当前实例内部维护。
+   * 命令的帮助文档文本。
    */
   helpText: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 执行此命令所需的运行时权限。
    */
   permission: RuntimePermission;
   /**
-   * returns 列表，由当前实例内部维护。
+   * 命令返回值类型的描述文本。
    */
   returns: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 命令是否已启用。
    */
   enabled: boolean;
   /**
-   * action 值，由当前实例内部维护。
+   * 命令执行时的回调定义。
    */
   action: CommandAction;
 }
 
 /**
- * 描述命令持久化或内存索引中的一条记录。
+ * 命令的持久化或内存索引记录。
  */
 export interface CommandRecord {
   /**
-   * 名称。
+   * 命令名称。
    */
   name: string;
   /**
-   * aliases 列表，由当前实例内部维护。
+   * 命令别名列表。
    */
   aliases: Array<string>;
   /**
-   * help Text 值，由当前实例内部维护。
+   * 命令的帮助文档文本。
    */
   helpText: string;
   /**
-   * permission 值，由当前实例内部维护。
+   * 执行此命令所需的运行时权限。
    */
   permission: RuntimePermission;
   /**
-   * returns 列表，由当前实例内部维护。
+   * 命令返回值类型的描述文本。
    */
   returns: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 命令是否已启用。
    */
   enabled: boolean;
 }
 
 /**
- * 描述命令模块在运行时交换的数据结构。
+ * 描述命令的命名参数键值对。
  */
 export interface CommandNamedArgument {
   /**
-   * 名称。
+   * 参数名称。
    */
   name: string;
   /**
-   * 字段值。
+   * 参数值。
    */
   value: string;
 }
 
 /**
- * 描述调用命令能力时需要传入的参数。
+ * 描述解析后的命令输入。
  */
 export interface CommandParsedInput {
   /**
-   * command 名称。
+   * 命令名称。
    */
   commandName: string;
   /**
-   * named Arguments 列表，由当前实例内部维护。
+   * 命名参数列表。
    */
   namedArguments: Array<CommandNamedArgument>;
   /**
-   * unnamed Argument 值，由当前实例内部维护。
+   * 未命名参数文本。
    */
   unnamedArgument: string;
 }
 
 /**
- * 描述命令模块在运行时交换的数据结构。
+ * 控制命令执行行为的选项。
  */
 export interface CommandExecuteOptions {
   /**
-   * allowed Permissions 列表，由当前实例内部维护。
+   * 当前上下文允许的权限列表。
    */
   allowedPermissions: Array<RuntimePermission>;
   /**
-   * cancelled 值，由当前实例内部维护。
+   * 命令是否已取消。
    */
   cancelled: boolean;
 }
 
 /**
- * 描述命令操作完成后返回给调用方的结果。
+ * 描述命令流水线执行完成后返回给调用方的结果。
  */
 export interface CommandPipelineResult {
   /**
-   * ok 值，由当前实例内部维护。
+   * 流水线是否全部执行成功。
    */
   ok: boolean;
   /**
-   * final Output 值，由当前实例内部维护。
+   * 流水线最终输出的文本。
    */
   finalOutput: string;
   /**
-   * steps 列表，由当前实例内部维护。
+   * 流水线中每一步的命令执行结果。
    */
   steps: Array<CommandExecutionResult>;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 流水线执行失败时的错误描述。
    */
   error: string;
   /**
-   * cancelled 值，由当前实例内部维护。
+   * 流水线是否已取消。
    */
   cancelled: boolean;
 }
 
 /**
- * 描述命令事件发布时携带的数据结构。
+ * 命令执行完成时事件发布携带的数据。
  */
 export interface CommandExecutedPayload {
   /**
-   * 处理结果。
+   * 命令执行结果。
    */
   result: CommandExecutionResult;
   /**
-   * invocation 值，由当前实例内部维护。
+   * 命令调用上下文。
    */
   invocation: CommandInvocation;
 }
 
 /**
- * 描述命令事件发布时携带的数据结构。
+ * 命令执行出错时事件发布携带的数据。
  */
 export interface CommandErrorPayload {
   /**
-   * 处理结果。
+   * 命令执行结果。
    */
   result: CommandExecutionResult;
   /**
-   * invocation 值，由当前实例内部维护。
+   * 命令调用上下文。
    */
   invocation: CommandInvocation;
 }
 
 /**
- * 描述命令事件发布时携带的数据结构。
+ * 命令注册完成时事件发布携带的数据。
  */
 export interface CommandRegisteredPayload {
   /**
-   * command 值，由当前实例内部维护。
+   * 注册的命令记录。
    */
   command: CommandRecord;
 }
 
 /**
- * 封装命令相关状态和行为。
+ * 封装一次命令调用的完整上下文。
  */
 export class CommandInvocation {
   /**
-   * command 名称。
+   * 命令名称。
    */
   commandName: string;
   /**
-   * named Arguments 列表，由当前实例内部维护。
+   * 命名参数列表。
    */
   namedArguments: Array<CommandNamedArgument>;
   /**
-   * unnamed Argument 值，由当前实例内部维护。
+   * 未命名参数文本。
    */
   unnamedArgument: string;
   /**
-   * pipe Input 值，由当前实例内部维护。
+   * 管道传入的输入文本。
    */
   pipeInput: string;
   /**
-   * cancelled 值，由当前实例内部维护。
+   * 本次调用是否已被取消。
    */
   cancelled: boolean;
 
   /**
-   * 注入命令运行时依赖并初始化实例状态。
+   * 构造一次命令调用上下文。
    * @param commandName 命令名称。
    */
   constructor(
@@ -254,9 +254,9 @@ export class CommandInvocation {
   }
 
   /**
-   * 读取指定NamedArgument，不存在时抛出错误。
-   * @param name 显示名称或注册名称。
-   * @returns 更新或读取后的记录副本。
+   * 获取指定名称的命名参数值，不存在时返回空字符串。
+   * @param name 参数名称。
+   * @returns 参数值。
    */
   getNamedArgument(name: string): string {
     for (let index = 0; index < this.namedArguments.length; index += 1) {

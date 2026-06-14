@@ -18,10 +18,11 @@ export class SecurityRuntime {
   constructor(events: EventBus) { this.events=events; }
 
   /**
-   * 创建或写入Rule，完成持久化后返回可供调用方使用的结果。
-
-
-   * @param scope 绑定或查询使用的作用域。
+   * 添加一条安全规则并返回新创建的规则副本。
+   * @param pattern 匹配模式字符串。
+   * @param action 匹配到后的处置动作。
+   * @param scope 规则适用的作用域。
+   * @returns 新创建的规则副本。
    */
   addRule(pattern: string, action: 'block'|'warn'|'sanitize', scope: TavernScope): SecurityRule {
     this.ruleCounter+=1; const ruleId=`sec-rule-${this.ruleCounter}`;
@@ -30,8 +31,9 @@ export class SecurityRuntime {
   }
 
   /**
-   * 移除安全规则，用于解除注册、绑定或索引关系。
-   * @param ruleId 目标规则标识。
+   * 移除一条安全规则。
+   * @param ruleId 规则标识。
+   * @throws 规则不存在时抛出异常。
    */
   removeRule(ruleId: string): void {
     if (this.rules.get(ruleId)===undefined) throw new Error(`安全规则未找到: ${ruleId}`);
@@ -39,9 +41,10 @@ export class SecurityRuntime {
   }
 
   /**
-   * 检查Input是否满足当前规则。
-   * @param scope 绑定或查询使用的作用域。
-   * @param input 待处理的输入对象。
+   * 检查输入文本是否匹配当前所有已启用的规则。
+   * @param scope 检查范围，只有与该作用域匹配的规则才会参与判定。
+   * @param input 待检查的输入文本。
+   * @returns 检查结果；passed 为 true 表示通过。
    */
   checkInput(scope: TavernScope, input: string): SecurityCheckResult {
     const values=Array.from(this.rules.values());
@@ -59,8 +62,8 @@ export class SecurityRuntime {
   }
 
   /**
-   * 读取Rules列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取所有安全规则的副本列表。
+   * @returns 安全规则副本列表，修改返回值不会影响内部状态。
    */
   listRules(): Array<SecurityRule> {
     const result = new Array<SecurityRule>();
@@ -69,8 +72,8 @@ export class SecurityRuntime {
     return result;
   }
   /**
-   * 读取Audits列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取所有审核记录的副本列表。
+   * @returns 审核记录副本列表，修改返回值不会影响内部状态。
    */
   listAudits(): Array<SecurityAuditRecord> {
     const result = new Array<SecurityAuditRecord>();
@@ -79,13 +82,13 @@ export class SecurityRuntime {
   }
 
   /**
-   * 导出数据，用于备份、迁移或与 SillyTavern 数据互通。
-   * @returns 可持久化或可传输的导出内容。
+   * 导出当前所有安全规则数据，用于备份或数据互通。
+   * @returns 可持久化或传输的导出数据。
    */
   exportData(): SecurityExportData { return { rules: this.listRules() }; }
   /**
-   * 从外部数据导入Data 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
+   * 从外部数据导入安全规则。
+   * @param data 包含规则列表的导入数据。
    */
   importData(data: SecurityExportData): void {
     for (let i=0;i<data.rules.length;i++) {
@@ -96,8 +99,9 @@ export class SecurityRuntime {
   }
 
   /**
-   * 复制Rule 值，避免外部修改内部状态。
-   * @param rule 待匹配的策略规则。
+   * 创建一条安全规则的浅副本，防止外部修改影响内部状态。
+   * @param rule 源规则对象。
+   * @returns 规则副本。
    */
   private copyRule(rule: SecurityRule): SecurityRule {
     return {
@@ -110,8 +114,9 @@ export class SecurityRuntime {
   }
 
   /**
-   * 复制Result 值，避免外部修改内部状态。
-   * @param result 返回结果。
+   * 创建检查结果的浅副本，防止外部修改影响内部状态。
+   * @param result 源检查结果对象。
+   * @returns 检查结果副本。
    */
   private copyResult(result: SecurityCheckResult): SecurityCheckResult {
     return {
@@ -122,7 +127,9 @@ export class SecurityRuntime {
   }
 
   /**
-   * 复制Audit 值，避免外部修改内部状态。
+   * 创建审核记录的浅副本，防止外部修改影响内部状态。
+   * @param audit 源审核记录对象。
+   * @returns 审核记录副本。
    */
   private copyAudit(audit: SecurityAuditRecord): SecurityAuditRecord {
     return {
@@ -135,8 +142,9 @@ export class SecurityRuntime {
   }
 
   /**
-   * 解析RuleCounter，非法输入会返回失败标记或空结果。
-   * @param ruleId 目标规则标识。
+   * 从规则标识中解析出自增计数。
+   * @param ruleId 规则标识，格式为 "sec-rule-{数字}"。
+   * @returns 解析出的数字；格式不合法时返回 0。
    */
   private parseRuleCounter(ruleId: string): number {
     if (!ruleId.startsWith('sec-rule-')) {

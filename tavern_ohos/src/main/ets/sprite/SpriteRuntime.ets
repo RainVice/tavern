@@ -24,11 +24,11 @@ export class SpriteRuntime {
    */
   private events: EventBus;
   /**
-   * 记录副本列表，由当前实例内部维护。
+   * 精灵图记录映射表，以 "角色名:子目录:立绘名" 为键维护所有上传立绘的内存索引。
    */
   private records: Map<string, SpriteRecord> = new Map<string, SpriteRecord>();
   /**
-   * selections 列表，由当前实例内部维护。
+   * 表情选择状态映射表，以 "角色名:子目录" 为键维护当前表情选择索引。
    */
   private selections: Map<string, SpriteSelectionRecord> = new Map<string, SpriteSelectionRecord>();
   /**
@@ -47,19 +47,15 @@ export class SpriteRuntime {
   }
 
   /**
-   * 执行 uploadSprite 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 上传一张表情图到存储，覆盖已存在的同名立绘，然后发布 `sprite.uploaded` 事件。
+   * @param params 上传参数，包含角色名、子目录、标签、文件名、MIME 类型和内容。
+   * @returns 创建或更新后的精灵图记录。
    */
   async uploadSprite(params: SpriteUploadParams): Promise<SpriteRecord> {
-    // character 名称。
     const characterName = safePathSegment(params.characterName, 'character');
-    // subfolder 名称。
     const subfolderName = this.safeOptionalSegment(params.subfolderName);
-    // sprite 名称。
     const spriteName = safePathSegment(params.spriteName, 'sprite');
-    // file 名称。
     const fileName = `${spriteName}${this.extension(params.fileName)}`;
-    // 键名。
     const key = this.key(characterName, subfolderName, spriteName);
     const existing = this.records.get(key);
     if (existing !== undefined) {
@@ -89,15 +85,14 @@ export class SpriteRuntime {
   }
 
   /**
-   * 从外部数据导入Risu Sprites 列表，转换为当前运行时的数据结构。
+   * 从 RisuAI 格式导入多个表情图，逐个上传并返回导入结果。
    * @param characterName 角色名称。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param sprites 来源数据中的表情图列表。
+   * @returns 导入成功的精灵图记录列表。
    */
   async importRisuSprites(characterName: string, sprites: Array<RisuSpriteImport>): Promise<Array<SpriteRecord>> {
     const imported = new Array<SpriteRecord>();
     for (let index = 0; index < sprites.length; index += 1) {
-      // 调用参数。
       const params: SpriteUploadParams = {
         characterName: characterName,
         subfolderName: '',
@@ -113,10 +108,10 @@ export class SpriteRuntime {
   }
 
   /**
-   * 读取Sprites列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 查询指定角色和子目录下的表情图列表，返回每个记录的副本。
    * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @param subfolderName 子目录名称。
+   * @returns 符合条件的精灵图记录列表。
    */
   async listSprites(characterName: string, subfolderName: string): Promise<Array<SpriteRecord>> {
     const normalizedCharacter = safePathSegment(characterName, 'character');
@@ -132,11 +127,12 @@ export class SpriteRuntime {
   }
 
   /**
-   * 设置表情状态，用于切换运行时状态或保存配置。
+   * 为指定角色和子目录设置当前表情状态，并发布 `sprite.expression.changed` 事件。
    * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
-
+   * @param subfolderName 子目录名称。
+   * @param expression 表情标签。
    * @param spriteName 立绘名称。
+   * @returns 更新后的表情选择记录。
    */
   async setExpression(characterName: string, subfolderName: string, expression: string, spriteName: string): Promise<SpriteSelectionRecord> {
     const normalizedCharacter = safePathSegment(characterName, 'character');
@@ -167,10 +163,10 @@ export class SpriteRuntime {
   }
 
   /**
-   * 读取指定Expression，不存在时抛出错误。
+   * 获取指定角色和子目录的当前表情选择状态，未设置时返回空记录。
    * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
-   * @returns 更新或读取后的记录副本。
+   * @param subfolderName 子目录名称。
+   * @returns 当前的精灵图选择记录，若无选择则返回空记录。
    */
   getExpression(characterName: string, subfolderName: string): SpriteSelectionRecord {
     const normalizedCharacter = safePathSegment(characterName, 'character');
@@ -183,9 +179,9 @@ export class SpriteRuntime {
   }
 
   /**
-   * 删除指定立绘，并清理相关索引或资源引用。
+   * 删除指定立绘及其文件，并清理选择状态（若当前选择指向该立绘），最后发布 `sprite.deleted` 事件。
    * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
+   * @param subfolderName 子目录名称。
    * @param spriteName 立绘名称。
    */
   async deleteSprite(characterName: string, subfolderName: string, spriteName: string): Promise<void> {
@@ -210,10 +206,11 @@ export class SpriteRuntime {
   }
 
   /**
-   * 读取必须存在的Record 值，缺失时抛出错误。
+   * 查找指定键的记录，若不存在则抛出异常。
    * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
+   * @param subfolderName 子目录名称。
    * @param spriteName 立绘名称。
+   * @returns 匹配的精灵图记录。
    */
   private requireRecord(characterName: string, subfolderName: string, spriteName: string): SpriteRecord {
     const record = this.records.get(this.key(characterName, subfolderName, spriteName));
@@ -222,14 +219,21 @@ export class SpriteRuntime {
     }
     return record;
   }
+
+  /**
+   * 根据角色名、子目录和文件名拼接文件的存储路径。
+   */
   private spritePath(characterName: string, subfolderName: string, fileName: string): string {
     if (subfolderName.length === 0) {
       return `${this.rootPath}/${characterName}/sprites/${fileName}`;
     }
     return `${this.rootPath}/${characterName}/${subfolderName}/${fileName}`;
   }
+
+  /**
+   * 从文件名中提取扩展名，非图片扩展名统一替换为 `.png`。
+   */
   private extension(fileName: string): string {
-    // safe 名称。
     const safeName = safeFileName(fileName, 'sprite.png');
     const dotIndex = safeName.lastIndexOf('.');
     if (dotIndex < 0) {
@@ -241,24 +245,36 @@ export class SpriteRuntime {
     }
     return '.png';
   }
+
+  /**
+   * 对可选子目录名执行安全转义，空字符串保持不变。
+   */
   private safeOptionalSegment(value: string): string {
     if (value.length === 0) {
       return '';
     }
     return safePathSegment(value, '');
   }
+
+  /**
+   * 生成精灵图的内部映射键：`角色名:子目录:立绘名`。
+   */
   private key(characterName: string, subfolderName: string, spriteName: string): string {
     return `${characterName}:${subfolderName}:${spriteName}`;
   }
 
   /**
-   * 读取或解析ionKey，调用方应处理不存在或不匹配的情况。
+   * 生成选择状态的内部映射键：`角色名:子目录`。
    * @param characterName 角色名称。
-   * @param subfolderName subfolder名称。
+   * @param subfolderName 子目录名称。
    */
   private selectionKey(characterName: string, subfolderName: string): string {
     return `${characterName}:${subfolderName}`;
   }
+
+  /**
+   * 返回一个空的精灵图选择记录，用于默认/未选择状态。
+   */
   private emptySelection(characterName: string, subfolderName: string): SpriteSelectionRecord {
     return {
       characterName: characterName,
@@ -271,8 +287,9 @@ export class SpriteRuntime {
   }
 
   /**
-   * 复制Record 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深复制精灵图记录，防止外部修改影响内部状态。
+   * @param record 原始记录。
+   * @returns 复制后的新记录。
    */
   private copyRecord(record: SpriteRecord): SpriteRecord {
     return {
@@ -291,7 +308,9 @@ export class SpriteRuntime {
   }
 
   /**
-   * 复制Selection 值，避免外部修改内部状态。
+   * 深复制精灵图选择记录，防止外部修改影响内部状态。
+   * @param selection 原始选择记录。
+   * @returns 复制后的新记录。
    */
   private copySelection(selection: SpriteSelectionRecord): SpriteSelectionRecord {
     return {

@@ -46,17 +46,20 @@ export class ConnectionProfileRuntime {
    */
   private userId: string = 'default';
   /**
-   * profiles 列表，由当前实例内部维护。
+   * 内存中的连接配置记录映射表。
    */
   private profiles: Map<string, ConnectionProfileRecord> = new Map<string, ConnectionProfileRecord>();
   /**
-   * active Profiles 列表，由当前实例内部维护。
+   * 作用域与激活配置的绑定关系列表。
    */
   private activeProfiles: Map<string, ConnectionActiveProfileRecord> = new Map<string, ConnectionActiveProfileRecord>();
 
   /**
-   * 初始化当前运行时实例。
-   * @param events 事件总线。
+   * 初始化运行时实例，可选挂载文件存储用于持久化。
+   * @param events 事件总线实例。
+   * @param files 可选的文件存储适配器；不传入时仅维持内存状态。
+   * @param rootPath 数据存储根路径，默认 "tavern-data"。
+   * @param userId 当前用户标识，默认 "default"。
    */
   constructor(events: EventBus, files?: TavernFileStore, rootPath: string = 'tavern-data', userId: string = 'default') {
     this.events = events;
@@ -98,9 +101,10 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 创建新的连接配置记录，写入存储并返回副本。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 创建新的连接配置记录，写入存储并返回副本。若标识已存在则抛出错误。
+   * @param params 创建连接配置所需的参数集合。
+   * @returns 新创建的连接配置记录副本。
+   * @throws 当标识已存在时抛出 Error。
    */
   createProfile(params: ConnectionProfileCreateParams): ConnectionProfileRecord {
     if (this.profiles.has(params.id)) {
@@ -117,10 +121,10 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 更新指定连接配置，写回存储并按需发布变更事件。
-   * @param profileId 目标连接或预设配置标识。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * 更新指定连接配置，并发布变更事件。
+   * @param profileId 目标连接配置标识。
+   * @param params 新的配置参数集合。
+   * @returns 更新后的连接配置记录副本。
    */
   updateProfile(profileId: string, params: ConnectionProfileCreateParams): ConnectionProfileRecord {
     const existing = this.requireProfile(profileId);
@@ -137,17 +141,17 @@ export class ConnectionProfileRuntime {
 
   /**
    * 读取指定连接配置，不存在时抛出错误。
-   * @param profileId 目标连接或预设配置标识。
-   * @returns 更新或读取后的记录副本。
+   * @param profileId 目标连接配置标识。
+   * @returns 连接配置记录副本。
    */
   getProfile(profileId: string): ConnectionProfileRecord {
     return this.cloneProfile(this.requireProfile(profileId));
   }
 
   /**
-   * 读取Profiles列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 读取指定 API 类型下的连接配置列表，返回副本。
+   * @param apiType 过滤的 API 类型；传空字符串时不作过滤返回全部。
+   * @returns 匹配的连接配置记录列表副本。
    */
   listProfiles(apiType: ConnectionApiType): Array<ConnectionProfileRecord> {
     const records = Array.from(this.profiles.values());
@@ -164,8 +168,8 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 删除指定连接配置，并清理相关索引或资源引用。
-   * @param profileId 目标连接或预设配置标识。
+   * 删除指定连接配置，从内存中清除并移除关联的激活绑定，发布删除事件。
+   * @param profileId 待删除的连接配置标识。
    */
   deleteProfile(profileId: string): void {
     this.requireProfile(profileId);
@@ -178,10 +182,11 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 设置当前连接配置，用于切换运行时状态或保存配置。
-   * @param scope 绑定或查询使用的作用域。
+   * 将指定连接配置绑定到某一作用域，并发布激活变更事件。
+   * @param scope 目标作用域类型。
    * @param scopeId 作用域下的具体对象标识。
-   * @param profileId 目标连接或预设配置标识。
+   * @param profileId 待绑定的连接配置标识。
+   * @returns 新创建的激活绑定记录副本。
    */
   setActiveProfile(scope: TavernScope, scopeId: string, profileId: string): ConnectionActiveProfileRecord {
     this.requireProfile(profileId);
@@ -201,9 +206,10 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 根据当前上下文解析Active Profile 值，返回实际可用值。
-   * @param scope 绑定或查询使用的作用域。
+   * 根据作用域和对象标识解析当前激活的连接配置，包含绑定、记录和密钥引用。
+   * @param scope 目标作用域类型。
    * @param scopeId 作用域下的具体对象标识。
+   * @returns 解析后的完整连接配置。
    */
   resolveActiveProfile(scope: TavernScope, scopeId: string): ConnectionResolvedProfile {
     const binding = this.activeProfiles.get(this.bindingKey(scope, scopeId));
@@ -222,8 +228,9 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 根据当前连接配置生成 ProviderRuntime 可使用的请求参数。
-   * @param profileId 目标连接或预设配置标识。
+   * 根据连接配置记录生成发送给服务提供商的请求参数，其中密钥类 Header 值会被遮盖。
+   * @param profileId 目标连接配置标识。
+   * @returns 可用于发起 API 请求的参数对象。
    */
   toProviderRequest(profileId: string): ConnectionProviderRequest {
     const profile = this.requireProfile(profileId);
@@ -248,8 +255,9 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 把创建参数规范化为连接配置记录。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 将创建参数规范化为内部连接配置记录。
+   * @param params 创建参数。
+   * @param updatedAt 记录更新时间戳。
    */
   private toRecord(params: ConnectionProfileCreateParams, updatedAt: number): ConnectionProfileRecord {
     const additionalHeaders = this.cloneHeaders(params.additionalHeaders);
@@ -277,8 +285,8 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 读取必须存在的Profile 值，缺失时抛出错误。
-   * @param profileId 目标连接或预设配置标识。
+   * 按标识查找连接配置，不存在时抛出错误。
+   * @param profileId 连接配置标识。
    */
   private requireProfile(profileId: string): ConnectionProfileRecord {
     const profile = this.profiles.get(profileId);
@@ -288,6 +296,9 @@ export class ConnectionProfileRuntime {
     return profile;
   }
 
+  /**
+   * 返回已挂载的文件存储实例，未配置时抛出错误。
+   */
   private requireFiles(): TavernFileStore {
     if (this.files === undefined) {
       throw new Error('ConnectionProfileRuntime storage is not configured.');
@@ -295,10 +306,16 @@ export class ConnectionProfileRuntime {
     return this.files;
   }
 
+  /**
+   * 拼接存储路径，包含用户标识以确保多用户隔离。
+   */
   private storagePath(): string {
     return `${this.rootPath}/users/${safePathSegment(this.userId, 'default')}/connection-profiles/index.json`;
   }
 
+  /**
+   * 返回空快照作为 JsonStore 的默认值。
+   */
   private defaultStorageSnapshot(): ConnectionProfileStorageSnapshot {
     return {
       schemaVersion: 1,
@@ -308,7 +325,9 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 复制Profile 值，避免外部修改内部状态。
+   * 深拷贝单条连接配置记录，避免外部修改内部状态。
+   * @param profile 待拷贝的连接配置记录。
+   * @returns 全新的记录副本。
    */
   private cloneProfile(profile: ConnectionProfileRecord): ConnectionProfileRecord {
     const stopStrings = profile.stopStrings.slice();
@@ -336,9 +355,9 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 复制Profiles 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 批量深拷贝连接配置记录列表。
+   * @param profiles 待拷贝的连接配置记录列表。
+   * @returns 全新的记录列表副本。
    */
   private cloneProfiles(profiles: Array<ConnectionProfileRecord>): Array<ConnectionProfileRecord> {
     const result = new Array<ConnectionProfileRecord>();
@@ -349,7 +368,9 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 复制Binding 值，避免外部修改内部状态。
+   * 深拷贝单条激活绑定记录。
+   * @param binding 待拷贝的激活绑定记录。
+   * @returns 全新的绑定记录副本。
    */
   private cloneBinding(binding: ConnectionActiveProfileRecord): ConnectionActiveProfileRecord {
     return {
@@ -360,6 +381,11 @@ export class ConnectionProfileRuntime {
     };
   }
 
+  /**
+   * 批量深拷贝激活绑定记录列表。
+   * @param bindings 待拷贝的激活绑定记录列表。
+   * @returns 全新的绑定记录列表副本。
+   */
   private cloneBindings(bindings: Array<ConnectionActiveProfileRecord>): Array<ConnectionActiveProfileRecord> {
     const result = new Array<ConnectionActiveProfileRecord>();
     for (let index = 0; index < bindings.length; index += 1) {
@@ -369,9 +395,9 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 复制Headers 列表，避免外部修改内部状态。
-   * @param headers 请求头列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深拷贝 Header 记录列表。
+   * @param headers 待拷贝的 Header 记录列表。
+   * @returns 全新的 Header 记录列表副本。
    */
   private cloneHeaders(headers: Array<ConnectionHeaderRecord>): Array<ConnectionHeaderRecord> {
     const result = new Array<ConnectionHeaderRecord>();
@@ -387,9 +413,9 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 复制Headers Masked 值，避免外部修改内部状态。
-   * @param headers 请求头列表。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深拷贝 Header 记录列表，其中 secret 为 true 的值替换为 "redacted"。
+   * @param headers 待拷贝的 Header 记录列表。
+   * @returns 密钥值已被遮盖的全新记录列表副本。
    */
   private cloneHeadersMasked(headers: Array<ConnectionHeaderRecord>): Array<ConnectionHeaderRecord> {
     const result = new Array<ConnectionHeaderRecord>();
@@ -406,8 +432,8 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 移除当前激活绑定列表，用于解除注册、绑定或索引关系。
-   * @param profileId 目标连接或预设配置标识。
+   * 移除所有引用了指定连接配置的激活绑定。
+   * @param profileId 被删除的连接配置标识。
    */
   private removeActiveBindings(profileId: string): void {
     const keys = Array.from(this.activeProfiles.keys());
@@ -420,8 +446,8 @@ export class ConnectionProfileRuntime {
   }
 
   /**
-   * 把连接配置对象绑定到指定作用域，后续读取会按该绑定解析。
-   * @param scope 绑定或查询使用的作用域。
+   * 生成作用域绑定的 Map 键，格式为 "作用域:对象标识"。
+   * @param scope 目标作用域类型。
    * @param scopeId 作用域下的具体对象标识。
    */
   private bindingKey(scope: TavernScope, scopeId: string): string {

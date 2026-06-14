@@ -23,7 +23,7 @@ export interface StreamStartParams {
  */
 export interface StreamSession {
   /**
-   * 标识。
+   * 流式会话唯一标识。
    */
   id: string;
   /**
@@ -39,27 +39,27 @@ export interface StreamSession {
    */
   messageId: string;
   /**
-   * 状态值，由当前实例内部维护。
+   * 当前状态：running / completed / aborted。
    */
   status: StreamSessionStatus;
   /**
-   * snapshot 值，由当前实例内部维护。
+   * 已累积的消息内容快照。
    */
   snapshot: string;
   /**
-   * reasoning Snapshot 值，由当前实例内部维护。
+   * 已累积的推理过程内容快照。
    */
   reasoningSnapshot: string;
   /**
-   * abort Reason 值，由当前实例内部维护。
+   * 中止原因描述，仅在 status 为 aborted 时有意义。
    */
   abortReason: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 会话创建时间戳。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 会话最近一次更新时间戳。
    */
   updatedAt: number;
 }
@@ -69,65 +69,65 @@ export interface StreamSession {
  */
 export interface StreamStartPayload {
   /**
-   * session 值，由当前实例内部维护。
+   * 启动时创建的流式会话对象。
    */
   session: StreamSession;
 }
 
 /**
- * 描述流式生成事件发布时携带的数据结构。
+ * 描述流式增量事件发布时携带的数据结构。
  */
 export interface StreamDeltaPayload {
   /**
-   * session 标识。
+   * 所属流式会话标识。
    */
   sessionId: string;
   /**
-   * 任务标识。
+   * 所属任务标识。
    */
   taskId: string;
   /**
-   * 聊天标识。
+   * 所属聊天标识。
    */
   chatId: string;
   /**
-   * 消息标识。
+   * 所属消息标识。
    */
   messageId: string;
   /**
-   * delta 值，由当前实例内部维护。
+   * 本次增量文本片段。
    */
   delta: string;
   /**
-   * snapshot 值，由当前实例内部维护。
+   * 累积后的消息内容快照。
    */
   snapshot: string;
   /**
-   * reasoning 值，由当前实例内部维护。
+   * 是否为推理过程增量而非最终内容。
    */
   reasoning: boolean;
   /**
-   * reasoning Snapshot 值，由当前实例内部维护。
+   * 累积后的推理过程内容快照。
    */
   reasoningSnapshot: string;
 }
 
 /**
- * 描述流式生成事件发布时携带的数据结构。
+ * 描述流式完成事件发布时携带的数据结构。
  */
 export interface StreamCompletePayload {
   /**
-   * session 值，由当前实例内部维护。
+   * 完成时的流式会话对象。
    */
   session: StreamSession;
 }
 
 /**
- * 描述流式生成事件发布时携带的数据结构。
+ * 描述流式中止事件发布时携带的数据结构。
  */
 export interface StreamAbortPayload {
   /**
-   * session 值，由当前实例内部维护。
+   * 中止时的流式会话对象。
    */
   session: StreamSession;
 }

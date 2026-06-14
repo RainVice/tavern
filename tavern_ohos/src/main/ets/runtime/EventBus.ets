@@ -2,18 +2,19 @@
  * EventBus 投递给订阅者的事件对象。
  *
  * name 是事件名，例如 message.added；payload 是对应 Runtime 发布的业务数据副本。
+ * T 为 payload 的具体类型。
  */
 export interface RuntimeEvent<T extends Object> {
   /**
-   * 事件名。
+   * 事件名，例如 message.added。
    */
   name: string;
   /**
-   * 事件载荷。
+   * 事件载荷，发布时通过 JSON 序列化深度复制，订阅方对其修改不会影响发布方。
    */
   payload: T;
   /**
-   * 当前 EventBus 实例内递增的事件序号。
+   * 当前 EventBus 实例内严格递增的事件序号，从 1 开始。
    */
   sequence: number;
   /**
@@ -22,14 +23,19 @@ export interface RuntimeEvent<T extends Object> {
   timestamp: number;
 }
 
+/**
+ * 事件处理回调类型。接收一个 RuntimeEvent 参数，无返回值。
+ * @typeParam T payload 的具体类型。
+ */
 export type RuntimeEventHandler<T extends Object> = (event: RuntimeEvent<T>) => void;
 
 /**
  * EventBus.subscribe 返回的订阅句柄。
+ * 调用方应在页面销毁或不再需要监听时调用 unsubscribe 释放回调。
  */
 export interface EventSubscription {
   /**
-   * 取消订阅；重复调用不会再次修改订阅列表。
+   * 取消当前订阅。重复调用安全，第二次起不做任何操作。
    */
   unsubscribe(): void;
 }
@@ -110,10 +116,11 @@ export class EventBus {
   }
 
   /**
-   * 发布事件并同步调用当前事件名下的订阅者。
+   * 发布事件并同步调用所有已订阅的回调。
+   * 每个订阅者收到的是 payload 的独立深度副本，互不干扰。
    * @param eventName 事件名，例如 message.added。
-   * @param payload 可 JSON 序列化的事件载荷。
-   * @returns 本次发布生成的事件对象。
+   * @param payload 可 JSON 序列化的事件载荷；不可序列化的字段（函数、undefined、循环引用）会在复制中丢失。
+   * @returns 本次发布生成的事件对象，调用方可借此获取 sequence 序号和发布时间戳。
    */
   publish<T extends Object>(eventName: string, payload: T): RuntimeEvent<T> {
     this.sequence += 1;
@@ -143,8 +150,10 @@ export class EventBus {
   }
 
   /**
-   * 用 JSON 序列化复制 payload，避免订阅者修改发布方持有的对象。
+   * 通过 JSON 序列化深度复制 payload，避免订阅者修改影响发布方持有的原始对象。
+   * 注意：仅对可 JSON 序列化的数据有效；函数、undefined、Date 等会在序列化中丢失或变形。
    * @param payload 待复制的事件载荷。
+   * @returns 深度复制后的新对象。
    */
   private clonePayload<T extends Object>(payload: T): T {
     return JSON.parse(JSON.stringify(payload)) as T;

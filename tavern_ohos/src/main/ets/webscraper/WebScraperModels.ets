@@ -1,59 +1,59 @@
 /**
- * 描述发送给外部服务或宿主网络层的请求数据。
+ * 创建网页抓取请求时需要传入的参数。
  */
 export interface ScrapeRequest {
   /**
-   * 地址。
+   * 要抓取的目标网页 URL。
    */
   url: string;
   /**
-   * extract Text 值，由当前实例内部维护。
+   * 是否提取网页纯文本内容。
    */
   extractText: boolean;
   /**
-   * extract Images 列表。
+   * 是否提取网页中的图片 URL。
    */
   extractImages: boolean;
   /**
-   * max Chars 列表。
+   * 返回文本内容的最大字符数限制。
    */
   maxChars: number;
 }
 /**
- * 描述网页抓取操作完成后返回给调用方的结果。
+ * 网页抓取完成后返回的结果数据。
  */
 export interface ScrapeResult {
   /**
-   * 地址。
+   * 抓取请求的 URL。
    */
   url: string;
   /**
-   * 标题，由当前实例内部维护。
+   * 网页标题。
    */
   title: string;
   /**
-   * text Content 值，由当前实例内部维护。
+   * 抓取到的纯文本内容。
    */
   textContent: string;
   /**
-   * image Urls 列表。
+   * 从网页中提取到的图片 URL 列表。
    */
   imageUrls: Array<string>;
   /**
-   * 成功状态。
+   * 抓取是否成功。
    */
   success: boolean;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 抓取失败时的错误描述。
    */
   error: string;
 }
 /**
- * 描述网页抓取事件发布时携带的数据结构。
+ * 网页抓取完成事件发布时携带的数据载荷。
  */
 export interface ScrapeCompletedPayload {
   /**
-   * 处理结果。
+   * 抓取结果。
    */
   result: ScrapeResult;
 }

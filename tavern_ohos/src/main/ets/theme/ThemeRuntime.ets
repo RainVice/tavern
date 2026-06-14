@@ -25,15 +25,15 @@ export class ThemeRuntime {
    */
   private events: EventBus;
   /**
-   * themes 列表，由当前实例内部维护。
+   * 主题记录映射表，以主题名称为键维护所有已注册主题的内存索引。
    */
   private themes: Map<string, ThemeRecord> = new Map<string, ThemeRecord>();
   /**
-   * active Theme 名称。
+   * 当前活跃主题的名称，为空时表示未激活任何主题。
    */
   private activeThemeName: string = '';
   /**
-   * active Background 值，由当前实例内部维护。
+   * 当前选中的背景标识或路径，界面据此渲染背景图。
    */
   private activeBackground: string = '';
   /**
@@ -56,8 +56,9 @@ export class ThemeRuntime {
   }
 
   /**
-   * 创建或写入主题，完成持久化后返回可供调用方使用的结果。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 创建或写入主题，持久化到文件并发布保存事件。
+   * @param params 保存主题所需的参数。
+   * @returns 保存后的主题记录副本。
    */
   async saveTheme(params: ThemeSaveParams): Promise<ThemeRecord> {
     const now = Date.now();
@@ -83,8 +84,8 @@ export class ThemeRuntime {
   }
 
   /**
-   * 读取Themes列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有主题记录，返回按名称排序的副本。
+   * @returns 所有主题记录列表副本。
    */
   async listThemes(): Promise<Array<ThemeRecord>> {
     const result = new Array<ThemeRecord>();
@@ -96,8 +97,9 @@ export class ThemeRuntime {
   }
 
   /**
-   * 更新主题状态，必要时写回存储并发布对应事件。
-   * @param name 显示名称或注册名称。
+   * 激活指定名称的主题，更新内部状态、持久化并发布激活事件。
+   * @param name 主题名称。
+   * @returns 激活后的主题记录副本。
    */
   async activateTheme(name: string): Promise<ThemeRecord> {
     this.requireTheme(name);
@@ -118,16 +120,16 @@ export class ThemeRuntime {
   }
 
   /**
-   * 读取Active Theme 名称，不存在时通常抛出错误或返回空值。
-   * @returns 更新或读取后的记录副本。
+   * 读取当前活跃主题的名称。
+   * @returns 当前活跃主题名称字符串，可能为空字符串。
    */
   getActiveThemeName(): string {
     return this.activeThemeName;
   }
 
   /**
-   * 设置当前背景，用于切换运行时状态或保存配置。
-
+   * 设置当前背景，持久化状态并发布背景变更事件。
+   * @param background 背景标识或路径。
    */
   async setActiveBackground(background: string): Promise<void> {
     this.activeBackground = background;
@@ -139,16 +141,16 @@ export class ThemeRuntime {
   }
 
   /**
-   * 读取指定背景图，不存在时抛出错误。
-   * @returns 更新或读取后的记录副本。
+   * 读取当前背景标识。
+   * @returns 当前背景字符串。
    */
   getActiveBackground(): string {
     return this.activeBackground;
   }
 
   /**
-   * 删除指定主题，并清理相关索引或资源引用。
-   * @param name 显示名称或注册名称。
+   * 删除指定主题，清理文件和相关索引。
+   * @param name 主题名称。
    */
   async deleteTheme(name: string): Promise<void> {
     const record = this.requireTheme(name);
@@ -165,8 +167,8 @@ export class ThemeRuntime {
   }
 
   /**
-   * 导出主题列表，用于备份、迁移或与 SillyTavern 数据互通。
-   * @returns 可持久化或可传输的导出内容。
+   * 导出主题列表及状态，用于备份、迁移或与 SillyTavern 数据互通。
+   * @returns 包含主题列表和状态的导出数据。
    */
   async exportThemes(): Promise<ThemeExportData> {
     return {
@@ -176,9 +178,9 @@ export class ThemeRuntime {
   }
 
   /**
-   * 从外部数据导入Themes 列表，转换为当前运行时的数据结构。
+   * 从外部数据导入主题列表，转换为当前运行时的数据结构。
    * @param data 导入或恢复使用的序列化数据。
-
+   * @param replace 是否先清空当前主题列表再导入。
    */
   async importThemes(data: ThemeExportData, replace: boolean): Promise<void> {
     if (replace) {

@@ -16,46 +16,30 @@ import type {
 } from './PluginModels';
 
 /**
- * 描述插件持久化或内存索引中的一条记录。
+ * 内部 Hook 条目，记录插件注册到 Hook 点的信息。
  */
 interface HookEntry {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * hook Point 值，由当前实例内部维护。
-   */
+  /** Hook 点名称。 */
   hookPoint: string;
-  /**
-   * priority 值，由当前实例内部维护。
-   */
+  /** 执行优先级，数值越小越先执行。 */
   priority: number;
 }
 
 /**
- * 描述插件持久化或内存索引中的一条记录。
+ * 内部提示词注入条目，记录插件注入的提示词信息。
  */
 interface PromptInjectionEntry {
-  /**
-   * plugin 标识。
-   */
+  /** 插件标识。 */
   pluginId: string;
-  /**
-   * hook Point 值，由当前实例内部维护。
-   */
+  /** 注入点名称。 */
   hookPoint: string;
-  /**
-   * 内容。
-   */
+  /** 提示词文本内容。 */
   content: string;
-  /**
-   * position 值，由当前实例内部维护。
-   */
+  /** 注入位置（如 "before"、"after"）。 */
   position: string;
-  /**
-   * priority 值，由当前实例内部维护。
-   */
+  /** 执行优先级，数值越小越先注入。 */
   priority: number;
 }
 
@@ -63,29 +47,17 @@ interface PromptInjectionEntry {
  * 提供插件相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
  */
 export class PluginRuntime {
-  /**
-   * 事件总线。
-   */
+  /** 事件总线，用于发布插件相关事件。 */
   private events: EventBus;
-  /**
-   * plugins 列表，由当前实例内部维护。
-   */
+  /** 已安装的插件记录，以 pluginId 为键。 */
   private plugins: Map<string, PluginRecord> = new Map<string, PluginRecord>();
-  /**
-   * hooks 列表，由当前实例内部维护。
-   */
+  /** 已注册的 Hook 列表，以 hookPoint 为键，按优先级排序。 */
   private hooks: Map<string, Array<HookEntry>> = new Map<string, Array<HookEntry>>();
-  /**
-   * settings 列表，由当前实例内部维护。
-   */
+  /** 插件设置存储，以 pluginId 为外层键、设置 key 为内层键。 */
   private settings: Map<string, Map<string, string>> = new Map<string, Map<string, string>>();
-  /**
-   * prompt Injections 列表，由当前实例内部维护。
-   */
+  /** 全部提示词注入条目，按优先级全局排序。 */
   private promptInjections: Array<PromptInjectionEntry> = new Array<PromptInjectionEntry>();
-  /**
-   * install Counter 值，由当前实例内部维护。
-   */
+  /** 安装计数器，每次安装递增，用于生成 pluginId。 */
   private installCounter: number = 0;
 
   /**
@@ -97,14 +69,17 @@ export class PluginRuntime {
   }
 
   /**
-   * 执行 installPlugin 的内部处理步骤，供当前模块复用。
+   * 安装一个插件，为其生成唯一标识并持久化记录。
+   * @param manifest 插件清单信息。
+   * @returns 新创建的插件记录。
+   * @throws 同名插件已安装时抛出错误。
    */
   installPlugin(manifest: PluginManifest): PluginRecord {
     if (this.findByManifestName(manifest.name) !== undefined) {
       throw new Error(`Plugin "${manifest.name}" is already installed.`);
     }
     this.installCounter += 1;
-    // plugin 标识。
+    // 插件标识。
     const pluginId = `plugin-${this.installCounter}`;
     const now = Date.now();
     const plugin: PluginRecord = {
@@ -124,7 +99,7 @@ export class PluginRuntime {
   }
 
   /**
-   * 执行 uninstallPlugin 的内部处理步骤，供当前模块复用。
+   * 卸载指定插件，清理其相关数据并发布卸载事件。
    * @param pluginId 插件标识。
    */
   uninstallPlugin(pluginId: string): void {
@@ -140,7 +115,7 @@ export class PluginRuntime {
   }
 
   /**
-   * 执行 enablePlugin 的内部处理步骤，供当前模块复用。
+   * 启用指定插件，更新状态并发布启用事件。
    * @param pluginId 插件标识。
    */
   enablePlugin(pluginId: string): void {
@@ -154,7 +129,7 @@ export class PluginRuntime {
   }
 
   /**
-   * 执行 disablePlugin 的内部处理步骤，供当前模块复用。
+   * 禁用指定插件，更新状态并发布禁用事件。
    * @param pluginId 插件标识。
    */
   disablePlugin(pluginId: string): void {
@@ -168,17 +143,18 @@ export class PluginRuntime {
   }
 
   /**
-   * 读取指定Plugin，不存在时抛出错误。
+   * 获取指定插件的副本。
    * @param pluginId 插件标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 插件记录的副本。
+   * @throws 插件不存在时抛出错误。
    */
   getPlugin(pluginId: string): PluginRecord {
     return this.clonePlugin(this.requirePlugin(pluginId));
   }
 
   /**
-   * 读取Plugins列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有已安装插件的副本列表。
+   * @returns 插件记录副本列表，修改返回值不影响内部状态。
    */
   listPlugins(): Array<PluginRecord> {
     const result = new Array<PluginRecord>();
@@ -190,10 +166,10 @@ export class PluginRuntime {
   }
 
   /**
-   * 注册Hook 值，使其可被后续运行时流程使用。
+   * 注册一个 Hook，使其在指定 Hook 点的执行链中生效。
    * @param pluginId 插件标识。
-
-
+   * @param hookPoint Hook 点名称。
+   * @param priority 执行优先级，数值越小越先执行。
    */
   registerHook(pluginId: string, hookPoint: string, priority: number): void {
     this.requirePlugin(pluginId);
@@ -212,9 +188,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 取消注册Hook 值，避免后续流程继续调用。
+   * 取消注册指定插件在指定 Hook 点的注册项。
    * @param pluginId 插件标识。
-
+   * @param hookPoint Hook 点名称。
    */
   unregisterHook(pluginId: string, hookPoint: string): void {
     const list = this.hooks.get(hookPoint);
@@ -231,7 +207,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 执行 dispatchHook 的内部处理步骤，供当前模块复用。
+   * 触发指定 Hook 点的执行链，返回执行结果。
+   * @param hookPoint Hook 点名称。
+   * @returns Hook 执行结果，决定是否允许放行。
    */
   dispatchHook(hookPoint: string): HookResult {
     const list = this.hooks.get(hookPoint);
@@ -264,10 +242,11 @@ export class PluginRuntime {
   }
 
   /**
-   * 设置插件设置，用于切换运行时状态或保存配置。
+   * 设置指定插件的配置项。
    * @param pluginId 插件标识。
-   * @param key 键名。
-   * @param value 要保存或比较的字段值。
+   * @param key 配置键名。
+   * @param value 配置值。
+   * @returns 创建或更新后的设置条目。
    */
   setPluginSetting(pluginId: string, key: string, value: string): PluginSettingEntry {
     this.requirePlugin(pluginId);
@@ -285,10 +264,10 @@ export class PluginRuntime {
   }
 
   /**
-   * 读取指定设置项，不存在时抛出错误。
+   * 获取指定插件的指定配置项值。
    * @param pluginId 插件标识。
-   * @param key 键名。
-   * @returns 更新或读取后的记录副本。
+   * @param key 配置键名。
+   * @returns 配置值，不存在时返回空字符串。
    */
   getPluginSetting(pluginId: string, key: string): string {
     this.requirePlugin(pluginId);
@@ -301,9 +280,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 读取PluginSettings列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 列出指定插件的所有配置项。
    * @param pluginId 插件标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 设置条目列表，修改返回值不影响内部状态。
    */
   listPluginSettings(pluginId: string): Array<PluginSettingEntry> {
     this.requirePlugin(pluginId);
@@ -312,7 +291,7 @@ export class PluginRuntime {
     if (pluginSettings !== undefined) {
       const keys = Array.from(pluginSettings.keys());
       for (let index = 0; index < keys.length; index += 1) {
-        // 键名。
+        // 配置键名。
         const key = keys[index];
         const value = pluginSettings.get(key);
         result.push({
@@ -326,10 +305,12 @@ export class PluginRuntime {
   }
 
   /**
-   * 创建或写入提示词Injection，完成持久化后返回可供调用方使用的结果。
+   * 为指定插件添加一条提示词注入。
    * @param pluginId 插件标识。
-
-   * @param content 要写入或追加的文本内容。
+   * @param hookPoint 注入点名称。
+   * @param content 提示词文本内容。
+   * @param position 注入位置（如 "before"、"after"）。
+   * @param priority 执行优先级，数值越小越先注入。
    */
   addPromptInjection(
     pluginId: string,
@@ -360,7 +341,7 @@ export class PluginRuntime {
   }
 
   /**
-   * 移除插件提示词注入列表，用于解除注册、绑定或索引关系。
+   * 移除指定插件的所有提示词注入。
    * @param pluginId 插件标识。
    */
   removePluginPromptInjections(pluginId: string): void {
@@ -374,9 +355,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 读取Prompt Injections 列表，不存在时通常抛出错误或返回空值。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 获取指定 Hook 点的所有生效提示词注入。
+   * @param hookPoint 注入点名称。
+   * @returns 符合条件的提示词注入列表，修改返回值不影响内部状态。
    */
   getPromptInjections(hookPoint: string): Array<PluginPromptInjection> {
     const result = new Array<PluginPromptInjection>();
@@ -400,9 +381,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 读取Hooks列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 列出指定插件注册的所有 Hook 点。
    * @param pluginId 插件标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns Hook 注册信息列表，修改返回值不影响内部状态。
    */
   listHooks(pluginId: string): Array<PluginHookRegistration> {
     const result = new Array<PluginHookRegistration>();
@@ -424,9 +405,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 导出插件，用于备份、迁移或与 SillyTavern 数据互通。
+   * 导出插件的完整数据，用于备份或迁移。
    * @param pluginId 插件标识。
-   * @returns 可持久化或可传输的导出内容。
+   * @returns 可序列化的插件导出数据。
    */
   exportPlugin(pluginId: string): PluginExportData {
     const plugin = this.requirePlugin(pluginId);
@@ -439,9 +420,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 从外部数据导入Plugin 值，转换为当前运行时的数据结构。
-   * @param data 导入或恢复使用的序列化数据。
-   * @returns 更新或读取后的记录副本。
+   * 从序列化数据导入插件，并恢复其设置和提示词注入。
+   * @param data 导入的插件数据。
+   * @returns 导入后的插件记录。
    */
   importPlugin(data: PluginExportData): PluginRecord {
     const plugin = this.installPlugin(data.manifest);
@@ -461,7 +442,7 @@ export class PluginRuntime {
   }
 
   /**
-   * 移除插件 Hook 列表，用于解除注册、绑定或索引关系。
+   * 移除指定插件注册的所有 Hook。
    * @param pluginId 插件标识。
    */
   private removePluginHooks(pluginId: string): void {
@@ -481,9 +462,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 读取提示词InjectionsForPlugin列表，返回副本，调用方修改返回值不会直接改变内部状态。
+   * 获取指定插件的所有提示词注入列表。
    * @param pluginId 插件标识。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * @returns 提示词注入列表副本，修改返回值不影响内部状态。
    */
   private listPromptInjectionsForPlugin(pluginId: string): Array<PluginPromptInjection> {
     const result = new Array<PluginPromptInjection>();
@@ -503,8 +484,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 在当前集合中查找By Manifest 名称，未命中时返回空值或默认位置。
-   * @param name 显示名称或注册名称。
+   * 根据清单名称查找已安装的插件。
+   * @param name 插件名称。
+   * @returns 找到的插件记录，未找到时返回 undefined。
    */
   private findByManifestName(name: string): PluginRecord | undefined {
     const values = Array.from(this.plugins.values());
@@ -517,8 +499,10 @@ export class PluginRuntime {
   }
 
   /**
-   * 读取必须存在的Plugin 值，缺失时抛出错误。
+   * 获取指定插件记录，不存在时抛出错误。
    * @param pluginId 插件标识。
+   * @returns 插件记录（内部引用，非副本）。
+   * @throws 插件未找到时抛出错误。
    */
   private requirePlugin(pluginId: string): PluginRecord {
     const plugin = this.plugins.get(pluginId);
@@ -529,7 +513,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 复制Manifest 值，避免外部修改内部状态。
+   * 深拷贝清单信息，防止外部修改内部状态。
+   * @param manifest 原清单。
+   * @returns 副本。
    */
   private cloneManifest(manifest: PluginManifest): PluginManifest {
     return {
@@ -542,7 +528,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 复制Plugin 值，避免外部修改内部状态。
+   * 深拷贝插件记录，防止外部修改内部状态。
+   * @param plugin 原记录。
+   * @returns 副本。
    */
   private clonePlugin(plugin: PluginRecord): PluginRecord {
     return {
@@ -555,8 +543,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 复制Setting 值，避免外部修改内部状态。
-   * @param entry 条目记录。
+   * 深拷贝设置条目，防止外部修改内部状态。
+   * @param entry 原条目。
+   * @returns 副本。
    */
   private cloneSetting(entry: PluginSettingEntry): PluginSettingEntry {
     return {
@@ -567,9 +556,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 复制Settings 列表，避免外部修改内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 深拷贝设置列表，防止外部修改内部状态。
+   * @param settings 原列表。
+   * @returns 副本列表。
    */
   private cloneSettings(settings: Array<PluginSettingEntry>): Array<PluginSettingEntry> {
     const result = new Array<PluginSettingEntry>();
@@ -580,8 +569,9 @@ export class PluginRuntime {
   }
 
   /**
-   * 复制Hook Result 值，避免外部修改内部状态。
-   * @param result 返回结果。
+   * 深拷贝 Hook 执行结果，防止外部修改内部状态。
+   * @param result 原结果。
+   * @returns 副本。
    */
   private cloneHookResult(result: HookResult): HookResult {
     return {

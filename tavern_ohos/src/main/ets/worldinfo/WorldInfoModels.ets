@@ -1,329 +1,329 @@
 /**
- * 描述世界书模块在运行时交换的数据结构。
+ * 一个完整的世界书，包含所有条目元数据。
  */
 export interface WorldBook {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据格式版本号，用于迁移兼容。
    */
   schemaVersion: number;
   /**
-   * 标识。
+   * 世界书的唯一标识符。
    */
   id: string;
   /**
-   * 名称。
+   * 世界书的显示名称。
    */
   name: string;
   /**
-   * next Entry 标识。
+   * 下一条新增条目的递进序号。
    */
   nextEntryId: number;
   /**
-   * 条目列表，由当前实例内部维护。
+   * 世界书中的条目列表。
    */
   entries: Array<WorldInfoEntry>;
   /**
-   * created At 值，由当前实例内部维护。
+   * 世界书的创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 世界书的最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述世界书模块在运行时交换的数据结构。
+ * 世界书索引，用于快速检索和展示所有世界书的概要信息。
  */
 export interface WorldBookIndex {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据格式版本号，用于迁移兼容。
    */
   schemaVersion: number;
   /**
-   * next 标识。
+   * 下一个世界书 ID 的递进序号。
    */
   nextId: number;
   /**
-   * 项目列表，由当前实例内部维护。
+   * 索引项列表。
    */
   items: Array<WorldBookIndexEntry>;
 }
 
 /**
- * 描述世界书持久化或内存索引中的一条记录。
+ * 世界书索引中的单条摘要信息。
  */
 export interface WorldBookIndexEntry {
   /**
-   * 标识。
+   * 世界书的唯一标识符。
    */
   id: string;
   /**
-   * 名称。
+   * 世界书的显示名称。
    */
   name: string;
   /**
-   * entry Count 值，由当前实例内部维护。
+   * 世界书中的条目数量。
    */
   entryCount: number;
   /**
-   * created At 值，由当前实例内部维护。
+   * 世界书的创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 世界书的最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述调用世界书能力时需要传入的参数。
+ * 创建世界书条目时需要传入的参数。
  */
 export interface WorldInfoEntryCreateParams {
   /**
-   * comment 值，由当前实例内部维护。
+   * 条目的备注说明。
    */
   comment: string;
   /**
-   * keys 列表，由当前实例内部维护。
+   * 主要关键词列表，用于文本匹配触发。
    */
   keys: Array<string>;
   /**
-   * secondary Keys 列表，由当前实例内部维护。
+   * 次要关键词列表，与主要关键词配合用于选择性激活。
    */
   secondaryKeys: Array<string>;
   /**
-   * 内容。
+   * 条目触发时注入的文本内容。
    */
   content: string;
   /**
-   * constant 值，由当前实例内部维护。
+   * 是否为常驻激活（忽略关键词匹配）。
    */
   constant: boolean;
   /**
-   * selective 值，由当前实例内部维护。
+   * 是否启用选择性匹配（需要同时命中主要和次要关键词）。
    */
   selective: boolean;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 条目是否启用。
    */
   enabled: boolean;
   /**
-   * insertion Order 值，由当前实例内部维护。
+   * 条目在激活时的插入顺序序号。
    */
   insertionOrder: number;
   /**
-   * position 值，由当前实例内部维护。
+   * 条目内容在提示词中的插入位置策略。
    */
   position: string;
   /**
-   * case Sensitive 值，由当前实例内部维护。
+   * 关键词匹配是否区分大小写。
    */
   caseSensitive: boolean;
 }
 
 /**
- * 描述调用世界书能力时需要传入的参数。
+ * 更新世界书条目时需要传入的参数，字段含义与创建参数一致。
  */
 export interface WorldInfoEntryUpdateParams {
   /**
-   * comment 值，由当前实例内部维护。
+   * 条目的备注说明。
    */
   comment: string;
   /**
-   * keys 列表，由当前实例内部维护。
+   * 主要关键词列表，用于文本匹配触发。
    */
   keys: Array<string>;
   /**
-   * secondary Keys 列表，由当前实例内部维护。
+   * 次要关键词列表，与主要关键词配合用于选择性激活。
    */
   secondaryKeys: Array<string>;
   /**
-   * 内容。
+   * 条目触发时注入的文本内容。
    */
   content: string;
   /**
-   * constant 值，由当前实例内部维护。
+   * 是否为常驻激活（忽略关键词匹配）。
    */
   constant: boolean;
   /**
-   * selective 值，由当前实例内部维护。
+   * 是否启用选择性匹配。
    */
   selective: boolean;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 条目是否启用。
    */
   enabled: boolean;
   /**
-   * insertion Order 值，由当前实例内部维护。
+   * 条目在激活时的插入顺序序号。
    */
   insertionOrder: number;
   /**
-   * position 值，由当前实例内部维护。
+   * 条目内容在提示词中的插入位置策略。
    */
   position: string;
   /**
-   * case Sensitive 值，由当前实例内部维护。
+   * 关键词匹配是否区分大小写。
    */
   caseSensitive: boolean;
 }
 
 /**
- * 描述世界书持久化或内存索引中的一条记录。
+ * 世界书中的一个条目，包含关键词组和触发内容。
  */
 export interface WorldInfoEntry {
   /**
-   * 标识。
+   * 条目的唯一标识符。
    */
   id: string;
   /**
-   * uid 值，由当前实例内部维护。
+   * 条目的递进序号（与 id 相对应）。
    */
   uid: number;
   /**
-   * comment 值，由当前实例内部维护。
+   * 条目的备注说明。
    */
   comment: string;
   /**
-   * keys 列表，由当前实例内部维护。
+   * 主要关键词列表，用于文本匹配触发。
    */
   keys: Array<string>;
   /**
-   * secondary Keys 列表，由当前实例内部维护。
+   * 次要关键词列表，与主要关键词配合用于选择性激活。
    */
   secondaryKeys: Array<string>;
   /**
-   * 内容。
+   * 条目触发时注入的文本内容。
    */
   content: string;
   /**
-   * constant 值，由当前实例内部维护。
+   * 是否为常驻激活（忽略关键词匹配）。
    */
   constant: boolean;
   /**
-   * selective 值，由当前实例内部维护。
+   * 是否启用选择性匹配。
    */
   selective: boolean;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 条目是否启用。
    */
   enabled: boolean;
   /**
-   * insertion Order 值，由当前实例内部维护。
+   * 条目在激活时的插入顺序序号。
    */
   insertionOrder: number;
   /**
-   * position 值，由当前实例内部维护。
+   * 条目内容在提示词中的插入位置策略。
    */
   position: string;
   /**
-   * case Sensitive 值，由当前实例内部维护。
+   * 关键词匹配是否区分大小写。
    */
   caseSensitive: boolean;
   /**
-   * created At 值，由当前实例内部维护。
+   * 条目的创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 条目的最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述世界书模块在运行时交换的数据结构。
+ * 世界书激活的结果，包含匹配的条目和生成的提示词文本。
  */
 export interface WorldInfoActivation {
   /**
-   * 条目列表，由当前实例内部维护。
+   * 激活的条目列表。
    */
   entries: Array<WorldInfoEntry>;
   /**
-   * matches 列表，由当前实例内部维护。
+   * 匹配详情列表。
    */
   matches: Array<WorldInfoMatch>;
   /**
-   * prompt Text 值，由当前实例内部维护。
+   * 拼接后的提示词文本。
    */
   promptText: string;
 }
 
 /**
- * 描述世界书模块在运行时交换的数据结构。
+ * 描述单次关键词匹配的结果。
  */
 export interface WorldInfoMatch {
   /**
-   * 世界书标识。
+   * 命中的世界书标识。
    */
   worldBookId: string;
   /**
-   * 条目标识。
+   * 命中的条目标识。
    */
   entryId: string;
   /**
-   * 键名，由当前实例内部维护。
+   * 匹配到的关键词。
    */
   key: string;
 }
 
 /**
- * 描述世界书事件发布时携带的数据结构。
+ * 世界书激活事件发布时携带的数据载荷。
  */
 export interface WorldInfoActivationPayload {
   /**
-   * world Book 标识列表。
+   * 参与激活的世界书标识列表。
    */
   worldBookIds: Array<string>;
   /**
-   * 条目列表，由当前实例内部维护。
+   * 激活的条目列表。
    */
   entries: Array<WorldInfoEntry>;
   /**
-   * matches 列表，由当前实例内部维护。
+   * 匹配详情列表。
    */
   matches: Array<WorldInfoMatch>;
 }
 
 /**
- * 描述世界书模块在运行时交换的数据结构。
+ * 从外部导入的世界书数据格式。
  */
 export interface WorldInfoImportData {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据格式版本号。
    */
   schemaVersion: number;
   /**
-   * 标识。
+   * 世界书的唯一标识符。
    */
   id: string;
   /**
-   * 名称。
+   * 世界书的显示名称。
    */
   name: string;
   /**
-   * next Entry 标识。
+   * 导入时的下一条条目递进序号。
    */
   nextEntryId: number;
   /**
-   * 条目列表，由当前实例内部维护。
+   * 条目列表。
    */
   entries: Array<WorldInfoEntry>;
   /**
-   * created At 值，由当前实例内部维护。
+   * 创建时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 最后更新时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述世界书事件发布时携带的数据结构。
+ * 世界书变更事件发布时携带的数据载荷。
  */
 export interface WorldInfoEventPayload {
   /**
-   * world Book 值，由当前实例内部维护。
+   * 变更后的世界书记录。
    */
   worldBook: WorldBook;
 }

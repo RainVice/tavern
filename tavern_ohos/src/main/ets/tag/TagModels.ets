@@ -3,35 +3,35 @@
  */
 export interface TagCreateParams {
   /**
-   * 标识。
+   * 可选的自定义标签标识；不传时由运行时自动生成。
    */
   id?: string;
   /**
-   * 名称。
+   * 标签显示名称。
    */
   name: string;
   /**
-   * folder Type 值，由当前实例内部维护。
+   * 文件夹分类类型（如 "NONE" / "FOLDER" / ...）。
    */
   folderType?: string;
   /**
-   * filter State 值，由当前实例内部维护。
+   * 过滤状态标记。
    */
   filterState?: string;
   /**
-   * sort Order 值，由当前实例内部维护。
+   * 排序优先级（值越小越靠前）。
    */
   sortOrder?: number;
   /**
-   * color 值，由当前实例内部维护。
+   * 标签的主色值。
    */
   color?: string;
   /**
-   * color2 值，由当前实例内部维护。
+   * 标签的辅助色值。
    */
   color2?: string;
   /**
-   * hidden On Character Card 值，由当前实例内部维护。
+   * 是否在角色卡片上隐藏此标签。
    */
   hiddenOnCharacterCard?: boolean;
 }
@@ -41,39 +41,39 @@ export interface TagCreateParams {
  */
 export interface TagRecord {
   /**
-   * 标识。
+   * 标签唯一标识。
    */
   id: string;
   /**
-   * 名称。
+   * 标签显示名称。
    */
   name: string;
   /**
-   * folder Type 值，由当前实例内部维护。
+   * 文件夹分类类型（如 "NONE" / "FOLDER" / ...）。
    */
   folderType: string;
   /**
-   * filter State 值，由当前实例内部维护。
+   * 过滤状态标记。
    */
   filterState: string;
   /**
-   * sort Order 值，由当前实例内部维护。
+   * 排序优先级（值越小越靠前）。
    */
   sortOrder: number;
   /**
-   * color 值，由当前实例内部维护。
+   * 标签的主色值。
    */
   color: string;
   /**
-   * color2 值，由当前实例内部维护。
+   * 标签的辅助色值。
    */
   color2: string;
   /**
-   * create Date 值，由当前实例内部维护。
+   * 标签创建时间戳。
    */
   createDate: number;
   /**
-   * hidden On Character Card 值，由当前实例内部维护。
+   * 是否在角色卡片上隐藏此标签。
    */
   hiddenOnCharacterCard: boolean;
 }
@@ -83,19 +83,19 @@ export interface TagRecord {
  */
 export interface TagImportResult {
   /**
-   * entity Key 值，由当前实例内部维护。
+   * 导入操作关联的实体键。
    */
   entityKey: string;
   /**
-   * 导入结果，由当前实例内部维护。
+   * 已成功导入的标签记录列表。
    */
   imported: Array<TagRecord>;
   /**
-   * ignored 值，由当前实例内部维护。
+   * 被忽略的标签名称列表。
    */
   ignored: Array<string>;
   /**
-   * 创建后的记录，由当前实例内部维护。
+   * 本次导入过程中新创建的标签记录。
    */
   created: Array<TagRecord>;
 }
@@ -105,21 +105,21 @@ export interface TagImportResult {
  */
 export interface TagEventPayload {
   /**
-   * tag 值，由当前实例内部维护。
+   * 变更事件关联的标签记录。
    */
   tag: TagRecord;
 }
 
 /**
- * 描述标签事件发布时携带的数据结构。
+ * 描述标签映射事件发布时携带的数据结构。
  */
 export interface TagMapEventPayload {
   /**
-   * entity Key 值，由当前实例内部维护。
+   * 映射变更涉及的实体键。
    */
   entityKey: string;
   /**
-   * tag 标识列表。
+   * 绑定到该实体的标签标识列表。
    */
   tagIds: Array<string>;
 }

@@ -27,19 +27,19 @@ export class TTSRuntime {
    */
   private events: EventBus;
   /**
-   * profiles 列表，由当前实例内部维护。
+   * 语音配置映射表，以配置标识为键。
    */
   private profiles: Map<string, TTSVoiceProfile> = new Map<string, TTSVoiceProfile>();
   /**
-   * tasks 列表，由当前实例内部维护。
+   * 合成任务映射表，以任务标识为键。
    */
   private tasks: Map<string, TTSTask> = new Map<string, TTSTask>();
   /**
-   * profile Counter 值，由当前实例内部维护。
+   * 语音配置计数器，用于生成唯一配置标识。
    */
   private profileCounter: number = 0;
   /**
-   * task Counter 值，由当前实例内部维护。
+   * 任务计数器，用于生成唯一任务标识。
    */
   private taskCounter: number = 0;
 
@@ -52,8 +52,9 @@ export class TTSRuntime {
   }
 
   /**
-   * 执行 synthesize 的内部处理步骤，供当前模块复用。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 发起一次 TTS 合成任务，创建任务记录并发布任务启动事件。
+   * @param params 合成请求参数。
+   * @returns 新创建的合成任务副本。
    */
   synthesize(params: TTSSynthesisParams): TTSTask {
     this.taskCounter += 1;
@@ -78,10 +79,10 @@ export class TTSRuntime {
   }
 
   /**
-   * 更新Progress 列表，同步内部状态并按需发布变更事件。
+   * 更新合成任务的进度，并发布进度更新事件。
    * @param taskId 目标任务标识。
-
-   * @returns 更新或读取后的记录副本。
+   * @param progress 进度百分比（0-100）。
+   * @returns 更新后的任务副本。
    */
   updateProgress(taskId: string, progress: number): TTSTask {
     const task = this.requireTask(taskId);
@@ -94,9 +95,10 @@ export class TTSRuntime {
   }
 
   /**
-   * 标记Synthesis 列表完成，并写入最终结果。
+   * 标记合成任务为完成状态，记录音频附件信息。
    * @param taskId 目标任务标识。
-   * @param result 返回结果。
+   * @param result 合成音频的结果信息。
+   * @returns 更新后的任务副本。
    */
   completeSynthesis(taskId: string, result: TTSAudioResult): TTSTask {
     const task = this.requireTask(taskId);
@@ -111,9 +113,10 @@ export class TTSRuntime {
   }
 
   /**
-   * 标记Synthesis 列表失败，并保存错误信息。
+   * 标记合成任务为失败状态，并记录错误信息。
    * @param taskId 目标任务标识。
-   * @param error 错误信息。
+   * @param error 错误描述。
+   * @returns 更新后的任务副本。
    */
   failSynthesis(taskId: string, error: string): TTSTask {
     const task = this.requireTask(taskId);
@@ -126,8 +129,9 @@ export class TTSRuntime {
   }
 
   /**
-   * 取消Synthesis 列表任务，并发布取消状态。
+   * 取消合成任务，并发布取消事件。
    * @param taskId 目标任务标识。
+   * @returns 更新后的任务副本。
    */
   cancelSynthesis(taskId: string): TTSTask {
     const task = this.requireTask(taskId);
@@ -140,18 +144,18 @@ export class TTSRuntime {
   }
 
   /**
-   * 读取指定任务，不存在时抛出错误。
+   * 读取指定合成任务。
    * @param taskId 目标任务标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 任务副本。
    */
   getTask(taskId: string): TTSTask {
     return this.cloneTask(this.requireTask(taskId));
   }
 
   /**
-   * 读取Tasks列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @param status 状态值。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有合成任务，可按状态过滤。
+   * @param status 可选的状态过滤条件。
+   * @returns 任务副本列表。
    */
   listTasks(status?: TTSTaskStatus): Array<TTSTask> {
     const result = new Array<TTSTask>();
@@ -165,10 +169,15 @@ export class TTSRuntime {
   }
 
   /**
-   * 创建或写入连接配置，完成持久化后返回可供调用方使用的结果。
-   * @param name 显示名称或注册名称。
-
-   * @param voiceId 目标音色标识。
+   * 保存一条语音配置，并发布配置保存事件。
+   * @param name 配置名称。
+   * @param provider 提供商类型。
+   * @param voiceId 音色标识。
+   * @param language 语言代码。
+   * @param speed 语速倍率。
+   * @param pitch 音高调整值。
+   * @param format 音频格式。
+   * @returns 新创建的语音配置副本。
    */
   saveVoiceProfile(
     name: string,
@@ -202,18 +211,18 @@ export class TTSRuntime {
   }
 
   /**
-   * 读取指定连接配置，不存在时抛出错误。
-   * @param profileId 目标连接或预设配置标识。
-   * @returns 更新或读取后的记录副本。
+   * 读取指定语音配置。
+   * @param profileId 语音配置标识。
+   * @returns 语音配置副本。
    */
   getVoiceProfile(profileId: string): TTSVoiceProfile {
     return this.cloneProfile(this.requireProfile(profileId));
   }
 
   /**
-   * 读取VoiceProfiles列表，返回副本，调用方修改返回值不会直接改变内部状态。
-
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 列出所有语音配置，可按提供商类型过滤。
+   * @param provider 可选的服务提供商过滤条件。
+   * @returns 语音配置副本列表。
    */
   listVoiceProfiles(provider?: TTSProvider): Array<TTSVoiceProfile> {
     const result = new Array<TTSVoiceProfile>();
@@ -227,8 +236,8 @@ export class TTSRuntime {
   }
 
   /**
-   * 删除语音配置。
-   * @param profileId 配置标识。
+   * 删除指定的语音配置。
+   * @param profileId 要删除的配置标识。
    */
   deleteVoiceProfile(profileId: string): void {
     this.requireProfile(profileId);
@@ -236,13 +245,13 @@ export class TTSRuntime {
   }
 
   /**
-   * 根据入参构建Open AITTSRequest 值，仅生成数据结构，不直接执行外部请求。
-   * @param text 文本内容。
-
+   * 根据入参构建 OpenAI TTS 请求体，仅生成数据结构，不直接发送请求。
+   * @param text 待合成的文本。
+   * @param voice 音色标识。
    * @param model 模型名称。
-
-
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * @param speed 语速倍率。
+   * @param format 音频格式。
+   * @returns OpenAI TTS 请求体。
    */
   buildOpenAITTSRequest(
     text: string,
@@ -261,12 +270,12 @@ export class TTSRuntime {
   }
 
   /**
-   * 根据入参构建Edge TTSRequest 值，仅生成数据结构，不直接执行外部请求。
-   * @param text 文本内容。
-
-
-
-   * @returns 构建好的请求、Prompt 或中间数据。
+   * 根据入参构建 Edge TTS 请求体，仅生成数据结构，不直接发送请求。
+   * @param text 待合成的文本。
+   * @param voice 音色标识。
+   * @param rate 语速调整值。
+   * @param pitch 音高调整值。
+   * @returns Edge TTS 请求体。
    */
   buildEdgeTTSRequest(text: string, voice: string, rate: number, pitch: number): EdgeTTSRequest {
     return {
@@ -277,7 +286,10 @@ export class TTSRuntime {
     };
   }
 
-  // 导出
+  /**
+   * 导出所有 TTS 数据，包含语音配置和任务记录。
+   * @returns TTS 数据的导出结构。
+   */
   exportData(): TTSExportData {
     return {
       profiles: this.listVoiceProfiles(),
@@ -286,8 +298,8 @@ export class TTSRuntime {
   }
 
   /**
-   * 导入。
-   * @param data 数据内容。
+   * 导入 TTS 数据，恢复语音配置和任务记录。
+   * @param data TTS 数据的导出结构。
    */
   importData(data: TTSExportData): void {
     for (let index = 0; index < data.profiles.length; index += 1) {
@@ -303,7 +315,7 @@ export class TTSRuntime {
   }
 
   /**
-   * 复制Task 值，避免外部修改内部状态。
+   * 复制合成任务，避免外部修改内部状态。
    */
   private cloneTask(task: TTSTask): TTSTask {
     return {
@@ -320,7 +332,7 @@ export class TTSRuntime {
   }
 
   /**
-   * 复制Profile 值，避免外部修改内部状态。
+   * 复制语音配置，避免外部修改内部状态。
    */
   private cloneProfile(profile: TTSVoiceProfile): TTSVoiceProfile {
     return {
@@ -338,8 +350,8 @@ export class TTSRuntime {
   }
 
   /**
-   * 复制Params 列表，避免外部修改内部状态。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * 复制合成请求参数，避免外部修改内部状态。
+   * @param params 合成请求参数。
    */
   private cloneParams(params: TTSSynthesisParams): TTSSynthesisParams {
     return {
@@ -353,7 +365,7 @@ export class TTSRuntime {
   }
 
   /**
-   * 读取必须存在的Task 值，缺失时抛出错误。
+   * 读取必须存在的合成任务，缺失时抛出错误。
    * @param taskId 目标任务标识。
    */
   private requireTask(taskId: string): TTSTask {
@@ -365,8 +377,8 @@ export class TTSRuntime {
   }
 
   /**
-   * 读取必须存在的Profile 值，缺失时抛出错误。
-   * @param profileId 目标连接或预设配置标识。
+   * 读取必须存在的语音配置，缺失时抛出错误。
+   * @param profileId 语音配置标识。
    */
   private requireProfile(profileId: string): TTSVoiceProfile {
     const profile = this.profiles.get(profileId);
@@ -377,8 +389,8 @@ export class TTSRuntime {
   }
 
   /**
-   * 解析TaskCounter，非法输入会返回失败标记或空结果。
-   * @param taskId 目标任务标识。
+   * 从任务标识中解析出计数器值，用于恢复导入时的任务计数器。
+   * @param taskId 任务标识。
    */
   private parseTaskCounter(taskId: string): number {
     if (!taskId.startsWith('tts-')) {
@@ -389,8 +401,8 @@ export class TTSRuntime {
   }
 
   /**
-   * 解析ProfileCounter，非法输入会返回失败标记或空结果。
-   * @param profileId 目标连接或预设配置标识。
+   * 从配置标识中解析出计数器值，用于恢复导入时的配置计数器。
+   * @param profileId 配置标识。
    */
   private parseProfileCounter(profileId: string): number {
     if (!profileId.startsWith('tts-profile-')) {

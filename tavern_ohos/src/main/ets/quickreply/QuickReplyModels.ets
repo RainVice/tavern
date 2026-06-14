@@ -2,239 +2,239 @@ import type { CommandExecutionResult } from '../command/CommandModels';
 import type { TavernScope } from '../contracts/PublicContracts';
 
 /**
- * 描述调用快捷回复能力时需要传入的参数。
+ * 创建新的快捷回复集合时需要提供的参数。
  */
 export interface QuickReplySetCreateParams {
   /**
-   * 标识。
+   * 集合标识。
    */
   id: string;
   /**
-   * 名称。
+   * 集合名称。
    */
   name: string;
   /**
-   * 作用域。
+   * 集合作用域，决定该集合在哪些场景下可用。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识，为空时表示匹配该作用域下所有场景。
    */
   scopeId: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 集合启用状态，禁用后该集合内所有项均不参与匹配与执行。
    */
   enabled: boolean;
 }
 
 /**
- * 描述调用快捷回复能力时需要传入的参数。
+ * 在集合中添加快捷回复项时需要提供的参数。
  */
 export interface QuickReplyItemCreateParams {
   /**
-   * 标识。
+   * 项目标识。
    */
   id: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 按钮显示标签。
    */
   label: string;
   /**
-   * 标题，由当前实例内部维护。
+   * 长按时显示的标题文本。
    */
   title: string;
   /**
-   * command 值，由当前实例内部维护。
+   * 点击按钮后要执行的命令文本，支持管道。
    */
   command: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 项目启用状态，禁用后按钮不参与执行。
    */
   enabled: boolean;
   /**
-   * visible 值，由当前实例内部维护。
+   * 按钮可见性，可被运行时动态控制。
    */
   visible: boolean;
   /**
-   * auto Execute 值，由当前实例内部维护。
+   * 是否启用自动触发，开启后当 trigger 匹配时自动执行。
    */
   autoExecute: boolean;
   /**
-   * trigger 值，由当前实例内部维护。
+   * 触发自动执行的关键字，仅在 autoExecute 为 true 时有效。
    */
   trigger: string;
   /**
-   * plugin 标识。
+   * 关联的插件标识。
    */
   pluginId: string;
 }
 
 /**
- * 描述快捷回复持久化或内存索引中的一条记录。
+ * 内存索引或持久化存储中的一条快捷回复项目记录。
  */
 export interface QuickReplyItemRecord {
   /**
-   * 标识。
+   * 项目标识。
    */
   id: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 按钮显示标签。
    */
   label: string;
   /**
-   * 标题，由当前实例内部维护。
+   * 长按时显示的标题文本。
    */
   title: string;
   /**
-   * command 值，由当前实例内部维护。
+   * 点击按钮后执行的命令文本。
    */
   command: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 项目启用状态。
    */
   enabled: boolean;
   /**
-   * visible 值，由当前实例内部维护。
+   * 按钮可见性。
    */
   visible: boolean;
   /**
-   * auto Execute 值，由当前实例内部维护。
+   * 是否启用自动触发。
    */
   autoExecute: boolean;
   /**
-   * trigger 值，由当前实例内部维护。
+   * 自动触发关键字。
    */
   trigger: string;
   /**
-   * plugin 标识。
+   * 关联的插件标识。
    */
   pluginId: string;
 }
 
 /**
- * 描述快捷回复持久化或内存索引中的一条记录。
+ * 内存索引或持久化存储中的一条快捷回复集合记录。
  */
 export interface QuickReplySetRecord {
   /**
-   * 标识。
+   * 集合标识。
    */
   id: string;
   /**
-   * 名称。
+   * 集合名称。
    */
   name: string;
   /**
-   * 作用域。
+   * 集合作用域，决定该集合在哪些场景下可用。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * enabled 值，由当前实例内部维护。
+   * 集合启用状态。
    */
   enabled: boolean;
   /**
-   * 项目列表，由当前实例内部维护。
+   * 集合内包含的项目列表。
    */
   items: Array<QuickReplyItemRecord>;
 }
 
 /**
- * 描述快捷回复模块在运行时交换的数据结构。
+ * 通过 listButtons 返回给 UI 层的按钮数据，包含来源集合信息和执行入口。
  */
 export interface QuickReplyButtonData {
   /**
-   * set 标识。
+   * 来源集合标识。
    */
   setId: string;
   /**
-   * item 标识。
+   * 按钮对应的项目标识。
    */
   itemId: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 按钮显示标签。
    */
   label: string;
   /**
-   * 标题，由当前实例内部维护。
+   * 长按时显示的标题文本。
    */
   title: string;
   /**
-   * command 值，由当前实例内部维护。
+   * 按钮对应的命令文本。
    */
   command: string;
   /**
-   * 作用域。
+   * 来源集合作用域。
    */
   scope: TavernScope;
   /**
-   * 作用域标识。
+   * 作用域下的具体对象标识。
    */
   scopeId: string;
   /**
-   * plugin 标识。
+   * 按钮关联的插件标识。
    */
   pluginId: string;
 }
 
 /**
- * 描述快捷回复操作完成后返回给调用方的结果。
+ * 执行快捷回复项后返回给调用方的执行结果。
  */
 export interface QuickReplyExecutionResult {
   /**
-   * set 值，由当前实例内部维护。
+   * 执行结果所处的集合快照。
    */
   set: QuickReplySetRecord;
   /**
-   * 项目记录，由当前实例内部维护。
+   * 被执行的项目快照。
    */
   item: QuickReplyItemRecord;
   /**
-   * executed 值，由当前实例内部维护。
+   * 是否实际执行了命令（可能因禁用或隐藏而跳过）。
    */
   executed: boolean;
   /**
-   * commandResult 结果。
+   * 底层命令执行结果。
    */
   commandResult: CommandExecutionResult;
 }
 
 /**
- * 描述快捷回复事件发布时携带的数据结构。
+ * 快捷回复项执行完成后发布的事件负载。
  */
 export interface QuickReplyExecutedPayload {
   /**
-   * set 值，由当前实例内部维护。
+   * 执行结果所处的集合快照。
    */
   set: QuickReplySetRecord;
   /**
-   * 项目记录，由当前实例内部维护。
+   * 被执行的项目快照。
    */
   item: QuickReplyItemRecord;
   /**
-   * commandResult 结果。
+   * 底层命令执行结果。
    */
   commandResult: CommandExecutionResult;
 }
 
 /**
- * 描述快捷回复事件发布时携带的数据结构。
+ * 集合发生变化时发布的事件负载。
  */
 export interface QuickReplySetUpdatedPayload {
   /**
-   * set 值，由当前实例内部维护。
+   * 变化后的集合快照。
    */
   set: QuickReplySetRecord;
 }
 
 /**
- * 描述快捷回复模块在运行时交换的数据结构。
+ * 快捷回复集合的导出数据格式，用于备份和与 SillyTavern 数据互通。
  */
 export interface QuickReplyExportData {
   /**
-   * set 值，由当前实例内部维护。
+   * 导出的集合快照。
    */
   set: QuickReplySetRecord;
 }

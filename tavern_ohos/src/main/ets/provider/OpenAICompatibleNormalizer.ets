@@ -6,12 +6,14 @@ import type {
 } from './ProviderModels';
 
 /**
- * 封装Provider 请求相关状态和行为。
+ * OpenAI 兼容格式的流式数据块规范化器。
+ * 将不同后端返回的 JSON 数据统一转换为 ProviderNormalizedChunk 格式。
  */
 export class OpenAICompatibleNormalizer {
   /**
-   * 规范化Chat Chunk 值，保证后续比较和存储使用一致格式。
-   * @param data 导入或恢复使用的序列化数据。
+   * 规范化 OpenAI 兼容格式的聊天数据块，提取文本增量、推理增量和结束原因。
+   * @param data 原始 JSON 字符串（OpenAI 格式的流式响应）。
+   * @returns 规范化后的数据块。
    */
   normalizeChatChunk(data: string): ProviderNormalizedChunk {
     const chunk = JSON.parse(data) as OpenAICompatibleChatChunk;

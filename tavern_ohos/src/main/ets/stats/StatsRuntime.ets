@@ -25,23 +25,23 @@ export class StatsRuntime {
    */
   private events: EventBus;
   /**
-   * chats 列表，由当前实例内部维护。
+   * 聊天统计记录映射表，以 chatId 为键维护每个聊天的 token/消息/字节计数。
    */
   private chats: Map<string, StatsChatRecord> = new Map<string, StatsChatRecord>();
   /**
-   * providers 列表，由当前实例内部维护。
+   * 模型服务提供者统计记录映射表，以 providerId 为键维护请求/错误/token 计数。
    */
   private providers: Map<string, StatsProviderRecord> = new Map<string, StatsProviderRecord>();
   /**
-   * rag Sources 列表，由当前实例内部维护。
+   * 知识库（RAG）来源统计记录映射表，以 sourceId 为键维护查询/命中计数。
    */
   private ragSources: Map<string, StatsRagRecord> = new Map<string, StatsRagRecord>();
   /**
-   * plugins 列表，由当前实例内部维护。
+   * 插件错误统计记录映射表，以 pluginId 为键维护错误计数。
    */
   private plugins: Map<string, StatsPluginRecord> = new Map<string, StatsPluginRecord>();
   /**
-   * characters 列表，由当前实例内部维护。
+   * 角色统计记录映射表，以 characterKey 为键维护消息/滑动/字数计数。
    */
   private characters: Map<string, StatsCharacterRecord> = new Map<string, StatsCharacterRecord>();
 
@@ -54,11 +54,11 @@ export class StatsRuntime {
   }
 
   /**
-   * 创建或写入tokenUsage，完成持久化后返回可供调用方使用的结果。
+   * 记录一次 token 消耗，更新聊天和提供者的 token 统计数据。
    * @param chatId 目标聊天标识。
    * @param providerId 目标模型服务标识。
-   * @param promptTokens token 数量或 token 内容。
-   * @param completionTokens token 数量或 token 内容。
+   * @param promptTokens 本次消耗的提示词 token 数。
+   * @param completionTokens 本次消耗的补全 token 数。
    */
   recordTokenUsage(chatId: string, providerId: string, promptTokens: number, completionTokens: number): void {
     const now = Date.now();
@@ -73,11 +73,11 @@ export class StatsRuntime {
   }
 
   /**
-   * 创建或写入消息，完成持久化后返回可供调用方使用的结果。
+   * 记录一条消息，更新聊天统计中的消息数量、token 和字节数。
    * @param chatId 目标聊天标识。
-   * @param role 消息角色。
-   * @param tokenCount 计数值。
-   * @param byteCount 计数值。
+   * @param role 消息角色（`"user"` 或 `"assistant"`）。
+   * @param tokenCount 该消息的 token 数。
+   * @param byteCount 该消息的字节数。
    */
   recordMessage(chatId: string, role: ChatMessageRole, tokenCount: number, byteCount: number): void {
     const now = Date.now();
@@ -95,12 +95,13 @@ export class StatsRuntime {
   }
 
   /**
-   * 创建或写入生成记录，完成持久化后返回可供调用方使用的结果。
+   * 记录一次模型生成，更新提供者的生成统计并返回采样记录。
    * @param providerId 目标模型服务标识。
-
-
-   * @param promptTokens token 数量或 token 内容。
-   * @param completionTokens token 数量或 token 内容。
+   * @param startedAt 生成开始时间戳（毫秒）。
+   * @param finishedAt 生成结束时间戳（毫秒）。
+   * @param promptTokens 提示词 token 数。
+   * @param completionTokens 补全 token 数。
+   * @returns 本次生成的采样统计记录。
    */
   recordGeneration(
     providerId: string,
@@ -130,10 +131,11 @@ export class StatsRuntime {
   }
 
   /**
-   * 创建或写入请求，完成持久化后返回可供调用方使用的结果。
+   * 记录一次模型服务请求（成功或失败），更新提供者的请求/错误统计。
+   * 若为失败请求，同时发布 `stats.provider.error` 事件。
    * @param providerId 目标模型服务标识。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @param isError 是否为失败的请求。
+   * @returns 更新后的提供者统计记录。
    */
   recordProviderRequest(providerId: string, isError: boolean): StatsProviderRecord {
     const now = Date.now();
@@ -157,10 +159,10 @@ export class StatsRuntime {
   }
 
   /**
-   * 创建或写入知识库Query，完成持久化后返回可供调用方使用的结果。
+   * 记录一次知识库（RAG）查询结果，更新命中率统计。
    * @param sourceId 目标来源标识。
-
-   * @returns 条件命中时返回 true，否则返回 false。
+   * @param hit 是否命中。
+   * @returns 更新后的知识库来源统计记录。
    */
   recordRagQuery(sourceId: string, hit: boolean): StatsRagRecord {
     const now = Date.now();
@@ -176,9 +178,10 @@ export class StatsRuntime {
   }
 
   /**
-   * 创建或写入PluginError，完成持久化后返回可供调用方使用的结果。
+   * 记录一次插件错误，更新插件的错误统计并发布 `stats.plugin.error` 事件。
    * @param pluginId 插件标识。
-   * @param message 消息记录。
+   * @param message 错误消息。
+   * @returns 更新后的插件统计记录。
    */
   recordPluginError(pluginId: string, message: string): StatsPluginRecord {
     const now = Date.now();
@@ -197,8 +200,9 @@ export class StatsRuntime {
   }
 
   /**
-   * 执行 processCharacterMessage 的内部处理步骤，供当前模块复用。
-   * @param input 待处理的输入对象。
+   * 处理角色消息统计，更新单词数、滑动次数等信息。
+   * @param input 待处理的统计输入参数。
+   * @returns 更新后的角色统计记录。
    */
   processCharacterMessage(input: StatsMessageProcessInput): StatsCharacterRecord {
     const now = input.now === undefined ? Date.now() : input.now;
@@ -231,9 +235,9 @@ export class StatsRuntime {
   }
 
   /**
-   * 读取Character Stats 列表，不存在时通常抛出错误或返回空值。
-
-   * @returns 更新或读取后的记录副本。
+   * 获取指定角色的统计记录，不存在时抛出异常。
+   * @param characterKey 角色标识键。
+   * @returns 角色的统计记录。
    */
   getCharacterStats(characterKey: string): StatsCharacterRecord {
     const record = this.characters.get(characterKey);
@@ -244,16 +248,16 @@ export class StatsRuntime {
   }
 
   /**
-   * 读取CharacterStats列表，返回副本，调用方修改返回值不会直接改变内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有角色的统计记录列表（按角色键排序）。
+   * @returns 角色统计记录列表，每个记录为副本。
    */
   listCharacterStats(): Array<StatsCharacterRecord> {
     return this.copyCharacters();
   }
 
   /**
-   * 读取User Stats Totals 列表，不存在时通常抛出错误或返回空值。
-   * @returns 更新或读取后的记录副本。
+   * 汇总所有角色的统计数据，返回用户维度的累计值。
+   * @returns 用户维度的累计统计记录。
    */
   getUserStatsTotals(): StatsTotals {
     const characters = this.copyCharacters();
@@ -290,8 +294,8 @@ export class StatsRuntime {
   }
 
   /**
-   * 读取指定快照，不存在时抛出错误。
-   * @returns 更新或读取后的记录副本。
+   * 获取当前所有维度的统计快照，包含聚合值和各子项列表。
+   * @returns 完整的统计快照。
    */
   getSnapshot(): StatsSnapshot {
     const chats = this.copyChats();
@@ -355,7 +359,7 @@ export class StatsRuntime {
   }
 
   /**
-   * 发布统计事件，把状态变化通知给宿主或其他 Runtime。
+   * 发布 `stats.updated` 事件，通知宿主或其他 Runtime 统计状态已变化。
    */
   private publishUpdated(): void {
     const payload: StatsUpdatedPayload = {
@@ -365,10 +369,10 @@ export class StatsRuntime {
   }
 
   /**
-   * 读取指定聊天，不存在时抛出错误。
+   * 获取或创建聊天会话的统计记录。
    * @param chatId 目标聊天标识。
    * @param now 当前时间戳。
-   * @returns 更新或读取后的记录副本。
+   * @returns 已有的或新建的聊天统计记录。
    */
   private getOrCreateChat(chatId: string, now: number): StatsChatRecord {
     const existing = this.chats.get(chatId);
@@ -389,10 +393,10 @@ export class StatsRuntime {
   }
 
   /**
-   * 读取指定模型服务，不存在时抛出错误。
+   * 获取或创建模型服务提供者的统计记录。
    * @param providerId 目标模型服务标识。
    * @param now 当前时间戳。
-   * @returns 更新或读取后的记录副本。
+   * @returns 已有的或新建的提供者统计记录。
    */
   private getOrCreateProvider(providerId: string, now: number): StatsProviderRecord {
     const existing = this.providers.get(providerId);
@@ -415,10 +419,10 @@ export class StatsRuntime {
   }
 
   /**
-   * 读取指定OrCreate知识库Source，不存在时抛出错误。
+   * 获取或创建知识库来源的统计记录。
    * @param sourceId 目标来源标识。
    * @param now 当前时间戳。
-   * @returns 更新或读取后的记录副本。
+   * @returns 已有的或新建的知识库来源统计记录。
    */
   private getOrCreateRagSource(sourceId: string, now: number): StatsRagRecord {
     const existing = this.ragSources.get(sourceId);
@@ -437,10 +441,10 @@ export class StatsRuntime {
   }
 
   /**
-   * 读取指定OrCreatePlugin，不存在时抛出错误。
+   * 获取或创建插件的错误统计记录。
    * @param pluginId 插件标识。
    * @param now 当前时间戳。
-   * @returns 更新或读取后的记录副本。
+   * @returns 已有的或新建的插件统计记录。
    */
   private getOrCreatePlugin(pluginId: string, now: number): StatsPluginRecord {
     const existing = this.plugins.get(pluginId);
@@ -458,10 +462,10 @@ export class StatsRuntime {
   }
 
   /**
-   * 读取指定角色，不存在时抛出错误。
-
+   * 获取或创建角色的统计记录。
+   * @param characterKey 角色标识键。
    * @param now 当前时间戳。
-   * @returns 更新或读取后的记录副本。
+   * @returns 已有的或新建的角色统计记录。
    */
   private getOrCreateCharacter(characterKey: string, now: number): StatsCharacterRecord {
     const existing = this.characters.get(characterKey);
@@ -482,6 +486,10 @@ export class StatsRuntime {
     this.characters.set(characterKey, record);
     return record;
   }
+
+  /**
+   * 计算错误率，保留小数点后 6 位。
+   */
   private roundRate(numerator: number, denominator: number): number {
     if (denominator === 0) {
       return 0;
@@ -490,8 +498,8 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Chats 列表，避免外部修改内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有聊天统计记录列表（按聊天 ID 排序），每个记录为副本。
+   * @returns 聊天统计记录列表。
    */
   private copyChats(): Array<StatsChatRecord> {
     const result = new Array<StatsChatRecord>();
@@ -504,8 +512,8 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Providers 列表，避免外部修改内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有提供者统计记录列表（按提供者 ID 排序），每个记录为副本。
+   * @returns 提供者统计记录列表。
    */
   private copyProviders(): Array<StatsProviderRecord> {
     const result = new Array<StatsProviderRecord>();
@@ -518,8 +526,8 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Rag Sources 列表，避免外部修改内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有知识库来源统计记录列表（按来源 ID 排序），每个记录为副本。
+   * @returns 知识库来源统计记录列表。
    */
   private copyRagSources(): Array<StatsRagRecord> {
     const result = new Array<StatsRagRecord>();
@@ -532,8 +540,8 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Plugins 列表，避免外部修改内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有插件统计记录列表（按插件 ID 排序），每个记录为副本。
+   * @returns 插件统计记录列表。
    */
   private copyPlugins(): Array<StatsPluginRecord> {
     const result = new Array<StatsPluginRecord>();
@@ -546,8 +554,8 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Characters 列表，避免外部修改内部状态。
-   * @returns 符合条件的记录列表；返回值是副本，调用方可安全读取。
+   * 返回所有角色统计记录列表（按角色键排序），每个记录为副本。
+   * @returns 角色统计记录列表。
    */
   private copyCharacters(): Array<StatsCharacterRecord> {
     const result = new Array<StatsCharacterRecord>();
@@ -560,8 +568,9 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Character 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深复制角色统计记录。
+   * @param record 原始记录。
+   * @returns 复制后的新记录。
    */
   private copyCharacter(record: StatsCharacterRecord): StatsCharacterRecord {
     return {
@@ -576,6 +585,10 @@ export class StatsRuntime {
       dateFirstChat: record.dateFirstChat,
     };
   }
+
+  /**
+   * 计算生成耗时（毫秒），起始或结束时间未定义时返回 0。
+   */
   private calculateGenTime(startedAt: number | undefined, finishedAt: number | undefined): number {
     if (startedAt === undefined || finishedAt === undefined) {
       return 0;
@@ -584,11 +597,11 @@ export class StatsRuntime {
   }
 
   /**
-   * 统计Words 列表，用于预算、分页或状态汇总。
+   * 统计文本中的字母数字词数（单词由字母、数字、下划线组成）。
    * @param text 文本内容。
+   * @returns 单词数量。
    */
   private countWords(text: string): number {
-    // 数量。
     let count = 0;
     let inWord = false;
     for (let index = 0; index < text.length; index += 1) {
@@ -605,8 +618,9 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Chat 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深复制聊天统计记录。
+   * @param record 原始记录。
+   * @returns 复制后的新记录。
    */
   private copyChat(record: StatsChatRecord): StatsChatRecord {
     return {
@@ -621,8 +635,9 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Provider 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深复制提供者统计记录。
+   * @param record 原始记录。
+   * @returns 复制后的新记录。
    */
   private copyProvider(record: StatsProviderRecord): StatsProviderRecord {
     return {
@@ -639,8 +654,9 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Rag 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深复制知识库来源统计记录。
+   * @param record 原始记录。
+   * @returns 复制后的新记录。
    */
   private copyRag(record: StatsRagRecord): StatsRagRecord {
     return {
@@ -653,8 +669,9 @@ export class StatsRuntime {
   }
 
   /**
-   * 复制Plugin 值，避免外部修改内部状态。
-   * @param record 记录副本。
+   * 深复制插件统计记录。
+   * @param record 原始记录。
+   * @returns 复制后的新记录。
    */
   private copyPlugin(record: StatsPluginRecord): StatsPluginRecord {
     return {

@@ -1,268 +1,288 @@
-// 翻译方向
+/**
+ * 翻译方向：input 表示输入文本的翻译，output 表示输出文本的翻译。
+ */
 export type TranslationDirection = 'input' | 'output';
 
-// 翻译语言对
+/**
+ * 翻译语言对，包含源语言和目标语言。
+ */
 export interface TranslationLanguagePair {
   /**
-   * source Language 值，由当前实例内部维护。
+   * 源语言代码。
    */
   sourceLanguage: string;
   /**
-   * target Language 值，由当前实例内部维护。
+   * 目标语言代码。
    */
   targetLanguage: string;
 }
 
-// 翻译状态
+/**
+ * 翻译任务状态：pending（等待中）、running（进行中）、completed（已完成）、failed（失败）、cancelled（已取消）。
+ */
 export type TranslationTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
-// 翻译条目
+/**
+ * 单条翻译条目，记录一次翻译请求的源文本、结果和状态。
+ */
 export interface TranslationEntry {
   /**
-   * 条目标识。
+   * 条目唯一标识。
    */
   entryId: string;
   /**
-   * direction 值，由当前实例内部维护。
+   * 翻译方向。
    */
   direction: TranslationDirection;
   /**
-   * language Pair 值，由当前实例内部维护。
+   * 翻译语言对。
    */
   languagePair: TranslationLanguagePair;
   /**
-   * source Text 值，由当前实例内部维护。
+   * 待翻译的源文本。
    */
   sourceText: string;
   /**
-   * translated Text 值，由当前实例内部维护。
+   * 翻译后的文本。
    */
   translatedText: string;
   /**
-   * 状态值，由当前实例内部维护。
+   * 翻译任务状态。
    */
   status: TranslationTaskStatus;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 翻译失败时的错误描述。
    */
   error: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 条目创建时间戳。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 条目最后更新时间戳。
    */
   updatedAt: number;
 }
 
-// 翻译策略配置
+/**
+ * 翻译策略配置，定义在特定作用域下的翻译行为。
+ */
 export interface TranslationStrategy {
   /**
-   * enabled 值，由当前实例内部维护。
+   * 该策略是否已启用。
    */
   enabled: boolean;
   /**
-   * direction 值，由当前实例内部维护。
+   * 翻译方向。
    */
   direction: TranslationDirection;
   /**
-   * source Language 值，由当前实例内部维护。
+   * 源语言代码。
    */
   sourceLanguage: string;
   /**
-   * target Language 值，由当前实例内部维护。
+   * 目标语言代码。
    */
   targetLanguage: string;
   /**
-   * preserve Original 值，由当前实例内部维护。
+   * 是否保留原文。
    */
   preserveOriginal: boolean;
   /**
-   * 作用域。
+   * 策略适用的作用域。
    */
   scope: TranslationScope;
 }
 
-// 翻译作用域
+/**
+ * 翻译作用域，决定翻译策略影响的范围。
+ */
 export type TranslationScope = 'message_input' | 'message_output' | 'prompt' | 'tts' | 'databank';
 
-// 翻译缓存条目
+/**
+ * 翻译缓存条目，存储已翻译过的文本对以加速后续翻译。
+ */
 export interface TranslationCacheEntry {
   /**
-   * source Text 值，由当前实例内部维护。
+   * 源文本。
    */
   sourceText: string;
   /**
-   * source Language 值，由当前实例内部维护。
+   * 源语言代码。
    */
   sourceLanguage: string;
   /**
-   * target Language 值，由当前实例内部维护。
+   * 目标语言代码。
    */
   targetLanguage: string;
   /**
-   * translated Text 值，由当前实例内部维护。
+   * 已缓存的翻译结果。
    */
   translatedText: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 缓存条目的创建时间戳。
    */
   createdAt: number;
   /**
-   * hit Count 值，由当前实例内部维护。
+   * 缓存命中次数。
    */
   hitCount: number;
 }
 
-// 翻译任务
+/**
+ * 翻译任务，包含待翻译条目的引用和关联的策略。
+ */
 export interface TranslationTask {
   /**
-   * 任务标识。
+   * 任务唯一标识。
    */
   taskId: string;
   /**
-   * entry 标识列表。
+   * 该任务包含的条目标识列表。
    */
   entryIds: Array<string>;
   /**
-   * strategy 值，由当前实例内部维护。
+   * 任务使用的翻译策略。
    */
   strategy: TranslationStrategy;
   /**
-   * 状态值，由当前实例内部维护。
+   * 任务状态。
    */
   status: TranslationTaskStatus;
   /**
-   * progress 列表，由当前实例内部维护。
+   * 任务进度百分比（0-100）。
    */
   progress: number;
   /**
-   * 错误信息，由当前实例内部维护。
+   * 任务失败时的错误描述。
    */
   error: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 任务创建时间戳。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 任务最后更新时间戳。
    */
   updatedAt: number;
 }
 
-// 翻译结果
+/**
+ * 单条文本的翻译结果。
+ */
 export interface TranslationResult {
   /**
-   * source Text 值，由当前实例内部维护。
+   * 源文本。
    */
   sourceText: string;
   /**
-   * translated Text 值，由当前实例内部维护。
+   * 翻译后的文本。
    */
   translatedText: string;
   /**
-   * from Cache 值，由当前实例内部维护。
+   * 是否来自缓存。
    */
   fromCache: boolean;
 }
 
 /**
- * 描述翻译模块在运行时交换的数据结构。
+ * 缓存统计信息。
  */
 export interface TranslationCacheStats {
   /**
-   * size 值，由当前实例内部维护。
+   * 当前缓存中条目数量。
    */
   size: number;
   /**
-   * max Size 值，由当前实例内部维护。
+   * 缓存容量的上限。
    */
   maxSize: number;
 }
 
-// 事件 payload
+/**
+ * 翻译任务启动事件发布时携带的负载。
+ */
 export interface TranslationStartedPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 被启动的翻译任务。
    */
   task: TranslationTask;
 }
 
 /**
- * 描述翻译事件发布时携带的数据结构。
+ * 翻译任务进度更新事件发布时携带的负载。
  */
 export interface TranslationProgressPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 进度已更新的翻译任务。
    */
   task: TranslationTask;
 }
 
 /**
- * 描述翻译事件发布时携带的数据结构。
+ * 翻译任务完成事件发布时携带的负载。
  */
 export interface TranslationCompletedPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 已完成的翻译任务。
    */
   task: TranslationTask;
 }
 
 /**
- * 描述翻译事件发布时携带的数据结构。
+ * 翻译任务失败事件发布时携带的负载。
  */
 export interface TranslationFailedPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 已失败的翻译任务。
    */
   task: TranslationTask;
 }
 
 /**
- * 描述翻译事件发布时携带的数据结构。
+ * 翻译任务取消事件发布时携带的负载。
  */
 export interface TranslationCancelledPayload {
   /**
-   * task 值，由当前实例内部维护。
+   * 已取消的翻译任务。
    */
   task: TranslationTask;
 }
 
 /**
- * 描述翻译事件发布时携带的数据结构。
+ * 缓存命中事件发布时携带的负载。
  */
 export interface TranslationCacheHitPayload {
   /**
-   * 条目记录，由当前实例内部维护。
+   * 被命中的缓存条目。
    */
   entry: TranslationCacheEntry;
 }
 
 /**
- * 描述翻译事件发布时携带的数据结构。
+ * 翻译策略更新事件发布时携带的负载。
  */
 export interface TranslationStrategyUpdatedPayload {
   /**
-   * strategy 值，由当前实例内部维护。
+   * 更新后的翻译策略。
    */
   strategy: TranslationStrategy;
 }
 
 /**
- * 描述翻译模块在运行时交换的数据结构。
+ * 翻译数据的导出结构，包含所有策略、条目和缓存。
  */
 export interface TranslationExportData {
   /**
-   * strategies 列表，由当前实例内部维护。
+   * 所有翻译策略列表。
    */
   strategies: Array<TranslationStrategy>;
   /**
-   * 条目列表，由当前实例内部维护。
+   * 所有翻译条目列表。
    */
   entries: Array<TranslationEntry>;
   /**
-   * cache 值，由当前实例内部维护。
+   * 所有缓存条目列表。
    */
   cache: Array<TranslationCacheEntry>;
 }

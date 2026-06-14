@@ -1,185 +1,185 @@
 /**
- * 描述调用表情图能力时需要传入的参数。
+ * 上传表情图时需要提供的参数。
  */
 export interface SpriteUploadParams {
   /**
-   * character 名称。
+   * 关联的角色名称。
    */
   characterName: string;
   /**
-   * subfolder 名称。
+   * 子目录名称，用于按主题整理表情图。
    */
   subfolderName: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 表情标签，例如 `"happy"`、`"angry"` 等。
    */
   label: string;
   /**
-   * sprite 名称。
+   * 立绘名称，用于标识同一角色的不同立绘变体。
    */
   spriteName: string;
   /**
-   * file 名称。
+   * 文件名（不含路径）。
    */
   fileName: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * 文件的 MIME 类型，例如 `"image/png"`。
    */
   mimeType: string;
   /**
-   * 内容。
+   * 文件内容的 base64 编码字符串。
    */
   content: string;
 }
 
 /**
- * 描述表情图模块在运行时交换的数据结构。
+ * 从 RisuAI 导入的表情图数据项。
  */
 export interface RisuSpriteImport {
   /**
-   * label 值，由当前实例内部维护。
+   * 表情标签。
    */
   label: string;
   /**
-   * 内容。
+   * 图片内容的 base64 编码字符串。
    */
   content: string;
 }
 
 /**
- * 描述表情图持久化或内存索引中的一条记录。
+ * 表情图的持久化记录，包含完整的元数据和内容。
  */
 export interface SpriteRecord {
   /**
-   * schema Version 值，由当前实例内部维护。
+   * 数据结构版本号，用于数据迁移判断。
    */
   schemaVersion: number;
   /**
-   * character 名称。
+   * 关联的角色名称。
    */
   characterName: string;
   /**
-   * subfolder 名称。
+   * 子目录名称。
    */
   subfolderName: string;
   /**
-   * label 值，由当前实例内部维护。
+   * 表情标签。
    */
   label: string;
   /**
-   * sprite 名称。
+   * 立绘名称。
    */
   spriteName: string;
   /**
-   * file 名称。
+   * 实际文件名（含扩展名）。
    */
   fileName: string;
   /**
-   * mime Type 值，由当前实例内部维护。
+   * 文件的 MIME 类型。
    */
   mimeType: string;
   /**
-   * 路径。
+   * 文件在存储中的完整路径。
    */
   path: string;
   /**
-   * 内容。
+   * 文件内容的 base64 编码字符串。
    */
   content: string;
   /**
-   * created At 值，由当前实例内部维护。
+   * 记录创建时间的时间戳（毫秒）。
    */
   createdAt: number;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 记录最后更新时间的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述表情图持久化或内存索引中的一条记录。
+ * 角色表情选择状态的记录，记录当前为某个角色/子目录选择的表情。
  */
 export interface SpriteSelectionRecord {
   /**
-   * character 名称。
+   * 关联的角色名称。
    */
   characterName: string;
   /**
-   * subfolder 名称。
+   * 子目录名称。
    */
   subfolderName: string;
   /**
-   * expression 值，由当前实例内部维护。
+   * 当前选中的表情标签。
    */
   expression: string;
   /**
-   * sprite 名称。
+   * 当前选中的立绘名称。
    */
   spriteName: string;
   /**
-   * 路径。
+   * 当前选中立绘的存储路径。
    */
   path: string;
   /**
-   * updated At 值，由当前实例内部维护。
+   * 选择状态最后更新时间的时间戳（毫秒）。
    */
   updatedAt: number;
 }
 
 /**
- * 描述表情图事件发布时携带的数据结构。
+ * 表情图上传事件发布时携带的载荷。
  */
 export interface SpriteUploadedPayload {
   /**
-   * sprite 值，由当前实例内部维护。
+   * 刚上传的表情图记录。
    */
   sprite: SpriteRecord;
 }
 
 /**
- * 描述表情图事件发布时携带的数据结构。
+ * 表情图删除事件发布时携带的载荷。
  */
 export interface SpriteDeletedPayload {
   /**
-   * character 名称。
+   * 关联的角色名称。
    */
   characterName: string;
   /**
-   * subfolder 名称。
+   * 子目录名称。
    */
   subfolderName: string;
   /**
-   * sprite 名称。
+   * 被删除的立绘名称。
    */
   spriteName: string;
   /**
-   * 路径。
+   * 被删除文件的存储路径。
    */
   path: string;
 }
 
 /**
- * 描述表情图事件发布时携带的数据结构。
+ * 表情切换事件发布时携带的载荷。
  */
 export interface SpriteExpressionChangedPayload {
   /**
-   * character 名称。
+   * 关联的角色名称。
    */
   characterName: string;
   /**
-   * subfolder 名称。
+   * 子目录名称。
    */
   subfolderName: string;
   /**
-   * expression 值，由当前实例内部维护。
+   * 切换后的表情标签。
    */
   expression: string;
   /**
-   * sprite 名称。
+   * 切换后的立绘名称。
    */
   spriteName: string;
   /**
-   * 路径。
+   * 切换后立绘的存储路径。
    */
   path: string;
 }

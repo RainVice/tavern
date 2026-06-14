@@ -13,7 +13,7 @@ import type {
 } from './ChatModels';
 
 /**
- * 提供聊天和消息相关的无 UI 运行时能力，负责状态管理、数据读写和事件发布。
+ * 提供消息相关的无 UI 运行时能力，负责消息的增删改查、Swipe 管理和事件发布。
  */
 export class MessageRuntime {
   /**
@@ -55,7 +55,7 @@ export class MessageRuntime {
 
   /**
    * 向当前聊天追加一条消息，更新聊天元数据，写入消息 JSONL，并发布 message.added 事件。
-   * @param params 创建、更新或执行操作所需的参数对象。
+   * @param params 创建消息所需的参数。
    */
   async addMessage(params: ChatMessageCreateParams): Promise<ChatMessage> {
     const chat = await this.readChat();
@@ -96,7 +96,7 @@ export class MessageRuntime {
   /**
    * 读取指定消息，不存在时抛出错误。
    * @param messageId 目标消息标识。
-   * @returns 更新或读取后的记录副本。
+   * @returns 消息记录副本。
    */
   async getMessage(messageId: string): Promise<ChatMessage> {
     const messages = await this.listMessages();
@@ -110,7 +110,7 @@ export class MessageRuntime {
 
   /**
    * 按分页参数读取当前聊天的消息片段。
-   * @param startIndex 分页起始索引。
+   * @param startIndex 分页起始索引（从 0 开始）。
    * @param limit 返回数量上限。
    * @returns 位于指定范围内的消息副本列表。
    */
@@ -129,8 +129,8 @@ export class MessageRuntime {
   /**
    * 更新指定消息，写回存储并按需发布变更事件。
    * @param messageId 目标消息标识。
-   * @param params 创建、更新或执行操作所需的参数对象。
-   * @returns 更新或读取后的记录副本。
+   * @param params 更新消息所需的参数。
+   * @returns 消息记录副本。
    */
   async updateMessage(messageId: string, params: ChatMessageUpdateParams): Promise<ChatMessage> {
     const messages = await this.listMessages();
@@ -321,7 +321,8 @@ export class MessageRuntime {
 
   /**
    * 解析消息 extraJson，字段缺失或 JSON 非法时返回默认扩展数据。
-   * @param extraJson 消息记录中的扩展 JSON 字符串。
+   * @param extraJson 消息扩展 JSON 字符串。
+   * @returns 解析后的扩展数据。
    */
   private readExtra(extraJson: string): MessageExtraData {
     const fallback: MessageExtraData = {
@@ -364,9 +365,9 @@ export class MessageRuntime {
   }
 
   /**
-   * 发布聊天和消息事件，把状态变化通知给宿主或其他 Runtime。
-   * @param eventName 要订阅或发布的事件名。
-   * @param message 消息记录。
+   * 发布消息事件，通知其他模块消息状态的变化。
+   * @param eventName 事件名称（如 message.added、message.updated）。
+   * @param message 事件关联的消息（将被复制）。
    */
   private publishMessageEvent(eventName: string, message: ChatMessage): void {
     const payload: MessageEventPayload = {
@@ -377,7 +378,7 @@ export class MessageRuntime {
   }
 
   /**
-   * 复制消息列表，避免外部代码持有内部可变对象。
+   * 批量复制消息列表，确保 swipes 数组不被外部直接修改。
    * @param messages 消息列表。
    * @returns 消息副本列表。
    */
@@ -390,8 +391,9 @@ export class MessageRuntime {
   }
 
   /**
-   * 复制单条消息，确保 swipes 数组不会被外部直接修改。
+   * 复制单条消息，确保 swipes 数组不被外部直接修改。
    * @param message 消息记录。
+   * @returns 消息副本。
    */
   private copyMessage(message: ChatMessage): ChatMessage {
     return {
@@ -418,7 +420,8 @@ export class MessageRuntime {
   }
 
   /**
-   * 读取当前聊天记录，聊天文件不存在时抛出错误。
+   * 读取当前聊天记录，文件不存在时抛出错误。
+   * @returns 聊天记录。
    */
   private async readChat(): Promise<ChatRecord> {
     const exists = await this.files.exists(this.chatPath());
@@ -431,7 +434,7 @@ export class MessageRuntime {
 
   /**
    * 写回当前聊天记录。
-   * @param chat 聊天记录。
+   * @param chat 待持久化的聊天记录。
    */
   private async writeChat(chat: ChatRecord): Promise<void> {
     const store = new JsonStore<ChatRecord>(this.files, this.chatPath());
