@@ -325,6 +325,8 @@ export class VectorRuntime {
    * @returns 集合数据的存储路径字符串。
    */
   private collectionPath(collectionId: string): string {
+    return `${this.rootPath}/${safePathSegment(collectionId, 'collection')}`;
+  }
 
   /**
    * 复制集合记录，避免外部修改内部状态。

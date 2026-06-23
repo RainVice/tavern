@@ -1,3 +1,5 @@
+import { MediaFormat, TavernScope, ThumbnailType } from "../contracts/PublicContracts";
+
 /**
  * 上传图片时需传入的参数。
  */

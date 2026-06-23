@@ -136,7 +136,6 @@ export const VOLCENGINE_CAPABILITY: ProviderCapability = cloneProviderCapability
  */
 export function getBackendCapability(name: ProviderBackendName): ProviderCapability {
   switch (name) {
-  switch (name) {
     case 'anthropic': return cloneProviderCapability(ANTHROPIC_CAPABILITY_DATA);
     case 'azure': return cloneProviderCapability(AZURE_CAPABILITY_DATA);
     case 'gemini': return cloneProviderCapability(GEMINI_CAPABILITY_DATA);

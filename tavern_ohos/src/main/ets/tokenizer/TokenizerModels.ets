@@ -305,6 +305,7 @@ export interface TokenizerCountedPayload {
 /**
  * 描述预算计算结果事件发布时携带的数据结构。
  */
+export interface TokenBudgetPayload {
   /**
    * 预算计算结果。
    */
