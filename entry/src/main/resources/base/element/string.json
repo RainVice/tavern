@@ -142,11 +142,11 @@
     },
     {
       "name": "model_list",
-      "value": "模型列表"
+      "value": "模型"
     },
     {
       "name": "model_list_placeholder",
-      "value": "输入模型名称"
+      "value": "请输入模型名称"
     },
     {
       "name": "get_model",
@@ -158,7 +158,7 @@
     },
     {
       "name": "model_list_empty",
-      "value": "请至少添加一个模型"
+      "value": "请输入模型名称"
     },
     {
       "name": "model_provider_save_failed",

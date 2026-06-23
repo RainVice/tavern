@@ -283,6 +283,24 @@ export default function worldInfoUnitTest() {
       expect(deleteFailed).assertTrue();
     });
 
+    it('删除索引中残留但文件缺失的世界书', 0, async () => {
+      const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
+      const runtime = new WorldInfoRuntime(files, new EventBus(), 'tavern-data', 'default');
+      await files.writeText(
+        'tavern-data/users/default/worldbooks/index.json',
+        '{"schemaVersion":1,"nextId":2,"items":[{"id":"worldbook-1@37f59062","name":"残留世界书","entryCount":0,"createdAt":1,"updatedAt":1}]}',
+        false,
+      );
+
+      const beforeDelete = await runtime.listWorldBooks();
+      await runtime.deleteWorldBook('worldbook-1@37f59062');
+      const afterDelete = await runtime.listWorldBooks();
+
+      expect(beforeDelete.length).assertEqual(1);
+      expect(afterDelete.length).assertEqual(0);
+    });
+
     it('拒绝通过路径穿越别名读取已有世界书', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
       // 运行时实例。

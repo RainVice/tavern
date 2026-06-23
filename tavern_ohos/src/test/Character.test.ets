@@ -55,6 +55,7 @@ export default function characterUnitTest() {
       const updated = await runtime.updateCharacter(created.id, updateParams);
       const duplicate = await runtime.duplicateCharacter(created.id, 'Alice Copy');
       const listAfterDuplicate = await runtime.listCharacters();
+      await files.writeText('tavern-data/users/default/characters/char-1/avatar.png', 'avatar', false);
       await files.writeText('tavern-data/users/default/characters/char-1/sprites/joy.png', 'sprite', false);
       await runtime.deleteCharacter(created.id);
       const listAfterDelete = await runtime.listCharacters();
@@ -68,6 +69,7 @@ export default function characterUnitTest() {
       expect(listAfterDelete.length).assertEqual(1);
       expect(listAfterDelete[0].id).assertEqual('char-2');
       expect(await files.exists('tavern-data/users/default/characters/char-1/character.json')).assertFalse();
+      expect(await files.exists('tavern-data/users/default/characters/char-1/avatar.png')).assertFalse();
       expect(await files.exists('tavern-data/users/default/characters/char-1/sprites/joy.png')).assertFalse();
       expect(events.length).assertEqual(1);
       expect(events[0]).assertEqual('char-1');

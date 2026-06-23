@@ -6,7 +6,7 @@ import {
   ScrollEffectType,
   SuffixSwitch
 } from '@kit.UIDesignKit';
-import { FullPercent, hdsAttribute, symbolGlyphAttribute, symbolModifier, symbolSpanAttribute } from 'common';
+import { FullPercent, hdsAttribute, symbolModifier, symbolSpanAttribute } from 'common';
 import { RouterName, RVRouter } from 'router';
 import { ModelProviderEditViewModel } from './ModelProviderEditViewModel';
 import { LengthMetrics } from '@kit.ArkUI';
@@ -38,7 +38,7 @@ export struct ModelProviderEditPage {
             })
           }
         })
-        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.modelListInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.modelInput() } } })
       }
       .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
@@ -99,8 +99,13 @@ export struct ModelProviderEditPage {
   }
 
   @Builder
-  private modelListInput() {
-    ModelListInput({ state: this.state, vm: this.vm })
+  private modelInput() {
+    ModelProviderModelInput({
+      text: this.state.model!!,
+      availableModels: this.state.availableModels,
+      canGetModel: this.state.isShowGetModel(),
+      onGetModel: () => this.vm.onGetModel(),
+    })
   }
 
   public static start(onPop?: () => void) {
@@ -139,10 +144,14 @@ struct ModelProviderInput {
 }
 
 @ComponentV2
-struct ModelListInput {
-  @Require @Param state: ModelProviderEditState
-  @Require @Param vm: ModelProviderEditViewModel
-  @Local private modelName: string = ""
+struct ModelProviderModelInput {
+  @Param text: ResourceStr = "";
+  @Event $text: (text: string) => void = () => {
+  };
+  @Param availableModels: Array<string> = new Array<string>();
+  @Param canGetModel: boolean = false;
+  @Event onGetModel: () => void = () => {
+  };
 
   build() {
     Column({ space: 8 }) {
@@ -154,44 +163,27 @@ struct ModelListInput {
         }.margin({ start: LengthMetrics.vp(8) }).fontSize(12).fontColor($r("sys.color.font_secondary"))
 
         Blank().layoutWeight(1)
-        if (this.state.isShowGetModel()) {
+        if (this.canGetModel) {
           Text() {
             SymbolSpan($r("sys.symbol.arrow_down_circle")).attributeModifier(symbolSpanAttribute())
             Span(" ")
             Span($r("app.string.get_model"))
           }.margin({ start: LengthMetrics.vp(8) }).fontSize(12).fontColor($r("sys.color.font_emphasize"))
-          .onClick(() => this.vm.onGetModel())
+          .onClick(() => this.onGetModel())
         }
       }
 
-      Row({ space: 8 }) {
-        TextInput({ text: this.modelName!!, placeholder: $r("app.string.model_list_placeholder") })
-          .layoutWeight(1)
-          .padding(8)
-          .borderRadius(8)
-          .width(FullPercent)
-        Button() {
-          SymbolGlyph($r("sys.symbol.plus"))
-            .attributeModifier(symbolGlyphAttribute())
-            .fontColor([$r('sys.color.font_primary')])
-        }.padding(8).backgroundColor($r('sys.color.background_tertiary')).attributeModifier(hdsAttribute())
-        .onClick(() => {
-          if (this.vm.onAddModel(this.modelName.trim())) {
-            this.modelName = ""
-          }
-        })
-      }
+      TextInput({ text: this.text, placeholder: $r("app.string.model_list_placeholder") })
+        .padding(8)
+        .borderRadius(8)
+        .width(FullPercent)
+        .onChange((text: string) => this.$text(text))
 
-      if (this.state.modelList.length > 0) {
+      if (this.availableModels.length > 0) {
         Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
-          Repeat<string>(this.state.modelList).each((repeat: RepeatItem<string>) => {
-            Text() {
-              Span(repeat.item)
-              Span(" ")
-              SymbolSpan($r("sys.symbol.xmark"))
-                .attributeModifier(symbolSpanAttribute())
-            }
-            .onClick(() => this.vm.onDeleteModel(repeat.item))
+          Repeat<string>(this.availableModels).each((repeat: RepeatItem<string>) => {
+            Text(repeat.item)
+            .onClick(() => this.$text(repeat.item))
             .fontSize(12)
             .fontColor($r("sys.color.font_secondary"))
             .maxLines(1)

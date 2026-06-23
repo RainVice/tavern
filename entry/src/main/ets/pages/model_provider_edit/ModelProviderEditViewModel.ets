@@ -13,7 +13,6 @@ import { TavernRuntimeContainer } from '../../tavern/TavernRuntimeContainer'
 
 export class ModelProviderEditViewModel {
   private static readonly API_TYPE_OPENAI_COMPATIBLE: string = 'openai-compatible'
-  private static readonly MODEL_LIST_HEADER: string = 'x-tavern-model-list'
   private static nextId: number = 1
 
   private state: ModelProviderEditState
@@ -54,34 +53,13 @@ export class ModelProviderEditViewModel {
             models.push(model.id)
           }
         }
-        this.state.modelList = models
+        this.state.availableModels = models
       })
       .catch((e: Error) => {
         LogUtil.setDomain()
         LogUtil.debug('ModelProviderEditViewModel', 'onGetModel', '获取模型列表失败', e.message)
         ToastUtil.showToast($r("app.string.get_model_failed"));
       })
-  }
-
-  onAddModel(value: string): boolean {
-    const modelId = value.trim()
-    if (modelId.length === 0 || ModelProviderEditViewModel.containsModel(this.state.modelList, modelId)) {
-      return false
-    }
-    const models = this.state.modelList.slice()
-    models.push(modelId)
-    this.state.modelList = models
-    return true
-  }
-
-  onDeleteModel(item: string): void {
-    const models = new Array<string>()
-    for (let index = 0; index < this.state.modelList.length; index += 1) {
-      if (this.state.modelList[index] !== item) {
-        models.push(this.state.modelList[index])
-      }
-    }
-    this.state.modelList = models
   }
 
   onSave(): boolean {
@@ -97,7 +75,7 @@ export class ModelProviderEditViewModel {
       ToastUtil.showToast($r("app.string.api_key_placeholder"));
       return false;
     }
-    if (this.state.modelList.length === 0) {
+    if (this.state.model.trim() === '') {
       ToastUtil.showToast($r("app.string.model_list_empty"));
       return false;
     }
@@ -116,25 +94,7 @@ export class ModelProviderEditViewModel {
     await this.runtime.loadConnections()
     const firstProvider = this.runtime.connections.listProfiles('').length === 0
     const profileId = state.id.length > 0 ? state.id : ModelProviderEditViewModel.createProfileId()
-    const params: ConnectionProfileCreateParams = {
-      id: profileId,
-      name: state.name.trim(),
-      apiType: ModelProviderEditViewModel.API_TYPE_OPENAI_COMPATIBLE,
-      model: state.modelList[0],
-      serverUrl: state.serverUrl.trim(),
-      secretRef: state.secretRef.trim(),
-      generationPresetId: '',
-      systemPromptPresetId: '',
-      contextTemplateId: '',
-      instructTemplateId: '',
-      tokenizer: 'provider',
-      stopStrings: new Array<string>(),
-      reasoningFormat: '',
-      toolCallingEnabled: false,
-      proxyUrl: '',
-      additionalHeaders: ModelProviderEditViewModel.writeModelListHeader(state.modelList),
-      enabled: true,
-    }
+    const params: ConnectionProfileCreateParams = ModelProviderEditViewModel.buildCreateParams(state, profileId)
     let saved: ConnectionProfileRecord
     if (state.id.length > 0) {
       saved = this.runtime.connections.updateProfile(state.id, params)
@@ -151,12 +111,36 @@ export class ModelProviderEditViewModel {
     await this.runtime.connections.saveToStore()
   }
 
+  static buildCreateParams(state: ModelProviderEditState, profileId: string): ConnectionProfileCreateParams {
+    const params: ConnectionProfileCreateParams = {
+      id: profileId,
+      name: state.name.trim(),
+      apiType: ModelProviderEditViewModel.API_TYPE_OPENAI_COMPATIBLE,
+      model: state.model.trim(),
+      serverUrl: state.serverUrl.trim(),
+      secretRef: state.secretRef.trim(),
+      generationPresetId: '',
+      systemPromptPresetId: '',
+      contextTemplateId: '',
+      instructTemplateId: '',
+      tokenizer: 'provider',
+      stopStrings: new Array<string>(),
+      reasoningFormat: '',
+      toolCallingEnabled: false,
+      proxyUrl: '',
+      additionalHeaders: new Array<ConnectionHeaderRecord>(),
+      enabled: true,
+    }
+    return params
+  }
+
   private applyProvider(provider: ConnectionProfileRecord): void {
     this.state.id = provider.id
     this.state.name = provider.name
     this.state.serverUrl = provider.serverUrl
     this.state.secretRef = provider.secretRef
-    this.state.modelList = ModelProviderEditViewModel.readModelList(provider)
+    this.state.model = provider.model
+    this.state.availableModels = new Array<string>()
     this.state.isDefault = this.isDefaultProvider(provider.id)
   }
 
@@ -172,46 +156,6 @@ export class ModelProviderEditViewModel {
     }
   }
 
-  private static writeModelListHeader(models: Array<string>): Array<ConnectionHeaderRecord> {
-    const normalized = ModelProviderEditViewModel.normalizeModelList(models)
-    const headers = new Array<ConnectionHeaderRecord>()
-    headers.push({
-      name: ModelProviderEditViewModel.MODEL_LIST_HEADER,
-      value: normalized.join('\n'),
-      secret: false,
-    })
-    return headers
-  }
-
-  private static readModelList(profile: ConnectionProfileRecord): Array<string> {
-    const result = new Array<string>()
-    if (profile.model.trim().length > 0) {
-      result.push(profile.model.trim())
-    }
-    const encoded = ModelProviderEditViewModel.findModelListHeader(profile.additionalHeaders)
-    if (encoded.length > 0) {
-      const lines = encoded.split('\n')
-      for (let index = 0; index < lines.length; index += 1) {
-        const modelId = lines[index].trim()
-        if (modelId.length > 0 && !ModelProviderEditViewModel.containsModel(result, modelId)) {
-          result.push(modelId)
-        }
-      }
-    }
-    return result
-  }
-
-  private static normalizeModelList(models: Array<string>): Array<string> {
-    const result = new Array<string>()
-    for (let index = 0; index < models.length; index += 1) {
-      const modelId = models[index].trim()
-      if (modelId.length > 0 && !ModelProviderEditViewModel.containsModel(result, modelId)) {
-        result.push(modelId)
-      }
-    }
-    return result
-  }
-
   private static containsModel(models: Array<string>, modelId: string): boolean {
     for (let index = 0; index < models.length; index += 1) {
       if (models[index] === modelId) {
@@ -219,15 +163,6 @@ export class ModelProviderEditViewModel {
       }
     }
     return false
-  }
-
-  private static findModelListHeader(headers: Array<ConnectionHeaderRecord>): string {
-    for (let index = 0; index < headers.length; index += 1) {
-      if (headers[index].name === ModelProviderEditViewModel.MODEL_LIST_HEADER) {
-        return headers[index].value
-      }
-    }
-    return ''
   }
 
   private static createProfileId(): string {

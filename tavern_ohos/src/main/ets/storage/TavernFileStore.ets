@@ -78,9 +78,15 @@ export class SandboxTavernFileStore implements TavernFileStore {
    */
   async ensureDirectory(path: string): Promise<void> {
     const target = this.resolvePath(path);
+    if (await this.exists(path)) {
+      return;
+    }
     try {
       await fileIo.mkdir(target, true);
     } catch (error) {
+      if (await this.exists(path)) {
+        return;
+      }
       throw new Error(`创建目录失败: ${path}, ${String(error)}`);
     }
   }
@@ -171,6 +177,9 @@ export class SandboxTavernFileStore implements TavernFileStore {
       const names = await fileIo.listFile(this.resolvePath(path), { recursion: false });
       return names.sort();
     } catch (error) {
+      if (String(error).indexOf('Not a directory') >= 0) {
+        return new Array<string>();
+      }
       throw new Error(`列出目录失败: ${path}, ${String(error)}`);
     }
   }

@@ -119,18 +119,32 @@ export class WorldInfoRuntime {
    * @param worldBookId 世界书标识。
    */
   async deleteWorldBook(worldBookId: string): Promise<void> {
-    const book = await this.getWorldBook(worldBookId);
-    await this.files.delete(this.worldBookPath(worldBookId));
+    const path = this.worldBookPath(worldBookId);
+    const exists = await this.files.exists(path);
+    let book: WorldBook | undefined = undefined;
+    if (exists) {
+      const store = new JsonStore<WorldBook>(this.files, path);
+      book = this.copyBook(await store.read(this.defaultWorldBook(worldBookId)));
+    }
     const index = await this.readIndex();
     const remaining = new Array<WorldBookIndexEntry>();
+    let foundIndexEntry = false;
     for (let itemIndex = 0; itemIndex < index.items.length; itemIndex += 1) {
       if (index.items[itemIndex].id !== worldBookId) {
         remaining.push(index.items[itemIndex]);
+      } else {
+        foundIndexEntry = true;
       }
     }
+    if (!exists && !foundIndexEntry) {
+      throw new Error(`WorldBook not found: ${worldBookId}`);
+    }
+    await this.files.delete(path);
     index.items = remaining;
     await this.writeIndex(index);
-    this.publishWorldBookEvent('worldinfo.deleted', book);
+    if (book !== undefined) {
+      this.publishWorldBookEvent('worldinfo.deleted', book);
+    }
   }
 
   /**

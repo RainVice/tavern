@@ -73,6 +73,27 @@ export default function storageUnitTest() {
       expect(await files.exists('tavern-data/users/default/assets/thumbnails')).assertFalse();
     });
 
+    it('重复写入同一路径时复用已存在父目录', 0, async () => {
+      const files: TavernFileStore = new InMemoryFileStore();
+      const path = 'tavern-data/users/default/connection-profiles/index.json';
+
+      await files.writeText(path, '{"schemaVersion":1}', true);
+      await files.writeText(path, '{"schemaVersion":2}', true);
+
+      expect(await files.readText(path)).assertEqual('{"schemaVersion":2}');
+      expect(await files.exists('tavern-data/users/default/connection-profiles')).assertTrue();
+    });
+
+    it('列出文件路径时返回空列表', 0, async () => {
+      const files: TavernFileStore = new InMemoryFileStore();
+      const path = 'tavern-data/users/default/characters/char-1/avatar.png';
+
+      await files.writeText(path, 'avatar', false);
+      const children = await files.list(path);
+
+      expect(children.length).assertEqual(0);
+    });
+
     it('reads a JSON default and preserves explicit fields after write', 0, async () => {
       const files: TavernFileStore = new InMemoryFileStore();
       const store = new JsonStore<DemoSettings>(files, 'tavern-data/app/settings.json');
