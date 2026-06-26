@@ -57,12 +57,140 @@
       "value": "添加世界书"
     },
     {
+      "name": "edit_world_book",
+      "value": "编辑世界书"
+    },
+    {
+      "name": "world_book_detail",
+      "value": "世界书详情"
+    },
+    {
+      "name": "world_book_name",
+      "value": "世界书名称"
+    },
+    {
+      "name": "world_book_name_placeholder",
+      "value": "请输入世界书名称"
+    },
+    {
+      "name": "world_book_name_empty",
+      "value": "请输入世界书名称"
+    },
+    {
+      "name": "world_book_save_failed",
+      "value": "保存世界书失败"
+    },
+    {
+      "name": "world_book_not_found",
+      "value": "世界书不存在"
+    },
+    {
+      "name": "world_book_unnamed",
+      "value": "未命名世界书"
+    },
+    {
       "name": "world_book_empty_title",
       "value": "暂无世界书"
     },
     {
       "name": "world_book_empty_description",
       "value": "创建世界书后，可以在这里管理设定条目"
+    },
+    {
+      "name": "add_world_info_entry",
+      "value": "添加条目"
+    },
+    {
+      "name": "edit_world_info_entry",
+      "value": "编辑条目"
+    },
+    {
+      "name": "world_info_entry_empty_title",
+      "value": "暂无条目"
+    },
+    {
+      "name": "world_info_entry_empty_description",
+      "value": "添加条目后，可以通过关键词把设定注入对话"
+    },
+    {
+      "name": "world_info_entry_unnamed",
+      "value": "未命名条目"
+    },
+    {
+      "name": "world_info_entry_comment",
+      "value": "备注"
+    },
+    {
+      "name": "world_info_entry_comment_placeholder",
+      "value": "请输入条目备注"
+    },
+    {
+      "name": "world_info_entry_keys",
+      "value": "主关键词"
+    },
+    {
+      "name": "world_info_entry_keys_placeholder",
+      "value": "多个关键词用逗号分隔"
+    },
+    {
+      "name": "world_info_entry_secondary_keys",
+      "value": "次关键词"
+    },
+    {
+      "name": "world_info_entry_secondary_keys_placeholder",
+      "value": "选择性匹配时使用，多个关键词用逗号分隔"
+    },
+    {
+      "name": "world_info_entry_content",
+      "value": "内容"
+    },
+    {
+      "name": "world_info_entry_content_placeholder",
+      "value": "请输入触发后注入的内容"
+    },
+    {
+      "name": "world_info_entry_content_empty",
+      "value": "请输入条目内容"
+    },
+    {
+      "name": "world_info_entry_insertion_order",
+      "value": "插入顺序"
+    },
+    {
+      "name": "world_info_entry_insertion_order_placeholder",
+      "value": "请输入数字，越小越靠前"
+    },
+    {
+      "name": "world_info_entry_position",
+      "value": "插入位置"
+    },
+    {
+      "name": "world_info_entry_position_before",
+      "value": "前置"
+    },
+    {
+      "name": "world_info_entry_position_after",
+      "value": "后置"
+    },
+    {
+      "name": "world_info_entry_enabled",
+      "value": "启用条目"
+    },
+    {
+      "name": "world_info_entry_constant",
+      "value": "常驻激活"
+    },
+    {
+      "name": "world_info_entry_selective",
+      "value": "选择性匹配"
+    },
+    {
+      "name": "world_info_entry_case_sensitive",
+      "value": "区分大小写"
+    },
+    {
+      "name": "world_info_entry_save_failed",
+      "value": "保存世界书条目失败"
     },
     {
       "name": "add_character_card",

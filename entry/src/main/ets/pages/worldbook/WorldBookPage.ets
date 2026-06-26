@@ -38,6 +38,7 @@ export struct WorldBookPage {
             .each((obj: RepeatItem<WorldBookIndexEntry>) => {
               WorldBookItem({
                 book: obj.item,
+                onBookClick: (): void => this.vm.onBookClick(obj.item),
                 onDelete: () => this.vm.onDelete(obj.item),
               })
             })
@@ -81,6 +82,7 @@ export struct WorldBookPage {
 @ComponentV2
 struct WorldBookItem {
   @Param @Require book: WorldBookIndexEntry
+  @Event onBookClick: () => void
   @Event onDelete: () => void
 
   build() {
@@ -104,7 +106,7 @@ struct WorldBookItem {
     HdsListItemCard({
       prefixItem: new PrefixIcon({
         iconValue: {
-          symbol: symbolModifier($r("sys.symbol.book_pages_fill_1"))
+          symbol: symbolModifier($r("sys.symbol.book_pages_fill"))
             .fontColor([$r("sys.color.font_emphasize")])
         },
         iconSize: IconSize.SYSTEM_ICON
@@ -119,6 +121,7 @@ struct WorldBookItem {
             .fontColor([$r("sys.color.font_tertiary")])
         }
       }),
+      onClick: (): void => this.onBookClick(),
     })
   }
 }
@@ -127,7 +130,7 @@ struct WorldBookItem {
 struct WorldBookEmpty {
   build() {
     Column({ space: 12 }) {
-      SymbolGlyph($r("sys.symbol.book_pages_fill_1"))
+      SymbolGlyph($r("sys.symbol.book_pages_fill"))
         .fontSize(44)
         .fontColor([$r("sys.color.font_tertiary")])
 

@@ -176,6 +176,22 @@ export default function worldInfoUnitTest() {
       expect(deleteFailed).assertTrue();
     });
 
+    it('更新世界书名称并同步索引', 0, async () => {
+      const files: TavernFileStore = new InMemoryFileStore();
+      // 运行时实例。
+      const runtime = new WorldInfoRuntime(files, new EventBus(), 'tavern-data', 'default');
+      const book = await runtime.createWorldBook('旧名称');
+
+      const updated = await runtime.updateWorldBook(book.id, '新名称');
+      const loaded = await runtime.getWorldBook(book.id);
+      const books = await runtime.listWorldBooks();
+
+      expect(updated.name).assertEqual('新名称');
+      expect(loaded.name).assertEqual('新名称');
+      expect(books[0].name).assertEqual('新名称');
+      expect(books[0].id).assertEqual(book.id);
+    });
+
     it('导入世界书后根据已有 entries 推进 nextEntryId', 0, async () => {
       // 运行时实例。
       const runtime = new WorldInfoRuntime(new InMemoryFileStore(), new EventBus(), 'tavern-data', 'default');

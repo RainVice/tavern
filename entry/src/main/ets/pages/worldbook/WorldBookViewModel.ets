@@ -1,5 +1,7 @@
 import type { WorldBookIndexEntry } from 'tavern_ohos';
 import { TavernRuntimeContainer } from '../../tavern/TavernRuntimeContainer';
+import { WorldBookDetailPage } from '../worldbook_detail/WorldBookDetailPage';
+import { WorldBookEditPage } from '../worldbook_edit/WorldBookEditPage';
 import { WorldBookState } from './WorldBookState';
 
 export class WorldBookViewModel {
@@ -19,8 +21,13 @@ export class WorldBookViewModel {
   }
 
   onAdd(): void {
-    const index = this.state.books.length + 1;
-    this.runtime.worldInfo.createWorldBook('世界书 ' + index).then(() => {
+    WorldBookEditPage.start(() => {
+      this.loadBooks();
+    });
+  }
+
+  onBookClick(book: WorldBookIndexEntry): void {
+    WorldBookDetailPage.startWithParam(book, () => {
       this.loadBooks();
     });
   }

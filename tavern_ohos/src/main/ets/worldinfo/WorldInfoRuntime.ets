@@ -115,6 +115,22 @@ export class WorldInfoRuntime {
   }
 
   /**
+   * 更新世界书基础信息，并同步索引摘要。
+   * @param worldBookId 世界书标识。
+   * @param name 世界书显示名称。
+   * @returns 更新后的世界书副本。
+   */
+  async updateWorldBook(worldBookId: string, name: string): Promise<WorldBook> {
+    const book = await this.getWorldBook(worldBookId);
+    book.name = name;
+    book.updatedAt = Date.now();
+    await this.writeWorldBook(book);
+    await this.replaceIndexEntry(book);
+    this.publishWorldBookEvent('worldinfo.updated', book);
+    return this.copyBook(book);
+  }
+
+  /**
    * 删除指定世界书及其所有条目数据，并从索引中移除该记录。
    * @param worldBookId 世界书标识。
    */

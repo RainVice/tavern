@@ -35,7 +35,7 @@ struct Index {
         }
         .width(FullPercent)
         .height(FullPercent)
-        .tabBar(new BottomTabBarStyle({ normal: symbolModifier($r("sys.symbol.book_pages_fill_1")) },
+        .tabBar(new BottomTabBarStyle({ normal: symbolModifier($r("sys.symbol.book_pages_fill")) },
           $r('app.string.world_book')))
 
         // 设置
