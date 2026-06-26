@@ -185,6 +185,16 @@ export class WorldInfoRuntime {
       insertionOrder: params.insertionOrder,
       position: params.position,
       caseSensitive: params.caseSensitive,
+      matchWholeWords: params.matchWholeWords ?? false,
+      probability: params.probability ?? 100,
+      excludeRecursion: params.excludeRecursion ?? false,
+      depth: params.depth ?? 0,
+      scanDepth: params.scanDepth ?? 0,
+      role: params.role ?? 'all',
+      group: params.group ?? '',
+      groupOverride: params.groupOverride ?? false,
+      groupWeight: params.groupWeight ?? 100,
+      automationId: params.automationId ?? '',
       createdAt: now,
       updatedAt: now,
     };
@@ -220,6 +230,16 @@ export class WorldInfoRuntime {
         entry.insertionOrder = params.insertionOrder;
         entry.position = params.position;
         entry.caseSensitive = params.caseSensitive;
+        entry.matchWholeWords = params.matchWholeWords ?? false;
+        entry.probability = params.probability ?? 100;
+        entry.excludeRecursion = params.excludeRecursion ?? false;
+        entry.depth = params.depth ?? 0;
+        entry.scanDepth = params.scanDepth ?? 0;
+        entry.role = params.role ?? 'all';
+        entry.group = params.group ?? '';
+        entry.groupOverride = params.groupOverride ?? false;
+        entry.groupWeight = params.groupWeight ?? 100;
+        entry.automationId = params.automationId ?? '';
         entry.updatedAt = Date.now();
         updated = entry;
       }
@@ -355,21 +375,27 @@ export class WorldInfoRuntime {
       return this.emptyMatch();
     }
     if (entry.constant) {
+      if (!this.passProbability(entry.probability ?? 100)) {
+        return this.emptyMatch();
+      }
       return {
         worldBookId: worldBookId,
         entryId: entry.id,
         key: '',
       };
     }
-    const primaryKey = this.findFirstMatch(entry.keys, buffer, entry.caseSensitive);
+    const primaryKey = this.findFirstMatch(entry.keys, buffer, entry.caseSensitive, entry.matchWholeWords ?? false);
     if (primaryKey.length === 0) {
       return this.emptyMatch();
     }
     if (entry.selective) {
-      const secondaryKey = this.findFirstMatch(entry.secondaryKeys, buffer, entry.caseSensitive);
+      const secondaryKey = this.findFirstMatch(entry.secondaryKeys, buffer, entry.caseSensitive, entry.matchWholeWords ?? false);
       if (secondaryKey.length === 0) {
         return this.emptyMatch();
       }
+    }
+    if (!this.passProbability(entry.probability ?? 100)) {
+      return this.emptyMatch();
     }
 
     return {
@@ -384,19 +410,54 @@ export class WorldInfoRuntime {
    * @param keys 待匹配的关键词列表。
    * @param buffer 要搜索的文本缓冲区。
    * @param caseSensitive 是否区分大小写。
+   * @param matchWholeWords 是否要求整词匹配。
    * @returns 第一个命中的关键词原文；未命中则返回空字符串。
    */
-  private findFirstMatch(keys: Array<string>, buffer: string, caseSensitive: boolean): string {
+  private findFirstMatch(keys: Array<string>, buffer: string, caseSensitive: boolean, matchWholeWords: boolean): string {
     const haystack = caseSensitive ? buffer : buffer.toLowerCase();
     for (let index = 0; index < keys.length; index += 1) {
       // 键名。
       const key = keys[index];
       const needle = caseSensitive ? key : key.toLowerCase();
-      if (needle.length > 0 && haystack.indexOf(needle) >= 0) {
+      if (needle.length > 0 && this.containsKeyword(haystack, needle, matchWholeWords)) {
         return key;
       }
     }
     return '';
+  }
+
+  private containsKeyword(haystack: string, needle: string, matchWholeWords: boolean): boolean {
+    if (!matchWholeWords) {
+      return haystack.indexOf(needle) >= 0;
+    }
+    let start = haystack.indexOf(needle);
+    while (start >= 0) {
+      const before = start > 0 ? haystack.charAt(start - 1) : '';
+      const afterIndex = start + needle.length;
+      const after = afterIndex < haystack.length ? haystack.charAt(afterIndex) : '';
+      if (!this.isWordChar(before) && !this.isWordChar(after)) {
+        return true;
+      }
+      start = haystack.indexOf(needle, start + needle.length);
+    }
+    return false;
+  }
+
+  private isWordChar(char: string): boolean {
+    if (char.length === 0) {
+      return false;
+    }
+    return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || char === '_';
+  }
+
+  private passProbability(probability: number): boolean {
+    if (probability >= 100) {
+      return true;
+    }
+    if (probability <= 0) {
+      return false;
+    }
+    return Math.random() * 100 < probability;
   }
 
   /**
@@ -567,7 +628,9 @@ export class WorldInfoRuntime {
     if (maxDepth <= 1) { return activation; }
     let extendedMessages = messages.slice();
     for (let ei = 0; ei < activation.entries.length; ei += 1) { const entry = activation.entries[ei];
-      extendedMessages.push(entry.content);
+      if (!(entry.excludeRecursion ?? false)) {
+        extendedMessages.push(entry.content);
+      }
     }
     const deep = await this.activateEntriesRecursive(worldBookIds, extendedMessages, maxDepth - 1, maxTokens);
     // 合并结果，去重
@@ -671,6 +734,16 @@ export class WorldInfoRuntime {
       insertionOrder: entry.insertionOrder,
       position: entry.position,
       caseSensitive: entry.caseSensitive,
+      matchWholeWords: entry.matchWholeWords ?? false,
+      probability: entry.probability ?? 100,
+      excludeRecursion: entry.excludeRecursion ?? false,
+      depth: entry.depth ?? 0,
+      scanDepth: entry.scanDepth ?? 0,
+      role: entry.role ?? 'all',
+      group: entry.group ?? '',
+      groupOverride: entry.groupOverride ?? false,
+      groupWeight: entry.groupWeight ?? 100,
+      automationId: entry.automationId ?? '',
       createdAt: entry.createdAt,
       updatedAt: entry.updatedAt,
     };

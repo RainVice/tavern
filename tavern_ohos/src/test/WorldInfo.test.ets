@@ -125,6 +125,16 @@ export default function worldInfoUnitTest() {
         insertionOrder: 2,
         position: 'after',
         caseSensitive: true,
+        matchWholeWords: true,
+        probability: 80,
+        excludeRecursion: true,
+        depth: 4,
+        scanDepth: 2,
+        role: 'user',
+        group: '地理',
+        groupOverride: true,
+        groupWeight: 120,
+        automationId: 'auto-1',
       };
       const updated = await runtime.updateEntry(book.id, entry.id, updateParams);
       const exported = await runtime.exportWorldBookJson(book.id);
@@ -134,10 +144,51 @@ export default function worldInfoUnitTest() {
       const imported = await runtime.importWorldBookJson(exported, 'Imported');
 
       expect(updated.comment).assertEqual('New');
+      expect(updated.matchWholeWords).assertTrue();
+      expect(updated.probability).assertEqual(80);
+      expect(updated.excludeRecursion).assertTrue();
+      expect(updated.depth).assertEqual(4);
+      expect(updated.scanDepth).assertEqual(2);
+      expect(updated.role).assertEqual('user');
+      expect(updated.group).assertEqual('地理');
+      expect(updated.groupOverride).assertTrue();
+      expect(updated.groupWeight).assertEqual(120);
+      expect(updated.automationId).assertEqual('auto-1');
       expect(afterDelete.entries.length).assertEqual(0);
       expect(importedData.entries.length).assertEqual(1);
       expect(imported.name).assertEqual('Imported');
       expect(imported.entries[0].content).assertEqual('New content');
+      expect(imported.entries[0].group).assertEqual('地理');
+    });
+
+    it('支持整词匹配、概率和递归排除字段', 0, async () => {
+      // 运行时实例。
+      const runtime = new WorldInfoRuntime(new InMemoryFileStore(), new EventBus(), 'tavern-data', 'default');
+      const book = await runtime.createWorldBook('Advanced');
+      const wholeWordParams = makeEntryParams('Whole', ['cat'], 'whole content', 1);
+      wholeWordParams.matchWholeWords = true;
+      const disabledProbabilityParams = makeEntryParams('Disabled probability', ['dog'], 'disabled content', 2);
+      disabledProbabilityParams.probability = 0;
+      await runtime.createEntry(book.id, wholeWordParams);
+      await runtime.createEntry(book.id, disabledProbabilityParams);
+
+      const partial = await runtime.activateEntries([book.id], ['catalog dog']);
+      const exact = await runtime.activateEntries([book.id], ['cat dog']);
+
+      expect(partial.entries.length).assertEqual(0);
+      expect(exact.entries.length).assertEqual(1);
+      expect(exact.entries[0].comment).assertEqual('Whole');
+
+      const firstBook = await runtime.createWorldBook('Recursive first');
+      const secondBook = await runtime.createWorldBook('Recursive second');
+      const firstParams = makeEntryParams('No recursion', ['alpha'], 'beta', 1);
+      firstParams.excludeRecursion = true;
+      await runtime.createEntry(firstBook.id, firstParams);
+      await runtime.createEntry(secondBook.id, makeEntryParams('Second', ['beta'], 'second content', 2));
+      const recursive = await runtime.activateEntriesRecursive([firstBook.id, secondBook.id], ['alpha'], 2, 100);
+
+      expect(recursive.entries.length).assertEqual(1);
+      expect(recursive.entries[0].comment).assertEqual('No recursion');
     });
 
     it('更新或删除不存在的条目时抛错', 0, async () => {

@@ -52,6 +52,16 @@ export class WorldInfoEntryEditViewModel {
     this.state.insertionOrderText = entry.insertionOrder.toString()
     this.state.position = entry.position
     this.state.caseSensitive = entry.caseSensitive
+    this.state.matchWholeWords = entry.matchWholeWords ?? false
+    this.state.probabilityText = (entry.probability ?? 100).toString()
+    this.state.excludeRecursion = entry.excludeRecursion ?? false
+    this.state.depthText = (entry.depth ?? 0).toString()
+    this.state.scanDepthText = (entry.scanDepth ?? 0).toString()
+    this.state.role = entry.role ?? 'all'
+    this.state.group = entry.group ?? ''
+    this.state.groupOverride = entry.groupOverride ?? false
+    this.state.groupWeightText = (entry.groupWeight ?? 100).toString()
+    this.state.automationId = entry.automationId ?? ''
   }
 
   private async saveEntry(): Promise<void> {
@@ -76,6 +86,16 @@ export class WorldInfoEntryEditViewModel {
       insertionOrder: this.parseInsertionOrder(),
       position: this.state.position,
       caseSensitive: this.state.caseSensitive,
+      matchWholeWords: this.state.matchWholeWords,
+      probability: this.parseNumber(this.state.probabilityText, 100, 0, 100),
+      excludeRecursion: this.state.excludeRecursion,
+      depth: this.parseNumber(this.state.depthText, 0, 0, 999),
+      scanDepth: this.parseNumber(this.state.scanDepthText, 0, 0, 999),
+      role: this.state.role,
+      group: this.state.group.trim(),
+      groupOverride: this.state.groupOverride,
+      groupWeight: this.parseNumber(this.state.groupWeightText, 100, 0, 999),
+      automationId: this.state.automationId.trim(),
     }
   }
 
@@ -91,6 +111,16 @@ export class WorldInfoEntryEditViewModel {
       insertionOrder: this.parseInsertionOrder(),
       position: this.state.position,
       caseSensitive: this.state.caseSensitive,
+      matchWholeWords: this.state.matchWholeWords,
+      probability: this.parseNumber(this.state.probabilityText, 100, 0, 100),
+      excludeRecursion: this.state.excludeRecursion,
+      depth: this.parseNumber(this.state.depthText, 0, 0, 999),
+      scanDepth: this.parseNumber(this.state.scanDepthText, 0, 0, 999),
+      role: this.state.role,
+      group: this.state.group.trim(),
+      groupOverride: this.state.groupOverride,
+      groupWeight: this.parseNumber(this.state.groupWeightText, 100, 0, 999),
+      automationId: this.state.automationId.trim(),
     }
   }
 
@@ -107,10 +137,14 @@ export class WorldInfoEntryEditViewModel {
   }
 
   private parseInsertionOrder(): number {
-    const value = Number(this.state.insertionOrderText.trim())
+    return this.parseNumber(this.state.insertionOrderText, 100, -999999, 999999)
+  }
+
+  private parseNumber(text: string, fallback: number, min: number, max: number): number {
+    const value = Number(text.trim())
     if (value !== value) {
-      return 100
+      return fallback
     }
-    return value
+    return Math.min(Math.max(value, min), max)
   }
 }

@@ -189,6 +189,82 @@
       "value": "区分大小写"
     },
     {
+      "name": "world_info_entry_match_whole_words",
+      "value": "整词匹配"
+    },
+    {
+      "name": "world_info_entry_probability",
+      "value": "触发概率"
+    },
+    {
+      "name": "world_info_entry_probability_placeholder",
+      "value": "0-100，默认 100"
+    },
+    {
+      "name": "world_info_entry_exclude_recursion",
+      "value": "排除递归扫描"
+    },
+    {
+      "name": "world_info_entry_depth",
+      "value": "条目深度"
+    },
+    {
+      "name": "world_info_entry_depth_placeholder",
+      "value": "请输入数字，默认 0"
+    },
+    {
+      "name": "world_info_entry_scan_depth",
+      "value": "扫描深度"
+    },
+    {
+      "name": "world_info_entry_scan_depth_placeholder",
+      "value": "请输入数字，默认 0"
+    },
+    {
+      "name": "world_info_entry_role",
+      "value": "角色过滤"
+    },
+    {
+      "name": "world_info_entry_role_all",
+      "value": "全部"
+    },
+    {
+      "name": "world_info_entry_role_user",
+      "value": "用户"
+    },
+    {
+      "name": "world_info_entry_role_assistant",
+      "value": "助手"
+    },
+    {
+      "name": "world_info_entry_group",
+      "value": "分组"
+    },
+    {
+      "name": "world_info_entry_group_placeholder",
+      "value": "请输入分组名称"
+    },
+    {
+      "name": "world_info_entry_group_override",
+      "value": "覆盖分组策略"
+    },
+    {
+      "name": "world_info_entry_group_weight",
+      "value": "分组权重"
+    },
+    {
+      "name": "world_info_entry_group_weight_placeholder",
+      "value": "请输入数字，默认 100"
+    },
+    {
+      "name": "world_info_entry_automation_id",
+      "value": "自动化 ID"
+    },
+    {
+      "name": "world_info_entry_automation_id_placeholder",
+      "value": "可选，用于脚本或自动化关联"
+    },
+    {
       "name": "world_info_entry_save_failed",
       "value": "保存世界书条目失败"
     },

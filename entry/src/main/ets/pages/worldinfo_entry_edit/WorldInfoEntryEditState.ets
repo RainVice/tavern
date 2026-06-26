@@ -12,4 +12,14 @@ export class WorldInfoEntryEditState {
   @Trace insertionOrderText: string = '100'
   @Trace position: string = 'before'
   @Trace caseSensitive: boolean = false
+  @Trace matchWholeWords: boolean = false
+  @Trace probabilityText: string = '100'
+  @Trace excludeRecursion: boolean = false
+  @Trace depthText: string = '0'
+  @Trace scanDepthText: string = '0'
+  @Trace role: string = 'all'
+  @Trace group: string = ''
+  @Trace groupOverride: boolean = false
+  @Trace groupWeightText: string = '100'
+  @Trace automationId: string = ''
 }

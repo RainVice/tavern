@@ -120,6 +120,46 @@ export interface WorldInfoEntryCreateParams {
    * 关键词匹配是否区分大小写。
    */
   caseSensitive: boolean;
+  /**
+   * 是否整词匹配关键词。
+   */
+  matchWholeWords?: boolean;
+  /**
+   * 条目触发概率，范围 0-100。
+   */
+  probability?: number;
+  /**
+   * 递归激活时是否禁止把本条内容继续放入扫描缓冲区。
+   */
+  excludeRecursion?: boolean;
+  /**
+   * 条目深度设置，由宿主 Prompt 流程解释。
+   */
+  depth?: number;
+  /**
+   * 递归扫描深度设置，由宿主 Prompt 流程解释。
+   */
+  scanDepth?: number;
+  /**
+   * 角色过滤策略，由宿主 Prompt 流程解释。
+   */
+  role?: string;
+  /**
+   * 条目分组名称。
+   */
+  group?: string;
+  /**
+   * 是否覆盖分组策略。
+   */
+  groupOverride?: boolean;
+  /**
+   * 分组权重。
+   */
+  groupWeight?: number;
+  /**
+   * 自动化标识。
+   */
+  automationId?: string;
 }
 
 /**
@@ -166,6 +206,46 @@ export interface WorldInfoEntryUpdateParams {
    * 关键词匹配是否区分大小写。
    */
   caseSensitive: boolean;
+  /**
+   * 是否整词匹配关键词。
+   */
+  matchWholeWords?: boolean;
+  /**
+   * 条目触发概率，范围 0-100。
+   */
+  probability?: number;
+  /**
+   * 递归激活时是否禁止把本条内容继续放入扫描缓冲区。
+   */
+  excludeRecursion?: boolean;
+  /**
+   * 条目深度设置，由宿主 Prompt 流程解释。
+   */
+  depth?: number;
+  /**
+   * 递归扫描深度设置，由宿主 Prompt 流程解释。
+   */
+  scanDepth?: number;
+  /**
+   * 角色过滤策略，由宿主 Prompt 流程解释。
+   */
+  role?: string;
+  /**
+   * 条目分组名称。
+   */
+  group?: string;
+  /**
+   * 是否覆盖分组策略。
+   */
+  groupOverride?: boolean;
+  /**
+   * 分组权重。
+   */
+  groupWeight?: number;
+  /**
+   * 自动化标识。
+   */
+  automationId?: string;
 }
 
 /**
@@ -220,6 +300,46 @@ export interface WorldInfoEntry {
    * 关键词匹配是否区分大小写。
    */
   caseSensitive: boolean;
+  /**
+   * 是否整词匹配关键词。
+   */
+  matchWholeWords?: boolean;
+  /**
+   * 条目触发概率，范围 0-100。
+   */
+  probability?: number;
+  /**
+   * 递归激活时是否禁止把本条内容继续放入扫描缓冲区。
+   */
+  excludeRecursion?: boolean;
+  /**
+   * 条目深度设置，由宿主 Prompt 流程解释。
+   */
+  depth?: number;
+  /**
+   * 递归扫描深度设置，由宿主 Prompt 流程解释。
+   */
+  scanDepth?: number;
+  /**
+   * 角色过滤策略，由宿主 Prompt 流程解释。
+   */
+  role?: string;
+  /**
+   * 条目分组名称。
+   */
+  group?: string;
+  /**
+   * 是否覆盖分组策略。
+   */
+  groupOverride?: boolean;
+  /**
+   * 分组权重。
+   */
+  groupWeight?: number;
+  /**
+   * 自动化标识。
+   */
+  automationId?: string;
   /**
    * 条目的创建时间戳（毫秒）。
    */

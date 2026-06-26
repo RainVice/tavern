@@ -27,11 +27,21 @@ export struct WorldInfoEntryEditPage {
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.secondaryKeysInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.contentInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.insertionOrderInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.probabilityInput() } } })
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.positionInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.depthInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.scanDepthInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.roleInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.groupInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.groupWeightInput() } } })
+        HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.automationIdInput() } } })
         this.switchItem($r("sys.symbol.checkmark_circle"), $r("app.string.world_info_entry_enabled"), this.state.enabled, (value: boolean) => this.state.enabled = value)
         this.switchItem($r("sys.symbol.pin_fill"), $r("app.string.world_info_entry_constant"), this.state.constant, (value: boolean) => this.state.constant = value)
         this.switchItem($r("sys.symbol.scope"), $r("app.string.world_info_entry_selective"), this.state.selective, (value: boolean) => this.state.selective = value)
         this.switchItem($r("sys.symbol.textformat"), $r("app.string.world_info_entry_case_sensitive"), this.state.caseSensitive, (value: boolean) => this.state.caseSensitive = value)
+        this.switchItem($r("sys.symbol.textformat"), $r("app.string.world_info_entry_match_whole_words"), this.state.matchWholeWords, (value: boolean) => this.state.matchWholeWords = value)
+        this.switchItem($r("sys.symbol.scope"), $r("app.string.world_info_entry_exclude_recursion"), this.state.excludeRecursion, (value: boolean) => this.state.excludeRecursion = value)
+        this.switchItem($r("sys.symbol.scope"), $r("app.string.world_info_entry_group_override"), this.state.groupOverride, (value: boolean) => this.state.groupOverride = value)
       }
       .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
@@ -117,6 +127,16 @@ export struct WorldInfoEntryEditPage {
   }
 
   @Builder
+  private probabilityInput() {
+    WorldInfoEntryInput({
+      icon: $r("sys.symbol.scope"),
+      text: this.state.probabilityText!!,
+      title: $r("app.string.world_info_entry_probability"),
+      placeholder: $r("app.string.world_info_entry_probability_placeholder"),
+    })
+  }
+
+  @Builder
   private positionInput() {
     Column({ space: 8 }) {
       Text() {
@@ -136,6 +156,93 @@ export struct WorldInfoEntryEditPage {
     }
     .alignItems(HorizontalAlign.Start)
     .padding(4)
+  }
+
+  @Builder
+  private depthInput() {
+    WorldInfoEntryInput({
+      icon: $r("sys.symbol.list_bullet"),
+      text: this.state.depthText!!,
+      title: $r("app.string.world_info_entry_depth"),
+      placeholder: $r("app.string.world_info_entry_depth_placeholder"),
+    })
+  }
+
+  @Builder
+  private scanDepthInput() {
+    WorldInfoEntryInput({
+      icon: $r("sys.symbol.list_bullet"),
+      text: this.state.scanDepthText!!,
+      title: $r("app.string.world_info_entry_scan_depth"),
+      placeholder: $r("app.string.world_info_entry_scan_depth_placeholder"),
+    })
+  }
+
+  @Builder
+  private roleInput() {
+    Column({ space: 8 }) {
+      Text() {
+        SymbolSpan($r("sys.symbol.person_text_rectangle_fill")).attributeModifier(symbolSpanAttribute())
+        Span(" ")
+        Span($r("app.string.world_info_entry_role"))
+      }
+      .fontSize(12)
+      .fontColor($r("sys.color.font_secondary"))
+      .padding({ start: LengthMetrics.vp(8) })
+
+      Row({ space: 8 }) {
+        this.roleOption($r("app.string.world_info_entry_role_all"), 'all')
+        this.roleOption($r("app.string.world_info_entry_role_user"), 'user')
+        this.roleOption($r("app.string.world_info_entry_role_assistant"), 'assistant')
+      }
+      .width(FullPercent)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .padding(4)
+  }
+
+  @Builder
+  private roleOption(label: ResourceStr, value: string) {
+    Text(label)
+      .fontSize(14)
+      .fontColor(this.state.role === value ? $r("sys.color.font_on_primary") : $r("sys.color.font_primary"))
+      .textAlign(TextAlign.Center)
+      .layoutWeight(1)
+      .padding(10)
+      .backgroundColor(this.state.role === value ? $r("sys.color.font_emphasize") : $r("sys.color.background_tertiary"))
+      .borderRadius(8)
+      .attributeModifier(hdsAttribute())
+      .onClick(() => this.state.role = value)
+  }
+
+  @Builder
+  private groupInput() {
+    WorldInfoEntryInput({
+      icon: $r("sys.symbol.person_2_fill"),
+      text: this.state.group!!,
+      title: $r("app.string.world_info_entry_group"),
+      placeholder: $r("app.string.world_info_entry_group_placeholder"),
+    })
+  }
+
+  @Builder
+  private groupWeightInput() {
+    WorldInfoEntryInput({
+      icon: $r("sys.symbol.sort"),
+      text: this.state.groupWeightText!!,
+      title: $r("app.string.world_info_entry_group_weight"),
+      placeholder: $r("app.string.world_info_entry_group_weight_placeholder"),
+    })
+  }
+
+  @Builder
+  private automationIdInput() {
+    WorldInfoEntryInput({
+      icon: $r("sys.symbol.link"),
+      text: this.state.automationId!!,
+      title: $r("app.string.world_info_entry_automation_id"),
+      placeholder: $r("app.string.world_info_entry_automation_id_placeholder"),
+    })
   }
 
   @Builder
