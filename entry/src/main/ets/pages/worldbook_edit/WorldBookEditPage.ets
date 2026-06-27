@@ -1,18 +1,37 @@
-import { Route } from '@hzw/zrouter'
 import { LengthMetrics } from '@kit.ArkUI'
-import { HdsListItem, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
+import { HdsListItem, hdsMaterial, HdsNavigationTitleBarOptions, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
 import { AppUtil } from '@pura/harmony-utils'
-import { FullPercent, symbolModifier } from 'common'
-import { RouterName, RVRouter } from 'router'
+import { BindSheetDialogController, FullPercent, symbolModifier } from 'common'
 import type { WorldBookIndexEntry } from 'tavern_ohos'
 import { WorldBookEditState } from './WorldBookEditState'
 import { WorldBookEditViewModel } from './WorldBookEditViewModel'
 
-@Route({ name: RouterName.WorldBookEdit })
+@Builder
+function worldBookEditSheetBuilder(param: WorldBookEditPageParam) {
+  WorldBookEditPage({ param: param })
+}
+
+export class WorldBookEditPageParam {
+  book?: WorldBookIndexEntry = undefined
+  onSaved: () => void = () => {
+  }
+}
+
+
 @ComponentV2
 export struct WorldBookEditPage {
+  @Param param: WorldBookEditPageParam = new WorldBookEditPageParam()
   private readonly state = new WorldBookEditState()
   private readonly vm = new WorldBookEditViewModel(this.state)
+
+  aboutToAppear(): void {
+    this.state.onSaved = this.param.onSaved
+    const book = this.param.book
+    if (book !== undefined) {
+      this.state.id = book.id
+      this.state.name = book.name
+    }
+  }
 
   build() {
     HdsNavDestination() {
@@ -25,16 +44,31 @@ export struct WorldBookEditPage {
       .height(FullPercent)
     }
     .backgroundColor($r("sys.color.background_secondary"))
-    .titleBar({
+    .titleBar(this.titleBarOptions())
+    .hideBackButton(false)
+  }
+
+  private getPageTitle(): ResourceStr {
+    return this.state.id.length > 0 ? $r("app.string.edit_world_book") : $r("app.string.add_world_book")
+  }
+
+  private onSave(): void {
+    this.vm.onSave()
+  }
+
+  private titleBarOptions(): HdsNavigationTitleBarOptions {
+    const mainTitle = this.getPageTitle()
+    const saveAction = (): void => this.onSave()
+    return {
       avoidLayoutSafeArea: true,
       content: {
-        title: { mainTitle: this.state.id.length > 0 ? $r("app.string.edit_world_book") : $r("app.string.add_world_book") },
+        title: { mainTitle: mainTitle },
         menu: {
           value: [{
             content: {
               icon: symbolModifier($r("sys.symbol.checkmark")).fontColor([$r('sys.color.font_primary')]),
               label: $r("app.string.save"),
-              action: () => this.vm.onSave()
+              action: saveAction
             }
           }]
         }
@@ -47,8 +81,7 @@ export struct WorldBookEditPage {
           scrollEffectType: ScrollEffectType.GRADIENT_BLUR
         }
       }
-    })
-    .hideBackButton(false)
+    }
   }
 
   @Builder
@@ -60,12 +93,19 @@ export struct WorldBookEditPage {
     })
   }
 
-  public static start(onPop?: () => void) {
-    RVRouter.push(RouterName.WorldBookEdit, onPop)
+  public static start(onSaved?: () => void) {
+    const param = new WorldBookEditPageParam()
+    param.onSaved = onSaved ?? (() => {
+    })
+    BindSheetDialogController.showWithParam(wrapBuilder(worldBookEditSheetBuilder), param)
   }
 
-  public static startWithParam(param: WorldBookIndexEntry, onPop?: () => void) {
-    RVRouter.pushWithParam(RouterName.WorldBookEdit, param, onPop)
+  public static startWithParam(book: WorldBookIndexEntry, onSaved?: () => void) {
+    const param = new WorldBookEditPageParam()
+    param.book = book
+    param.onSaved = onSaved ?? (() => {
+    })
+    BindSheetDialogController.showWithParam(wrapBuilder(worldBookEditSheetBuilder), param)
   }
 }
 

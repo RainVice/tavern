@@ -1,4 +1,4 @@
-import { ComponentContent } from '@kit.ArkUI';
+import { ComponentContent, FrameNode } from '@kit.ArkUI';
 import { AppUtil } from '@pura/harmony-utils';
 import List from '@ohos.util.List';
 
@@ -7,11 +7,13 @@ export struct BindSheetDialog {
   @Require @BuilderParam builder: CustomBuilder
 
   aboutToAppear(): void {
-    BindSheetDialogController.instance().registerTarget(this.getUniqueId());
+    const target: BindSheetDialog = this;
+    BindSheetDialogController.instance().registerTarget(target);
   }
 
   aboutToDisappear(): void {
-    BindSheetDialogController.instance().unregisterTarget(this.getUniqueId());
+    const target: BindSheetDialog = this;
+    BindSheetDialogController.instance().unregisterTarget(target);
   }
 
   build() {
@@ -23,7 +25,7 @@ export struct BindSheetDialog {
 
 export class BindSheetDialogController {
   private static _instance?: BindSheetDialogController = undefined;
-  private targetIds: Set<number> = new Set();
+  private targets: Set<BindSheetDialog> = new Set();
   private contentStack: List<ComponentContent<Object>> = new List();
 
   static instance(): BindSheetDialogController {
@@ -34,25 +36,43 @@ export class BindSheetDialogController {
     return BindSheetDialogController.instance().show(builder, options);
   }
 
+  static showWithParam<T extends Object>(builder: WrappedBuilder<[T]>, param: T, options?: SheetOptions): Promise<void> {
+    return BindSheetDialogController.instance().showWithParam(builder, param, options);
+  }
+
   static hide(): Promise<void> {
     return BindSheetDialogController.instance().hide();
   }
 
-  registerTarget(targetId: number): void {
-    this.targetIds.add(targetId);
+  registerTarget(target: BindSheetDialog): void {
+    this.targets.add(target);
   }
 
-  unregisterTarget(targetId: number): void {
-    this.targetIds.delete(targetId);
+  unregisterTarget(target: BindSheetDialog): void {
+    this.targets.delete(target);
   }
 
   async show(builder: WrappedBuilder<[]>, options?: SheetOptions): Promise<void> {
     const uiContext = AppUtil.getUIContext();
     const targetId = this.requireTargetId();
     const content = new ComponentContent(uiContext, builder);
-    this.contentStack.add(content);
 
     try {
+      this.contentStack.add(content);
+      await uiContext.openBindSheet(content, this.buildSheetOptions(options, content), targetId);
+    } catch (error) {
+      this.removeContent(content);
+      throw new Error('打开BindSheet失败');
+    }
+  }
+
+  async showWithParam<T extends Object>(builder: WrappedBuilder<[T]>, param: T, options?: SheetOptions): Promise<void> {
+    const uiContext = AppUtil.getUIContext();
+    const targetId = this.requireTargetId();
+    const content = new ComponentContent(uiContext, builder, param);
+
+    try {
+      this.contentStack.add(content);
       await uiContext.openBindSheet(content, this.buildSheetOptions(options, content), targetId);
     } catch (error) {
       this.removeContent(content);
@@ -85,18 +105,26 @@ export class BindSheetDialogController {
   }
 
   private getCurrentTargetId(): number {
-    const targetIds = Array.from(this.targetIds);
-    if (targetIds.length === 0) {
+    const targets = Array.from(this.targets);
+    if (targets.length === 0) {
       return 0;
     }
-    return targetIds[targetIds.length - 1];
+    const target = targets[targets.length - 1];
+    const uniqueId = target.getUniqueId();
+    const frameNode: FrameNode | null = target.getUIContext().getFrameNodeByUniqueId(uniqueId);
+    const targetId = frameNode?.getFirstChild()?.getUniqueId();
+    return targetId ?? 0;
   }
 
   private getTopContent(): ComponentContent<Object> | undefined {
     if (this.contentStack.length === 0) {
       return undefined;
     }
-    return this.contentStack[this.contentStack.length - 1];
+    try {
+      return this.contentStack.getLast();
+    } catch (error) {
+      return undefined;
+    }
   }
 
   private buildSheetOptions(options: SheetOptions | undefined, content: ComponentContent<Object>): SheetOptions {
@@ -121,7 +149,10 @@ export class BindSheetDialogController {
   }
 
   private removeContent(content: ComponentContent<Object>): void {
-    this.contentStack.remove(content)
+    try {
+      this.contentStack.remove(content);
+    } catch (error) {
+    }
     try {
       content.dispose();
     } catch (error) {

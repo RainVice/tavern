@@ -4,3 +4,5 @@ import { WorldInfoEntryEditPage } from "../pages/worldinfo_entry_edit/WorldInfoE
 function entryWorldInfoEntryEditPageBuilder(name: string, param?: ESObject) {
   WorldInfoEntryEditPage()
 }
+
+

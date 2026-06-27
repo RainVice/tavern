@@ -1,7 +1,5 @@
-import { ZRouter } from '@hzw/zrouter'
 import { LogUtil, ToastUtil } from '@pura/harmony-utils'
-import { RVRouter } from 'router'
-import type { WorldBookIndexEntry } from 'tavern_ohos'
+import { BindSheetDialogController } from 'common'
 import { TavernRuntimeContainer } from '../../tavern/TavernRuntimeContainer'
 import { WorldBookEditState } from './WorldBookEditState'
 
@@ -11,11 +9,6 @@ export class WorldBookEditViewModel {
 
   constructor(state: WorldBookEditState) {
     this.state = state
-    const param = ZRouter.getInstance().getParam() as WorldBookIndexEntry | undefined
-    if (param !== undefined) {
-      this.state.id = param.id
-      this.state.name = param.name
-    }
   }
 
   onSave(): boolean {
@@ -24,7 +17,8 @@ export class WorldBookEditViewModel {
       return false
     }
     this.saveWorldBook().then(() => {
-      RVRouter.pop(true)
+      this.state.onSaved()
+      BindSheetDialogController.hide()
     }).catch((error: Error) => {
       LogUtil.setDomain()
       LogUtil.debug('WorldBookEditViewModel', 'onSave', '保存世界书失败', error.message)

@@ -4,3 +4,5 @@ import { WorldBookDetailPage } from "../pages/worldbook_detail/WorldBookDetailPa
 function entryWorldBookDetailPageBuilder(name: string, param?: ESObject) {
   WorldBookDetailPage()
 }
+
+

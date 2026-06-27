@@ -6,7 +6,6 @@ export class RouterName {
   public static readonly CharacterCardDetail = 'CharacterCardDetail'
   public static readonly WorldBook = 'WorldBook'
   public static readonly WorldBookDetail = 'WorldBookDetail'
-  public static readonly WorldBookEdit = 'WorldBookEdit'
   public static readonly WorldInfoEntryEdit = 'WorldInfoEntryEdit'
   public static readonly CharacterCardEdit = 'CharacterCardEdit'
   public static readonly Settings = 'Settings'
