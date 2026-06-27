@@ -1,5 +1,11 @@
 import { LengthMetrics } from '@kit.ArkUI'
-import { HdsListItem, hdsMaterial, HdsNavigationTitleBarOptions, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit'
+import {
+  HdsListItem,
+  hdsMaterial,
+  HdsNavDestination,
+  HdsNavigationTitleBarOptions,
+  ScrollEffectType
+} from '@kit.UIDesignKit'
 import { AppUtil } from '@pura/harmony-utils'
 import { BindSheetDialogController, FullPercent, symbolModifier } from 'common'
 import type { WorldBookIndexEntry } from 'tavern_ohos'
@@ -11,16 +17,18 @@ function worldBookEditSheetBuilder(param: WorldBookEditPageParam) {
   WorldBookEditPage({ param: param })
 }
 
-export class WorldBookEditPageParam {
-  book?: WorldBookIndexEntry = undefined
-  onSaved: () => void = () => {
-  }
+export interface WorldBookEditPageParam {
+  book?: WorldBookIndexEntry
+  onSaved: () => void
 }
 
 
 @ComponentV2
 export struct WorldBookEditPage {
-  @Param param: WorldBookEditPageParam = new WorldBookEditPageParam()
+  @Param param: WorldBookEditPageParam = {
+    onSaved: () => {
+    }
+  }
   private readonly state = new WorldBookEditState()
   private readonly vm = new WorldBookEditViewModel(this.state)
 
@@ -38,11 +46,16 @@ export struct WorldBookEditPage {
       List({ space: 10 }) {
         HdsListItem({ hdsListItemCard: { textItem: { customBuilder: () => this.nameInput() } } })
       }
-      .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+      .contentStartOffset(56)
       .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .width(FullPercent)
       .height(FullPercent)
     }
+    .height(500)
+    .onBackPressed(() => {
+      this.onBack()
+      return true
+    })
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar(this.titleBarOptions())
     .hideBackButton(false)
@@ -56,13 +69,20 @@ export struct WorldBookEditPage {
     this.vm.onSave()
   }
 
+  private onBack(): void {
+    BindSheetDialogController.hide()
+  }
+
   private titleBarOptions(): HdsNavigationTitleBarOptions {
     const mainTitle = this.getPageTitle()
     const saveAction = (): void => this.onSave()
+    const backAction = (): void => this.onBack()
     return {
-      avoidLayoutSafeArea: true,
       content: {
         title: { mainTitle: mainTitle },
+        backIcon: {
+          action: backAction
+        },
         menu: {
           value: [{
             content: {
@@ -85,7 +105,7 @@ export struct WorldBookEditPage {
   }
 
   @Builder
-  private nameInput() {
+  private nameInput(): void {
     WorldBookInput({
       text: this.state.name!!,
       title: $r("app.string.world_book_name"),
@@ -94,17 +114,19 @@ export struct WorldBookEditPage {
   }
 
   public static start(onSaved?: () => void) {
-    const param = new WorldBookEditPageParam()
-    param.onSaved = onSaved ?? (() => {
-    })
+    const param: WorldBookEditPageParam = {
+      onSaved: onSaved ?? (() => {
+      })
+    }
     BindSheetDialogController.showWithParam(wrapBuilder(worldBookEditSheetBuilder), param)
   }
 
   public static startWithParam(book: WorldBookIndexEntry, onSaved?: () => void) {
-    const param = new WorldBookEditPageParam()
-    param.book = book
-    param.onSaved = onSaved ?? (() => {
-    })
+    const param: WorldBookEditPageParam = {
+      book: book,
+      onSaved: onSaved ?? (() => {
+      })
+    }
     BindSheetDialogController.showWithParam(wrapBuilder(worldBookEditSheetBuilder), param)
   }
 }

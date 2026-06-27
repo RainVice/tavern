@@ -135,6 +135,7 @@ struct ModelProviderInput {
       }.margin({ start: LengthMetrics.vp(8) }).fontSize(12).fontColor($r("sys.color.font_secondary"))
 
       TextInput({ text: this.text, placeholder: this.placeholder })
+        .type(InputType.Password)
         .padding(8)
         .borderRadius(8)
         .width(FullPercent)
@@ -183,15 +184,15 @@ struct ModelProviderModelInput {
         Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
           Repeat<string>(this.availableModels).each((repeat: RepeatItem<string>) => {
             Text(repeat.item)
-            .onClick(() => this.$text(repeat.item))
-            .fontSize(12)
-            .fontColor($r("sys.color.font_secondary"))
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .padding(8)
-            .backgroundColor($r('sys.color.background_fourth'))
-            .borderRadius(100)
-            .attributeModifier(hdsAttribute())
+              .onClick(() => this.$text(repeat.item))
+              .fontSize(12)
+              .fontColor($r("sys.color.font_secondary"))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .padding(8)
+              .backgroundColor($r('sys.color.background_fourth'))
+              .borderRadius(100)
+              .attributeModifier(hdsAttribute())
           }).key((item: string) => item)
         }
       }

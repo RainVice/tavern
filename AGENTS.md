@@ -19,3 +19,7 @@ private apiKeyInput() {
 通用输入子组件按项目原有语法写：`@Param text: ResourceStr = "";`、`@Event $text`、`build()` 中直接使用 `TextInput({ text: this.text, placeholder: this.placeholder })` 或 `TextArea({ text: this.text, placeholder: this.placeholder })`，并用 `.onChange((text: string) => this.$text(text))` 回传。不要改成 `$$this` 绑定，不要改成 `value` 参数手写 `$text`，也不要额外发明 `content()` 中转 Builder，除非用户明确要求。
 
 这条规则是项目约定，不属于 SDK 封装边界。不要因为“减少组件封装”而移除这种用于稳定 ArkUI 焦点行为的子组件。
+
+页面、弹窗、路由等只用于描述参数形状的数据类型，应优先使用 `interface`，例如 `WorldBookEditPageParam`、`WorldInfoEntryEditPageParam`。如果类型没有行为，也没有必须通过构造函数初始化的状态，不要写成 `export class XxxParam` 再 `new XxxParam()`；默认值和传参应使用显式类型标注的对象字面量。
+
+当 `HdsNavDestination` 页面被作为 `BindSheetDialog` / bindSheet 内容展示时，标题栏配置里不需要 `avoidLayoutSafeArea: true`，列表内容也不要沿用普通路由页面的 `56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight())` 顶部偏移。bindSheet 内部不需要叠加状态栏高度，`contentStartOffset` 应直接按标题栏高度设置，例如当前 `WorldBookEditPage` 使用 `56`。
