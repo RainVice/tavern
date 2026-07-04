@@ -68,12 +68,48 @@ export class HarmonyHttpTransport implements OpenAITransport {
     const request = http.createHttp();
     const decoder = util.TextDecoder.create('utf-8');
     let closed = false;
+    let responseCode = 0;
+    let responseReady = false;
+    let streamEnded = false;
+    const pendingChunks = new Array<string>();
     const closeStream = (): void => {
       if (closed) {
         return;
       }
       closed = true;
       request.destroy();
+    };
+    const isSuccessResponse = (): boolean => {
+      return responseCode >= 200 && responseCode < 300;
+    };
+    const flushPendingChunks = (): void => {
+      if (!isSuccessResponse()) {
+        return;
+      }
+      for (let index = 0; index < pendingChunks.length; index += 1) {
+        onChunk(pendingChunks[index]);
+      }
+      pendingChunks.length = 0;
+    };
+    const finishStream = (): void => {
+      if (!responseReady) {
+        streamEnded = true;
+        return;
+      }
+      if (!isSuccessResponse()) {
+        const body = pendingChunks.join('');
+        const message = body.length > 0 ? 'HTTP ' + responseCode + ': ' + body : 'HTTP ' + responseCode;
+        if (onError !== undefined) {
+          onError(message);
+        }
+        closeStream();
+        return;
+      }
+      flushPendingChunks();
+      if (onDone !== undefined) {
+        onDone();
+      }
+      closeStream();
     };
     if (options.cancelToken !== undefined) {
       options.cancelToken.onCancel(closeStream);
@@ -82,16 +118,22 @@ export class HarmonyHttpTransport implements OpenAITransport {
       if (closed) {
         return;
       }
-      onChunk(decoder.decodeToString(new Uint8Array(data)));
+      const chunk = decoder.decodeToString(new Uint8Array(data));
+      if (!responseReady) {
+        pendingChunks.push(chunk);
+        return;
+      }
+      if (isSuccessResponse()) {
+        onChunk(chunk);
+      } else {
+        pendingChunks.push(chunk);
+      }
     });
     request.on('dataEnd', () => {
       if (closed) {
         return;
       }
-      if (onDone !== undefined) {
-        onDone();
-      }
-      closeStream();
+      finishStream();
     });
     request.requestInStream(options.url, {
       method: options.method,
@@ -100,6 +142,13 @@ export class HarmonyHttpTransport implements OpenAITransport {
       multiFormDataList: this.toMultiFormDataList(options.multipart),
       readTimeout: options.readTimeout,
       connectTimeout: options.connectTimeout,
+    }).then((code: number) => {
+      responseCode = code;
+      responseReady = true;
+      flushPendingChunks();
+      if (streamEnded) {
+        finishStream();
+      }
     }).catch((error: Error) => {
       if (closed) {
         return;

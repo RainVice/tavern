@@ -285,6 +285,18 @@
       "value": "开始对话"
     },
     {
+      "name": "new_conversation",
+      "value": "新对话"
+    },
+    {
+      "name": "character_card_empty_title",
+      "value": "暂无角色卡"
+    },
+    {
+      "name": "character_card_empty_description",
+      "value": "创建角色卡后可以开始对话"
+    },
+    {
       "name": "character_card_unnamed",
       "value": "未命名角色"
     },
@@ -351,6 +363,26 @@
     {
       "name": "model_list_placeholder",
       "value": "请输入模型名称"
+    },
+    {
+      "name": "names_behavior",
+      "value": "角色名行为"
+    },
+    {
+      "name": "names_behavior_default",
+      "value": "默认"
+    },
+    {
+      "name": "names_behavior_completion",
+      "value": "name 字段"
+    },
+    {
+      "name": "names_behavior_content",
+      "value": "正文前缀"
+    },
+    {
+      "name": "names_behavior_none",
+      "value": "不发送"
     },
     {
       "name": "get_model",

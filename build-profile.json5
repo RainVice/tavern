@@ -57,10 +57,6 @@
       "srcPath": "./openai_ohos"
     },
     {
-      "name": "tavern_ohos",
-      "srcPath": "./tavern_ohos"
-    },
-    {
       "name": "router",
       "srcPath": "./router",
     },

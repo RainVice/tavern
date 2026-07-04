@@ -10,3 +10,15 @@
 [INFO] 🔥: <ETS Language Server> 6/14/2026, 5:39:31 PM ets-loader path: /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/ets/build-tools/ets-loader
 [INFO] 🔥: <ETS Language Server> 6/14/2026, 5:39:31 PM ets-loader tsconfig.json path: /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/ets/build-tools/ets-loader/tsconfig.json
 [INFO] 🔥: <ETS Language Server> 6/14/2026, 5:39:31 PM ETS Language Server is initialized.
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM ETS Support language server version: 1.3.9
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM ohos-typescript version: 4.9.5
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM Current file URI: file:///Users/rainvice/.npm/_npx/1e1169d954a67fc9/node_modules/@arkts/language-server/out/index.js
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM ETS Language Server is starting...
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM ETS Language Server is started! PID: 9025
+[WARN] ⚠️: <ETS Language Server> 6/28/2026, 1:50:02 AM Locale is undefined, skip load diagnostic messages.
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM Workspace folders: file:///Users/rainvice/DevecostudioProjects/Tavern
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM ets.sdkPath: /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM ets.hmsPath: undefined
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM ets-loader path: /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/ets/build-tools/ets-loader
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM ets-loader tsconfig.json path: /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/ets/build-tools/ets-loader/tsconfig.json
+[INFO] 🔥: <ETS Language Server> 6/28/2026, 1:50:02 AM ETS Language Server is initialized.

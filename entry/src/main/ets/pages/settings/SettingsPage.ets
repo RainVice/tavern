@@ -2,7 +2,7 @@ import { Route } from '@hzw/zrouter';
 import { HdsListItem, HdsNavDestination, IconSize, PrefixIcon, ScrollEffectType, SuffixArrow } from '@kit.UIDesignKit';
 import { AppUtil } from '@pura/harmony-utils';
 import { FullPercent, symbolModifier } from 'common';
-import {  RouterName } from 'router';
+import { RouterName } from 'router';
 import { SettingsViewModel } from './SettingsViewModel';
 
 @Route({ name: RouterName.Settings })
@@ -17,16 +17,11 @@ export struct SettingsPage {
           hdsListItemCard: {
             prefixItem: new PrefixIcon({
               iconValue: {
-                symbol: symbolModifier($r("sys.symbol.worldclock_fill_2"))
-                  .fontColor([$r("sys.color.font_emphasize")])
+                symbol: symbolModifier($r("sys.symbol.worldclock_fill_2")).fontColor([$r("sys.color.font_emphasize")])
               },
               iconSize: IconSize.SYSTEM_ICON
             }),
-            textItem: {
-              primaryText: {
-                text: $r("app.string.model_provider"),
-              },
-            },
+            textItem: { primaryText: { text: $r("app.string.model_provider"), }, },
             suffixItem: new SuffixArrow({ color: $r("sys.color.font_tertiary") }),
             onClick: (): void => {
               this.vm.onModelProviderClick()

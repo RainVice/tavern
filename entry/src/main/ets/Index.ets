@@ -1,9 +1,6 @@
 import { hdsMaterial, HdsNavigation, HdsTabs } from '@kit.UIDesignKit';
 import { BindSheetDialog, FullPercent, symbolModifier } from 'common';
 import { RVRouter } from 'router';
-import { MessageListPage } from './pages/message_list/MessageListPage';
-import { CharacterCardPage } from './pages/character_card/CharacterCardPage';
-import { WorldBookPage } from './pages/worldbook/WorldBookPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { AppUtil } from '@pura/harmony-utils';
 
@@ -15,7 +12,6 @@ struct Index {
       BindSheetDialog() {
         HdsTabs() {
           TabContent() {
-            MessageListPage()
           }
           .width(FullPercent)
           .height(FullPercent)
@@ -23,7 +19,6 @@ struct Index {
             $r('app.string.message_list')))
 
           TabContent() {
-            CharacterCardPage()
           }
           .width(FullPercent)
           .height(FullPercent)
@@ -32,7 +27,6 @@ struct Index {
 
 
           TabContent() {
-            WorldBookPage()
           }
           .width(FullPercent)
           .height(FullPercent)
