@@ -1,4 +1,4 @@
-import { ArrayUtil, JSONUtil, RandomUtil, StrUtil } from '@pura/harmony-utils'
+import { ArrayUtil, JSONUtil, ObjectUtil, RandomUtil, StrUtil } from '@pura/harmony-utils'
 import { BaseStore } from '../../base/BaseFile'
 
 export class ProviderStore extends BaseStore.BaseFile {
@@ -26,6 +26,7 @@ export class ProviderStore extends BaseStore.BaseFile {
   }
 
   setProvider(value: Provider): Provider {
+    value = ObjectUtil.plainToClass(Provider, value)
     const provider = this.providerList?.find((provider) => provider.id == value.id)
     if (provider) {
       provider.name = value.name

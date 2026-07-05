@@ -6,7 +6,7 @@ import { AppUtil } from '@pura/harmony-utils';
 import { ProviderListViewModel } from './ProviderListViewModel';
 
 @Route({ name: RouterName.ProviderList })
-@Component
+@ComponentV2
 export struct ProviderListPage {
   private readonly viewModel = new ProviderListViewModel()
 
