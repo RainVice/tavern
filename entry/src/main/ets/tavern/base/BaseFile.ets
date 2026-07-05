@@ -43,16 +43,22 @@ export namespace BaseStore {
       }
     }
 
-    protected async writeText(text: string): Promise<number | undefined> {
+    protected writeText(text: string): number | undefined {
+      let file: fileIo.File | undefined
       try {
         const filePath = this.getFilePath() ?? ""
         if (StrUtil.isBlank(filePath)) {
           throw new Error("文件路径无效")
         }
-        return await FileUtil.writeEasy(filePath, text, false)
+        file = FileUtil.openSync(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
+        return FileUtil.writeSync(file.fd, text, { offset: 0, encoding: 'utf-8' })
       } catch (e) {
         LogUtil.error(this.className, "写入文件内容失败：", this.filename, e)
         return undefined
+      } finally {
+        if (file) {
+          FileUtil.close(file.fd); //关闭文件
+        }
       }
     }
   }
