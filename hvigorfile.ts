@@ -7,7 +7,7 @@ const config: OptionalPluginConfig = {
   logEnabled: true, // 查看日志
   viewNodeInfo: true, // 查看节点信息
   enableUiPreviewBuild: true, // 启用UI预览构建，不建议启动
-  ignoredModules: ['router','openai_node','common']
+  ignoredModules: ['router','openai_ohos','common']
 }
 
 export default {

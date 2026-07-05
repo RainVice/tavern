@@ -357,11 +357,11 @@
       "value": "请输入接口地址"
     },
     {
-      "name": "model_list",
-      "value": "模型"
+      "name": "model_name",
+      "value": "模型列表"
     },
     {
-      "name": "model_list_placeholder",
+      "name": "model_name_placeholder",
       "value": "请输入模型名称"
     },
     {

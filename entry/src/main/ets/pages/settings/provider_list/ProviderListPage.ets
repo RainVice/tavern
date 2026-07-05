@@ -1,10 +1,9 @@
 import { Route } from '@hzw/zrouter';
 import { RouterName } from 'router';
-import { HdsListItem, HdsListItemCard, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit';
+import { HdsListItemCard, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit';
 import { FullPercent } from 'common';
 import { AppUtil } from '@pura/harmony-utils';
 import { ProviderListViewModel } from './ProviderListViewModel';
-import { Provider } from '../../../tavern/setting/provider/ProviderStore';
 
 @Route({ name: RouterName.ProviderList })
 @Component
@@ -17,10 +16,18 @@ export struct ProviderListPage {
 
   build() {
     HdsNavDestination() {
-      List() {
+      List({ space: 8 }) {
         Repeat(this.viewModel.providerList).each((repeat) => {
-          HdsListItem({ customItemBuilder: () => this.listItemCard(repeat) })
-        })
+          ListItem() {
+            HdsListItemCard({
+              textItem: {
+                primaryText: { text: repeat.item.name },
+                secondaryText: { text: repeat.item.baseUrl },
+              },
+            }).onClick(() => this.viewModel.onProviderList(repeat.item))
+          }
+        }).key((item) => `${item.id}-${item.name}`)
+          .virtualScroll()
       }
       .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
       .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
@@ -31,7 +38,7 @@ export struct ProviderListPage {
     .titleBar({
       avoidLayoutSafeArea: true,
       content: {
-        title: { mainTitle: $r("app.string.model_list") },
+        title: { mainTitle: $r("app.string.model_provider") },
         menu: {
           value: [
             {
@@ -54,15 +61,5 @@ export struct ProviderListPage {
         }
       },
     })
-  }
-
-  @LocalBuilder
-  private listItemCard(repeat: RepeatItem<Provider>): void {
-    HdsListItemCard({
-      textItem: {
-        primaryText: { text: repeat.item.name },
-        secondaryText: { text: repeat.item.baseUrl },
-      },
-    }).onClick(() => this.viewModel.onProviderList(repeat.item))
   }
 }

@@ -1,8 +1,10 @@
-import { PopResult, ZRouter } from '@hzw/zrouter';
+import { ZRouter } from '@hzw/zrouter';
+import { ObjectOrNull, OnPopResultCallback } from '@hzw/zrouter/src/main/ets/model/Model';
 import { LogUtil, ObjectUtil } from '@pura/harmony-utils';
 import BuildProfile from '../../../BuildProfile';
 
-const emptyFun = () => {}
+const emptyFun = () => {
+}
 
 export class RVRouter {
   static init(context: Context) {
@@ -20,14 +22,18 @@ export class RVRouter {
     return ZRouter.getNavStack()
   }
 
-  static push(option: PushOption) {
+  static getParam<T>(): T | undefined {
+    return ZRouter.getInstance().getParam() as T
+  }
+
+  static push<R = undefined>(option: PushOption<R>) {
     ZRouter.getInstance()
       .setParam(option.param)
       .setPopListener(option.onPop ?? emptyFun)
       .push(option.name)
   }
 
-  static pop<T = void>(t?: T) {
+  static pop(t?: Object) {
     if (!ObjectUtil.isNull(t)) {
       ZRouter.getInstance().popWithResult(t)
     } else {
@@ -36,8 +42,8 @@ export class RVRouter {
   }
 }
 
-interface PushOption<P = undefined, R = undefined> {
+interface PushOption<R> {
   name: string,
-  param?: P,
-  onPop?: (result: PopResult<R | Object | null | undefined>) => void
+  param?: ObjectOrNull,
+  onPop?: OnPopResultCallback<R | ObjectOrNull>
 }
