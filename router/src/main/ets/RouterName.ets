@@ -9,6 +9,6 @@ export class RouterName {
   public static readonly WorldInfoEntryEdit = 'WorldInfoEntryEdit'
   public static readonly CharacterCardEdit = 'CharacterCardEdit'
   public static readonly Settings = 'Settings'
-  public static readonly ModelProviderList = 'ModelProviderList'
-  public static readonly ModelProviderEdit = 'ModelProviderEdit'
+  public static readonly ProviderList = 'ProviderList'
+  public static readonly ProviderEdit = 'ProviderEdit'
 }
