@@ -1,7 +1,7 @@
 import { ArrayUtil, JSONUtil, ObjectUtil, RandomUtil, StrUtil } from '@pura/harmony-utils'
-import { BaseStore } from '../../base/BaseFile'
+import { BaseStore } from '../../base/BaseStore'
 
-export class ProviderStore extends BaseStore.BaseFile {
+export class ProviderStore extends BaseStore.File {
   private static _instance?: ProviderStore
   protected readonly dirname = "setting/provider"
   protected readonly filename = "provider.jsonl"

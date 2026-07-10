@@ -3,7 +3,7 @@ import { fileIo } from '@kit.CoreFileKit'
 
 
 export namespace BaseStore {
-  export abstract class BaseFile {
+  export abstract class File {
     protected abstract readonly dirname: string
     protected abstract readonly filename: string
     protected readonly className = ObjectUtil.getClassName(this)
@@ -63,7 +63,7 @@ export namespace BaseStore {
     }
   }
 
-  export abstract class BaseDir {
+  export abstract class Dir {
     protected abstract readonly dirname: string
     protected readonly className = ObjectUtil.getClassName(this)
 
