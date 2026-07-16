@@ -3,6 +3,7 @@ import { BindSheetDialog, FullPercent, symbolModifier } from 'common';
 import { RVRouter } from 'router';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { AppUtil } from '@pura/harmony-utils';
+import { RoleCardListPage } from './pages/settings/role_card_list/RoleCardListPage';
 
 @Entry
 @ComponentV2
@@ -19,11 +20,12 @@ struct Index {
             $r('app.string.message_list')))
 
           TabContent() {
+            RoleCardListPage()
           }
           .width(FullPercent)
           .height(FullPercent)
           .tabBar(new BottomTabBarStyle({ normal: symbolModifier($r("sys.symbol.person_2_fill")) },
-            $r('app.string.character_card')))
+            $r('app.string.role_card')))
 
 
           TabContent() {

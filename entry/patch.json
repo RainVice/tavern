@@ -1,10 +1,10 @@
 {
   "app": {
     "bundleName": "com.rainvice.tavern",
-    "patchVersionCode": 2000499,
+    "patchVersionCode": 2000512,
     "versionCode": 1000000,
     "versionName": "1.0.0",
-    "patchVersionName": "2000499"
+    "patchVersionName": "2000512"
   },
   "module": {
     "name": "entry",

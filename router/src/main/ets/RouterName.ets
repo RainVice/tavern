@@ -2,7 +2,7 @@ export class RouterName {
   public static readonly Home = 'Home'
   public static readonly MessageList = 'MessageList'
   public static readonly Conversation = 'Conversation'
-  public static readonly CharacterCard = 'CharacterCard'
+  public static readonly RoleCardList = 'RoleCardList'
   public static readonly CharacterCardDetail = 'CharacterCardDetail'
   public static readonly WorldBook = 'WorldBook'
   public static readonly WorldBookDetail = 'WorldBookDetail'
