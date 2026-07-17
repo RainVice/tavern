@@ -1,6 +1,7 @@
 import { BaseStore } from '../base/BaseStore';
 import { fileIo } from '@kit.CoreFileKit';
 import { util } from '@kit.ArkTS';
+import { zlib } from '@kit.BasicServicesKit';
 import { FileUtil, JSONUtil, LogUtil, ObjectUtil } from '@pura/harmony-utils';
 
 export class RoleCardStore extends BaseStore.Dir {
@@ -251,6 +252,219 @@ export class RoleCardStore extends BaseStore.Dir {
     }
   }
 
+  /**
+   * 将当前角色卡模型写入目标 PNG 文件的角色卡元数据块。
+   *
+   * 写入时遵循 SillyTavern 的双块兼容策略：移除已有的 chara 与 ccv3 tEXt 块，
+   * 保留 PNG 的其他块，并在 IEND 前依次写入 V2 兼容块和完整 V3 块。
+   * 源 PNG 只读，目标 PNG 必须具备写入权限。调用方应通过保存选择器提供目标 URI，
+   * 从而避免写入失败时破坏用户导入的原图。
+   *
+   * @param sourcePngUri 提供头像和其他 PNG 块的源文件 URI。
+   * @param targetPngUri 接收新角色卡元数据的目标文件 URI。
+   * @param card 要写入的当前角色卡模型。
+   * @returns 写入并完整落盘时返回 true；PNG 无效、模型无效或写入失败时返回 false。
+   */
+  public async writeCard(sourcePngUri: string, targetPngUri: string, card: CharacterCard): Promise<boolean> {
+    let readablePng: fileIo.File | undefined = undefined;
+    let writablePng: fileIo.File | undefined = undefined;
+    try {
+      // 目标文件会以 TRUNC 模式打开；禁止原地写入，避免中途失败时截断用户导入的原图。
+      if (sourcePngUri === targetPngUri) {
+        throw new Error('源 PNG 与目标 PNG 不能是同一个文件');
+      }
+      if (!CharacterCardCommonData.hasRequiredFields(card.data)) {
+        throw new Error('待写入的角色卡缺少必需字段');
+      }
+
+      // 先完整读取原图，重组时只替换角色卡元数据，不重新编码图片像素和其他 PNG 块。
+      readablePng = await FileUtil.open(sourcePngUri, fileIo.OpenMode.READ_ONLY);
+      const stat = await FileUtil.stat(readablePng.fd);
+      if (stat.size <= 0) {
+        throw new Error('角色卡文件为空');
+      }
+      const inputBuffer = new ArrayBuffer(stat.size);
+      const bytesRead = await FileUtil.read(readablePng.fd, inputBuffer, { offset: 0, length: stat.size });
+      if (bytesRead !== stat.size) {
+        throw new Error('角色卡文件未完整读取');
+      }
+      await FileUtil.close(readablePng.fd);
+      readablePng = undefined;
+
+      const inputBytes = new Uint8Array(inputBuffer);
+      if (inputBytes.length < RoleCardStore.PNG_SIGNATURE.length) {
+        throw new Error('角色卡文件不是有效的 PNG');
+      }
+      for (let index = 0; index < RoleCardStore.PNG_SIGNATURE.length; index++) {
+        if (inputBytes[index] !== RoleCardStore.PNG_SIGNATURE[index]) {
+          throw new Error('角色卡文件不是有效的 PNG');
+        }
+      }
+
+      // ccv3 保存完整的当前模型；chara 使用同一主体数据和 V2 标识，供旧版读取器兼容读取。
+      const v3Card = card.toV3();
+      const v3Json = JSON.stringify(v3Card);
+      if (v3Json === undefined) {
+        throw new Error('角色卡 V3 JSON 序列化失败');
+      }
+      const v2Card = new CharacterCard();
+      v2Card.spec = CharacterCardSpec.V2;
+      v2Card.spec_version = CharacterCard.V2_SPEC_VERSION;
+      v2Card.data = v3Card.data;
+      const v2Json = JSON.stringify(v2Card);
+      if (v2Json === undefined) {
+        throw new Error('角色卡 V2 兼容 JSON 序列化失败');
+      }
+
+      const textEncoder = new util.TextEncoder('utf-8');
+      const textDecoder = util.TextDecoder.create('utf-8');
+      const base64Helper = new util.Base64Helper();
+      const checksum = zlib.createChecksumSync();
+      const textChunkTypeBytes = textEncoder.encodeInto(RoleCardStore.PNG_TEXT_CHUNK_TYPE);
+
+      // 这个局部函数只服务于当前写入流程，用于组装 PNG 规定的 tEXt 块和 CRC32 校验值。
+      const createTextChunk = async (key: string, text: string): Promise<Uint8Array> => {
+        const keyBytes = textEncoder.encodeInto(key);
+        const textBytes = textEncoder.encodeInto(text);
+        const chunkDataLength = keyBytes.length + RoleCardStore.PNG_TEXT_SEPARATOR_LENGTH + textBytes.length;
+        const chunk = new Uint8Array(
+          RoleCardStore.PNG_CHUNK_HEADER_LENGTH + chunkDataLength + RoleCardStore.PNG_CHUNK_CRC_LENGTH
+        );
+
+        // PNG 块长度使用四字节大端无符号整数，按 256 的 3、2、1、0 次方写入。
+        chunk[0] = Math.floor(chunkDataLength / RoleCardStore.PNG_UINT32_HIGHEST_BYTE_FACTOR) %
+          RoleCardStore.PNG_BYTE_RADIX;
+        chunk[1] = Math.floor(chunkDataLength / RoleCardStore.PNG_UINT32_SECOND_BYTE_FACTOR) %
+          RoleCardStore.PNG_BYTE_RADIX;
+        chunk[2] = Math.floor(chunkDataLength / RoleCardStore.PNG_UINT32_THIRD_BYTE_FACTOR) %
+          RoleCardStore.PNG_BYTE_RADIX;
+        chunk[3] = chunkDataLength % RoleCardStore.PNG_BYTE_RADIX;
+        const chunkTypeOffset = RoleCardStore.PNG_CHUNK_LENGTH_FIELD_LENGTH;
+        const chunkDataOffset = RoleCardStore.PNG_CHUNK_HEADER_LENGTH;
+        chunk.set(textChunkTypeBytes, chunkTypeOffset);
+        chunk.set(keyBytes, chunkDataOffset);
+        // keyword 与 Base64 文本之间必须有一个 NUL 分隔字节。
+        const textOffset = chunkDataOffset + keyBytes.length + RoleCardStore.PNG_TEXT_SEPARATOR_LENGTH;
+        chunk.set(textBytes, textOffset);
+
+        const crcDataEnd = chunkDataOffset + chunkDataLength;
+        // PNG CRC32 的输入是四字节块类型和数据区，不包含长度字段及 CRC 字段本身。
+        const crcInput = chunk.slice(chunkTypeOffset, crcDataEnd);
+        const crcValue = (await checksum.crc32(0, crcInput.buffer)) >>> 0;
+        const crcOffset = crcDataEnd;
+        chunk[crcOffset] = Math.floor(crcValue / RoleCardStore.PNG_UINT32_HIGHEST_BYTE_FACTOR) %
+          RoleCardStore.PNG_BYTE_RADIX;
+        chunk[crcOffset + 1] = Math.floor(crcValue / RoleCardStore.PNG_UINT32_SECOND_BYTE_FACTOR) %
+          RoleCardStore.PNG_BYTE_RADIX;
+        chunk[crcOffset + 2] = Math.floor(crcValue / RoleCardStore.PNG_UINT32_THIRD_BYTE_FACTOR) %
+          RoleCardStore.PNG_BYTE_RADIX;
+        chunk[crcOffset + 3] = crcValue % RoleCardStore.PNG_BYTE_RADIX;
+        return chunk;
+      };
+
+      const v2Text = base64Helper.encodeToStringSync(textEncoder.encodeInto(v2Json));
+      const v3Text = base64Helper.encodeToStringSync(textEncoder.encodeInto(v3Json));
+      const v2TextChunk = await createTextChunk(RoleCardStore.CHARA_METADATA_KEY, v2Text);
+      const v3TextChunk = await createTextChunk(RoleCardStore.CCV3_METADATA_KEY, v3Text);
+      const outputPieces: Uint8Array[] = [inputBytes.slice(0, RoleCardStore.PNG_SIGNATURE.length)];
+      let offset = RoleCardStore.PNG_SIGNATURE.length;
+      let hasIendChunk = false;
+      while (offset + RoleCardStore.PNG_CHUNK_HEADER_LENGTH + RoleCardStore.PNG_CHUNK_CRC_LENGTH <= inputBytes.length) {
+        const chunkLength =
+          inputBytes[offset] * RoleCardStore.PNG_UINT32_HIGHEST_BYTE_FACTOR +
+            inputBytes[offset + 1] * RoleCardStore.PNG_UINT32_SECOND_BYTE_FACTOR +
+            inputBytes[offset + 2] * RoleCardStore.PNG_UINT32_THIRD_BYTE_FACTOR + inputBytes[offset + 3];
+        const chunkTypeOffset = offset + RoleCardStore.PNG_CHUNK_LENGTH_FIELD_LENGTH;
+        const chunkDataOffset = offset + RoleCardStore.PNG_CHUNK_HEADER_LENGTH;
+        if (chunkLength > inputBytes.length - chunkDataOffset - RoleCardStore.PNG_CHUNK_CRC_LENGTH) {
+          throw new Error('PNG 块长度越界');
+        }
+        const chunkEnd = chunkDataOffset + chunkLength + RoleCardStore.PNG_CHUNK_CRC_LENGTH;
+        const chunkType = textDecoder.decodeToString(
+          inputBytes.slice(chunkTypeOffset, chunkTypeOffset + RoleCardStore.PNG_CHUNK_TYPE_FIELD_LENGTH)
+        );
+        if (chunkType === RoleCardStore.PNG_IEND_CHUNK_TYPE) {
+          // IEND 没有数据区，且必须是 PNG 的最后一个块；否则不对损坏输入执行写入。
+          if (chunkLength !== 0 || chunkEnd !== inputBytes.length) {
+            throw new Error('PNG 文件的 IEND 块无效');
+          }
+          // 新角色卡块必须位于 IEND 之前。
+          outputPieces.push(v2TextChunk);
+          outputPieces.push(v3TextChunk);
+          outputPieces.push(inputBytes.slice(offset, chunkEnd));
+          hasIendChunk = true;
+          break;
+        }
+
+        let isRoleCardTextChunk = false;
+        if (chunkType === RoleCardStore.PNG_TEXT_CHUNK_TYPE) {
+          const chunkDataEnd = chunkDataOffset + chunkLength;
+          let keyEnd = chunkDataOffset;
+          while (keyEnd < chunkDataEnd && inputBytes[keyEnd] !== RoleCardStore.PNG_TEXT_SEPARATOR) {
+            keyEnd++;
+          }
+          if (keyEnd < chunkDataEnd) {
+            const key = textDecoder.decodeToString(inputBytes.slice(chunkDataOffset, keyEnd)).toLowerCase();
+            // 同时删除大小写不同的旧 chara 与 ccv3，避免同一个 PNG 存在多个冲突版本。
+            isRoleCardTextChunk = key === RoleCardStore.CHARA_METADATA_KEY || key === RoleCardStore.CCV3_METADATA_KEY;
+          }
+        }
+        if (!isRoleCardTextChunk) {
+          outputPieces.push(inputBytes.slice(offset, chunkEnd));
+        }
+        offset = chunkEnd;
+      }
+
+      if (!hasIendChunk) {
+        throw new Error('PNG 文件缺少 IEND 块');
+      }
+      let outputLength = 0;
+      for (let index = 0; index < outputPieces.length; index++) {
+        outputLength += outputPieces[index].length;
+      }
+      const outputBytes = new Uint8Array(outputLength);
+      let outputOffset = 0;
+      for (let index = 0; index < outputPieces.length; index++) {
+        const piece = outputPieces[index];
+        outputBytes.set(piece, outputOffset);
+        outputOffset += piece.length;
+      }
+
+      // 目标文件在打开时截断；源 PNG 此时已关闭，因此写入失败不会损坏用户导入的原图。
+      writablePng = await FileUtil.open(
+        targetPngUri,
+        fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC
+      );
+      const bytesWritten = await fileIo.write(writablePng.fd, outputBytes.buffer, {
+        offset: 0,
+        length: outputBytes.length
+      });
+      if (bytesWritten !== outputBytes.length) {
+        throw new Error('角色卡文件未完整写入');
+      }
+      await fileIo.fsync(writablePng.fd);
+      return true;
+    } catch (error) {
+      LogUtil.error(this.className, '写入角色卡元数据失败：', sourcePngUri, targetPngUri, error);
+      return false;
+    } finally {
+      if (writablePng !== undefined) {
+        try {
+          await FileUtil.close(writablePng.fd);
+        } catch (error) {
+          LogUtil.error(this.className, '关闭角色卡写入文件失败：', targetPngUri, error);
+        }
+      }
+      if (readablePng !== undefined) {
+        try {
+          await FileUtil.close(readablePng.fd);
+        } catch (error) {
+          LogUtil.error(this.className, '关闭角色卡读取文件失败：', sourcePngUri, error);
+        }
+      }
+    }
+  }
+
 }
 
 
@@ -299,6 +513,10 @@ export class CharacterCard {
    * 读取 V3 卡时会保留原始 spec_version，以兼容未来的非破坏性修订版本。
    */
   public static readonly DEFAULT_SPEC_VERSION: string = '3.0';
+  /**
+   * 写入 chara 兼容块时使用的 Character Card V2 规范版本。
+   */
+  public static readonly V2_SPEC_VERSION: string = '2.0';
 
   /**
    * 将 JSON 字符串解析为指定规范的角色卡。
