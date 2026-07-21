@@ -23,14 +23,10 @@ export interface RoleCardListItem {
  * 既可逆，又能避免文件名包含路径分隔符等特殊字符。
  */
 interface RoleCardFileNameData {
-  /** 新格式角色名。 */
+  /** 角色名。 */
   name?: string;
-  /** 新格式同名角色序号。 */
+  /** 同名角色序号。 */
   index?: number;
-  /** 旧格式角色名，仅用于兼容读取。 */
-  n?: string;
-  /** 旧格式同名角色序号，仅用于兼容读取。 */
-  i?: number;
 }
 
 export class RoleCardStore extends BaseStore.Dir {
@@ -117,7 +113,7 @@ export class RoleCardStore extends BaseStore.Dir {
    */
   private static readonly PNG_TEXT_SEPARATOR_LENGTH: number = 1;
   /**
-   * 本地角色卡文件名的固定前缀，用于快速排除旧格式或无关 PNG 文件。
+   * 本地角色卡文件名的固定前缀，用于快速排除不属于当前格式的 PNG 文件。
    */
   private static readonly ROLE_CARD_FILE_PREFIX: string = 'rc_';
   /**
@@ -148,7 +144,7 @@ export class RoleCardStore extends BaseStore.Dir {
    * 获取角色卡存储目录中的角色卡列表。
    *
    * 文件名使用 Base64URL 保存角色名与同名序号。本方法只解析文件名，不读取 PNG 元数据；
-   * 无法解析的旧格式或损坏文件名会被跳过。
+   * 无法解析或不符合当前格式的文件名会被跳过。
    *
    * @returns 按角色名、序号排序的角色卡列表；目录为空或读取失败时返回空数组。
    */
@@ -229,12 +225,8 @@ export class RoleCardStore extends BaseStore.Dir {
         return undefined;
       }
 
-      let name: string | undefined = fileNameData.name;
-      let index: number | undefined = fileNameData.index;
-      if (typeof name !== 'string' || typeof index !== 'number') {
-        name = fileNameData.n;
-        index = fileNameData.i;
-      }
+      const name = fileNameData.name;
+      const index = fileNameData.index;
       if (typeof name !== 'string' || typeof index !== 'number' || Math.floor(index) !== index || index < 1) {
         return undefined;
       }
