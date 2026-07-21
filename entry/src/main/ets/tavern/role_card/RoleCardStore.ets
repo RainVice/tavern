@@ -4,30 +4,6 @@ import { util } from '@kit.ArkTS';
 import { zlib } from '@kit.BasicServicesKit';
 import { FileUtil, JSONUtil, LogUtil, ObjectUtil } from '@pura/harmony-utils';
 
-/**
- * 角色卡列表中的单个文件。
- */
-export interface RoleCardListItem {
-  /** 角色名。 */
-  name: string;
-  /** 同名角色的递增序号。 */
-  index: number;
-  /** 角色卡 PNG 在应用沙箱中的完整文件路径。 */
-  filePath: string;
-}
-
-/**
- * 角色卡 PNG 文件名中保存的紧凑标识。
- *
- * name 为角色名，index 为同名角色的递增序号；序列化后使用 Base64URL 编码，
- * 既可逆，又能避免文件名包含路径分隔符等特殊字符。
- */
-interface RoleCardFileNameData {
-  /** 角色名。 */
-  name?: string;
-  /** 同名角色序号。 */
-  index?: number;
-}
 
 export class RoleCardStore extends BaseStore.Dir {
   /**
@@ -641,6 +617,29 @@ export class RoleCardStore extends BaseStore.Dir {
     }
   }
 
+}
+
+/**
+ * 角色卡 PNG 文件名中保存的紧凑标识。
+ *
+ * name 为角色名，index 为同名角色的递增序号；序列化后使用 Base64URL 编码，
+ * 既可逆，又能避免文件名包含路径分隔符等特殊字符。
+ */
+export interface RoleCardFileNameData {
+  /** 角色名。 */
+  name: string;
+  /** 同名角色序号。 */
+  index: number;
+}
+
+/**
+ * 角色卡列表中的单个文件。
+ *
+ * 继承文件名中保存的角色名和序号，再补充该 PNG 的沙箱文件路径。
+ */
+export interface RoleCardListItem extends RoleCardFileNameData {
+  /** 角色卡 PNG 在应用沙箱中的完整文件路径。 */
+  filePath: string;
 }
 
 
