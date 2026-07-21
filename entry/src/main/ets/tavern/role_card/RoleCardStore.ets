@@ -616,20 +616,6 @@ export class RoleCardStore extends BaseStore.Dir {
       }
     }
   }
-
-}
-
-/**
- * 角色卡 PNG 文件名中保存的紧凑标识。
- *
- * name 为角色名，index 为同名角色的递增序号；序列化后使用 Base64URL 编码，
- * 既可逆，又能避免文件名包含路径分隔符等特殊字符。
- */
-export interface RoleCardFileNameData {
-  /** 角色名。 */
-  name: string;
-  /** 同名角色序号。 */
-  index: number;
 }
 
 /**
@@ -642,6 +628,19 @@ export interface RoleCardListItem extends RoleCardFileNameData {
   filePath: string;
 }
 
+/**
+ * 角色卡 PNG 文件名中保存的紧凑标识。
+ *
+ * name 为角色名，index 为同名角色的递增序号；序列化后使用 Base64URL 编码，
+ * 既可逆，又能避免文件名包含路径分隔符等特殊字符。
+ */
+export interface RoleCardFileNameData {
+  /** 角色名。 */
+  name: string;
+
+  /** 同名角色序号。 */
+  index: number;
+}
 
 /**
  * 扩展字段允许保存的数据类型。
@@ -1071,14 +1070,12 @@ export class CharacterCardV1 extends CharacterCardCommonData {
    */
   private static readonly TALKATIVENESS_EXTENSION_KEY: string = 'talkativeness';
   private static readonly FAVORITE_EXTENSION_KEY: string = 'fav';
-
   /**
    * V1 不定义该字段；仅用于反序列化后确认输入没有携带 V2/V3 或未知规范标识。
    *
    * JSON 字段名：spec
    */
   public spec: string | undefined = undefined;
-
   /**
    * SillyTavern V1 作者备注。
    *
