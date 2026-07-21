@@ -4,6 +4,17 @@ import { util } from '@kit.ArkTS';
 import { zlib } from '@kit.BasicServicesKit';
 import { FileUtil, JSONUtil, LogUtil, ObjectUtil } from '@pura/harmony-utils';
 
+/**
+ * 角色卡 PNG 文件名中保存的紧凑标识。
+ *
+ * n 为角色名，i 为同名角色的递增序号；序列化后使用 Base64URL 编码，
+ * 既可逆，又能避免文件名包含路径分隔符等特殊字符。
+ */
+interface RoleCardFileNameData {
+  n: string;
+  i: number;
+}
+
 export class RoleCardStore extends BaseStore.Dir {
   /**
    * 角色卡存储单例。
@@ -87,6 +98,22 @@ export class RoleCardStore extends BaseStore.Dir {
    * PNG tEXt 块中 NUL 分隔字节本身占用一个字节。
    */
   private static readonly PNG_TEXT_SEPARATOR_LENGTH: number = 1;
+  /**
+   * 本地角色卡文件名的固定前缀，用于快速排除旧格式或无关 PNG 文件。
+   */
+  private static readonly ROLE_CARD_FILE_PREFIX: string = 'rc_';
+  /**
+   * 角色卡图片使用的 PNG 文件扩展名。
+   */
+  private static readonly PNG_FILE_EXTENSION: string = '.png';
+  /**
+   * Base64 每组编码固定包含四个字符；解码无填充的 Base64URL 时据此补齐末尾填充符。
+   */
+  private static readonly BASE64_ENCODE_GROUP_LENGTH: number = 4;
+  /**
+   * 标准 Base64 的末尾填充字符。
+   */
+  private static readonly BASE64_PADDING_CHARACTER: string = '=';
   /**
    * 应用私有角色卡存储目录。
    */
@@ -262,9 +289,15 @@ export class RoleCardStore extends BaseStore.Dir {
    *
    * @param sourcePngUri 提供头像和其他 PNG 块的源文件 URI。
    * @param card 要写入的当前角色卡模型。
-   * @returns 写入并完整落盘时返回 true；PNG 无效、模型无效或写入失败时返回 false。
+   * @param deleteSourceFile 是否在新图片写入、同步并关闭后删除源文件，默认不删除。
+   * 文件选择器返回的 URI 可能没有删除权限；此时保留新文件并返回 false。
+   * @returns 写入成功且（请求删除时）源文件也删除成功时返回 true；否则返回 false。
    */
-  public async writeCard(sourcePngUri: string, card: CharacterCard): Promise<boolean> {
+  public async writeCard(
+    sourcePngUri: string,
+    card: CharacterCard,
+    deleteSourceFile: boolean = false
+  ): Promise<boolean> {
     let readablePng: fileIo.File | undefined = undefined;
     let writablePng: fileIo.File | undefined = undefined;
     let targetPngPath = '';
@@ -426,22 +459,75 @@ export class RoleCardStore extends BaseStore.Dir {
         outputOffset += piece.length;
       }
 
-      // 用源图片的文件名生成新的沙箱文件名，并加入时间戳与递增序号避免覆盖已有角色卡。
-      const sourceFileName = FileUtil.getFileName(sourcePngUri);
-      const extensionIndex = sourceFileName.lastIndexOf('.');
-      const sourceBaseName = extensionIndex > 0 ? sourceFileName.substring(0, extensionIndex) : sourceFileName;
-      if (sourceBaseName.length === 0) {
-        throw new Error('源 PNG 文件名无效');
+      // 读取已有文件名中可逆的角色名与序号，为同名角色分配下一个连续序号。
+      const cardName = card.data.name;
+      let nextCardIndex = 1;
+      const existingFileNames = this.getCardList();
+      for (let fileIndex = 0; fileIndex < existingFileNames.length; fileIndex++) {
+        const existingFileName = existingFileNames[fileIndex];
+        if (!existingFileName.startsWith(RoleCardStore.ROLE_CARD_FILE_PREFIX) ||
+          !existingFileName.endsWith(RoleCardStore.PNG_FILE_EXTENSION)) {
+          continue;
+        }
+        const encodedStart = RoleCardStore.ROLE_CARD_FILE_PREFIX.length;
+        const encodedEnd = existingFileName.length - RoleCardStore.PNG_FILE_EXTENSION.length;
+        const encodedFileNameData = existingFileName.substring(encodedStart, encodedEnd);
+        try {
+          let base64FileNameData = '';
+          for (let characterIndex = 0; characterIndex < encodedFileNameData.length; characterIndex++) {
+            const character = encodedFileNameData[characterIndex];
+            if (character === '-') {
+              base64FileNameData += '+';
+            } else if (character === '_') {
+              base64FileNameData += '/';
+            } else {
+              base64FileNameData += character;
+            }
+          }
+          const base64Remainder = base64FileNameData.length % RoleCardStore.BASE64_ENCODE_GROUP_LENGTH;
+          if (base64Remainder > 0) {
+            for (let paddingIndex = base64Remainder;
+              paddingIndex < RoleCardStore.BASE64_ENCODE_GROUP_LENGTH; paddingIndex++) {
+              base64FileNameData += RoleCardStore.BASE64_PADDING_CHARACTER;
+            }
+          }
+          const fileNameJson = textDecoder.decodeToString(base64Helper.decodeSync(base64FileNameData));
+          const fileNameData = JSONUtil.jsonToBean<RoleCardFileNameData>(fileNameJson);
+          if (fileNameData !== undefined && fileNameData.n === cardName && typeof fileNameData.i === 'number' &&
+            Math.floor(fileNameData.i) === fileNameData.i && fileNameData.i >= nextCardIndex) {
+            nextCardIndex = fileNameData.i + 1;
+          }
+        } catch (error) {
+          // 旧格式或损坏文件名不参与序号分配，避免单个异常文件阻断新的角色卡写入。
+          LogUtil.warn(this.className, '跳过无法解析的角色卡文件名：', existingFileName, error);
+        }
       }
-      const writeTimestamp = Date.now();
-      let duplicateIndex = 0;
-      let targetFileName = `${sourceBaseName}_${writeTimestamp}.png`;
-      targetPngPath = FileUtil.getFilesDirPath(this.dirname, targetFileName);
-      while (FileUtil.accessSync(targetPngPath)) {
-        duplicateIndex++;
-        targetFileName = `${sourceBaseName}_${writeTimestamp}_${duplicateIndex}.png`;
+
+      // 文件名只保存角色名与序号的紧凑 JSON；Base64URL 不含 /、+、=，可直接作为文件名主体。
+      let targetFileName = '';
+      do {
+        const fileNameData: RoleCardFileNameData = { n: cardName, i: nextCardIndex };
+        const fileNameJson = JSON.stringify(fileNameData);
+        if (fileNameJson === undefined) {
+          throw new Error('角色卡文件名 JSON 序列化失败');
+        }
+        const base64FileNameData = base64Helper.encodeToStringSync(textEncoder.encodeInto(fileNameJson));
+        let base64UrlFileNameData = '';
+        for (let characterIndex = 0; characterIndex < base64FileNameData.length; characterIndex++) {
+          const character = base64FileNameData[characterIndex];
+          if (character === '+') {
+            base64UrlFileNameData += '-';
+          } else if (character === '/') {
+            base64UrlFileNameData += '_';
+          } else if (character !== RoleCardStore.BASE64_PADDING_CHARACTER) {
+            base64UrlFileNameData += character;
+          }
+        }
+        targetFileName = `${RoleCardStore.ROLE_CARD_FILE_PREFIX}${base64UrlFileNameData}` +
+          RoleCardStore.PNG_FILE_EXTENSION;
         targetPngPath = FileUtil.getFilesDirPath(this.dirname, targetFileName);
-      }
+        nextCardIndex++;
+      } while (FileUtil.accessSync(targetPngPath));
 
       // 目标文件是新建的沙箱文件；源 PNG 此时已关闭，因此写入过程不会修改用户导入的原图。
       writablePng = await FileUtil.open(
@@ -456,6 +542,12 @@ export class RoleCardStore extends BaseStore.Dir {
         throw new Error('角色卡文件未完整写入');
       }
       await fileIo.fsync(writablePng.fd);
+      // 先关闭新文件再删除源文件，确保“删除源文件”选项不会影响已写入内容的可见性。
+      await FileUtil.close(writablePng.fd);
+      writablePng = undefined;
+      if (deleteSourceFile) {
+        await FileUtil.unlink(FileUtil.getFilePath(sourcePngUri));
+      }
       return true;
     } catch (error) {
       LogUtil.error(this.className, '写入角色卡元数据失败：', sourcePngUri, targetPngPath, error);
