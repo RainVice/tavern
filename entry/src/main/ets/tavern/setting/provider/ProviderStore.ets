@@ -1,11 +1,10 @@
-import { ArrayUtil, JSONUtil, ObjectUtil, RandomUtil, StrUtil } from '@pura/harmony-utils'
+import { JSONUtil, ObjectUtil, RandomUtil, StrUtil } from '@pura/harmony-utils'
 import { BaseStore } from '../../base/BaseStore'
 
 export class ProviderStore extends BaseStore.File {
   private static _instance?: ProviderStore
   protected readonly dirname = "setting/provider"
   protected readonly filename = "provider.jsonl"
-  private providerList: Provider[] = []
 
   static instance() {
     return ProviderStore._instance ??= new ProviderStore()
@@ -16,18 +15,15 @@ export class ProviderStore extends BaseStore.File {
    * @returns 供应商列表
    */
   getProviderList() {
-    if (ArrayUtil.isNotEmpty(this.providerList)) {
-      return this.providerList
-    }
     const text = this.readText()?.split("\n")
-    this.providerList = text?.map((line) => JSONUtil.jsonToBean(line, Provider) as Provider)
+    return text?.map((line) => JSONUtil.jsonToBean(line, Provider) as Provider)
       .filter((provider) => !!provider) ?? []
-    return this.providerList
   }
 
   setProvider(value: Provider): Provider {
     value = ObjectUtil.plainToClass(Provider, value)
-    const provider = this.providerList?.find((provider) => provider.id == value.id)
+    const providerList = this.getProviderList()
+    const provider = providerList.find((provider) => provider.id == value.id)
     if (provider) {
       provider.name = value.name
       provider.baseUrl = value.baseUrl
@@ -37,9 +33,9 @@ export class ProviderStore extends BaseStore.File {
       if (StrUtil.isBlank(value.id)) {
         value.id = RandomUtil.generateRandomUUID()
       }
-      this.providerList?.push(value)
+      providerList.push(value)
     }
-    const text = this.providerList?.map((provider) => JSONUtil.beanToJsonStr(provider)).join("\n")
+    const text = providerList.map((provider) => JSONUtil.beanToJsonStr(provider)).join("\n")
     if (text) {
       this.writeText(text)
     }

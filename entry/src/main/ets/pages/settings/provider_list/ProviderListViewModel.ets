@@ -1,4 +1,3 @@
-import { ObjectUtil } from '@pura/harmony-utils';
 import { Provider, ProviderStore } from 'ets/tavern/setting/provider/ProviderStore';
 import { ProviderEditPage } from '../provider_edit/ProviderEditPage';
 
@@ -8,8 +7,7 @@ export class ProviderListViewModel {
   @Trace providerList?: Provider[] = undefined
 
   init(): void {
-    this.providerList =
-      ProviderStore.instance().getProviderList().map((provider) => ObjectUtil.plainToClass(Provider, provider))
+    this.providerList = ProviderStore.instance().getProviderList()
   }
 
   onAddProviderList(): void {

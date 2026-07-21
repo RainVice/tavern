@@ -273,6 +273,18 @@
       "value": "添加角色卡"
     },
     {
+      "name": "select_character_card_image",
+      "value": "选择图片"
+    },
+    {
+      "name": "character_card_image_select_failed",
+      "value": "选择图片失败"
+    },
+    {
+      "name": "add_character_card_directly",
+      "value": "直接添加"
+    },
+    {
       "name": "character_card_detail",
       "value": "角色详情"
     },

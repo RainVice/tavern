@@ -1,7 +1,6 @@
-import { PickerUtil } from '@pura/picker_utils';
-import picker from '@ohos.file.picker';
 import { RoleCardListState } from './RoleCardListState';
-import { RoleCardStore } from '../../../tavern/role_card/RoleCardStore';
+import { RoleCardListItem, RoleCardStore } from '../../../tavern/role_card/RoleCardStore';
+import { RoleCardEditPage } from '../role_card_edit/RoleCardEditPage';
 
 export class RoleCardListViewModel {
   private readonly state: RoleCardListState
@@ -22,26 +21,31 @@ export class RoleCardListViewModel {
   }
 
   /**
-   * 选择一张角色卡图片，读取其元数据并保存到应用私有角色卡目录。
+   * 使用用户刚选择的 PNG 打开新建角色卡编辑页。
    */
-  async addRoleCard(): Promise<void> {
-    const documentUris = await PickerUtil.selectDocument({
-      maxSelectNumber: 1,
-      fileSuffixFilters: ['PNG 图片|.png'],
-      mergeMode: picker.MergeTypeMode.PICTURE
-    })
-    const pngUri = documentUris[0]
-    if (!pngUri) {
-      return
-    }
-    const roleCardStore = RoleCardStore.instance();
-    const card = await roleCardStore.readCard(pngUri);
-    if (card === undefined) {
-      return;
-    }
-    const isWritten = await roleCardStore.writeCard(pngUri, card);
-    if (isWritten) {
-      this.refreshCardList();
-    }
+  addRoleCardWithImage(imageUri: string): void {
+    RoleCardEditPage.start({
+      imageUri: imageUri,
+      onPop: () => this.refreshCardList()
+    });
+  }
+
+  /**
+   * 直接打开空白角色卡编辑页；保存时未选择头像则使用默认头像。
+   */
+  addRoleCard(): void {
+    RoleCardEditPage.start({ onPop: () => this.refreshCardList() });
+  }
+
+  /**
+   * 打开编辑角色卡页面。
+   *
+   * @param roleCard 列表中被点击的角色卡。
+   */
+  editRoleCard(roleCard: RoleCardListItem): void {
+    RoleCardEditPage.start({
+      roleCard: roleCard,
+      onPop: () => this.refreshCardList()
+    });
   }
 }
