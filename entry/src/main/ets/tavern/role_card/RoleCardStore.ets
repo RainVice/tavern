@@ -253,26 +253,22 @@ export class RoleCardStore extends BaseStore.Dir {
   }
 
   /**
-   * 将当前角色卡模型写入目标 PNG 文件的角色卡元数据块。
+   * 将当前角色卡模型写入新的 PNG 角色卡文件。
    *
    * 写入时遵循 SillyTavern 的双块兼容策略：移除已有的 chara 与 ccv3 tEXt 块，
    * 保留 PNG 的其他块，并在 IEND 前依次写入 V2 兼容块和完整 V3 块。
-   * 源 PNG 只读，目标 PNG 必须具备写入权限。调用方应通过保存选择器提供目标 URI，
-   * 从而避免写入失败时破坏用户导入的原图。
+   * 源 PNG 全程只读；生成的新图片会保存到本类 dirname 对应的应用沙箱目录，
+   * 不会修改用户选择的源文件。
    *
    * @param sourcePngUri 提供头像和其他 PNG 块的源文件 URI。
-   * @param targetPngUri 接收新角色卡元数据的目标文件 URI。
    * @param card 要写入的当前角色卡模型。
    * @returns 写入并完整落盘时返回 true；PNG 无效、模型无效或写入失败时返回 false。
    */
-  public async writeCard(sourcePngUri: string, targetPngUri: string, card: CharacterCard): Promise<boolean> {
+  public async writeCard(sourcePngUri: string, card: CharacterCard): Promise<boolean> {
     let readablePng: fileIo.File | undefined = undefined;
     let writablePng: fileIo.File | undefined = undefined;
+    let targetPngPath = '';
     try {
-      // 目标文件会以 TRUNC 模式打开；禁止原地写入，避免中途失败时截断用户导入的原图。
-      if (sourcePngUri === targetPngUri) {
-        throw new Error('源 PNG 与目标 PNG 不能是同一个文件');
-      }
       if (!CharacterCardCommonData.hasRequiredFields(card.data)) {
         throw new Error('待写入的角色卡缺少必需字段');
       }
@@ -430,9 +426,26 @@ export class RoleCardStore extends BaseStore.Dir {
         outputOffset += piece.length;
       }
 
-      // 目标文件在打开时截断；源 PNG 此时已关闭，因此写入失败不会损坏用户导入的原图。
+      // 用源图片的文件名生成新的沙箱文件名，并加入时间戳与递增序号避免覆盖已有角色卡。
+      const sourceFileName = FileUtil.getFileName(sourcePngUri);
+      const extensionIndex = sourceFileName.lastIndexOf('.');
+      const sourceBaseName = extensionIndex > 0 ? sourceFileName.substring(0, extensionIndex) : sourceFileName;
+      if (sourceBaseName.length === 0) {
+        throw new Error('源 PNG 文件名无效');
+      }
+      const writeTimestamp = Date.now();
+      let duplicateIndex = 0;
+      let targetFileName = `${sourceBaseName}_${writeTimestamp}.png`;
+      targetPngPath = FileUtil.getFilesDirPath(this.dirname, targetFileName);
+      while (FileUtil.accessSync(targetPngPath)) {
+        duplicateIndex++;
+        targetFileName = `${sourceBaseName}_${writeTimestamp}_${duplicateIndex}.png`;
+        targetPngPath = FileUtil.getFilesDirPath(this.dirname, targetFileName);
+      }
+
+      // 目标文件是新建的沙箱文件；源 PNG 此时已关闭，因此写入过程不会修改用户导入的原图。
       writablePng = await FileUtil.open(
-        targetPngUri,
+        targetPngPath,
         fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC
       );
       const bytesWritten = await fileIo.write(writablePng.fd, outputBytes.buffer, {
@@ -445,14 +458,14 @@ export class RoleCardStore extends BaseStore.Dir {
       await fileIo.fsync(writablePng.fd);
       return true;
     } catch (error) {
-      LogUtil.error(this.className, '写入角色卡元数据失败：', sourcePngUri, targetPngUri, error);
+      LogUtil.error(this.className, '写入角色卡元数据失败：', sourcePngUri, targetPngPath, error);
       return false;
     } finally {
       if (writablePng !== undefined) {
         try {
           await FileUtil.close(writablePng.fd);
         } catch (error) {
-          LogUtil.error(this.className, '关闭角色卡写入文件失败：', targetPngUri, error);
+          LogUtil.error(this.className, '关闭角色卡写入文件失败：', targetPngPath, error);
         }
       }
       if (readablePng !== undefined) {
