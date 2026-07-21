@@ -5,14 +5,32 @@ import { zlib } from '@kit.BasicServicesKit';
 import { FileUtil, JSONUtil, LogUtil, ObjectUtil } from '@pura/harmony-utils';
 
 /**
+ * 角色卡列表中的单个文件。
+ */
+export interface RoleCardListItem {
+  /** 角色名。 */
+  name: string;
+  /** 同名角色的递增序号。 */
+  index: number;
+  /** 角色卡 PNG 在应用沙箱中的完整文件路径。 */
+  filePath: string;
+}
+
+/**
  * 角色卡 PNG 文件名中保存的紧凑标识。
  *
- * n 为角色名，i 为同名角色的递增序号；序列化后使用 Base64URL 编码，
+ * name 为角色名，index 为同名角色的递增序号；序列化后使用 Base64URL 编码，
  * 既可逆，又能避免文件名包含路径分隔符等特殊字符。
  */
 interface RoleCardFileNameData {
-  n: string;
-  i: number;
+  /** 新格式角色名。 */
+  name?: string;
+  /** 新格式同名角色序号。 */
+  index?: number;
+  /** 旧格式角色名，仅用于兼容读取。 */
+  n?: string;
+  /** 旧格式同名角色序号，仅用于兼容读取。 */
+  i?: number;
 }
 
 export class RoleCardStore extends BaseStore.Dir {
@@ -127,14 +145,108 @@ export class RoleCardStore extends BaseStore.Dir {
   }
 
   /**
-   * 获取角色卡存储目录中的文件名列表。
+   * 获取角色卡存储目录中的角色卡列表。
    *
-   * 该方法只列出文件，不读取图片元数据，也不负责过滤无效角色卡。
+   * 文件名使用 Base64URL 保存角色名与同名序号。本方法只解析文件名，不读取 PNG 元数据；
+   * 无法解析的旧格式或损坏文件名会被跳过。
    *
-   * @returns 角色卡目录中的文件名列表；目录为空或读取失败时返回空数组。
+   * @returns 按角色名、序号排序的角色卡列表；目录为空或读取失败时返回空数组。
    */
-  public getCardList(): string[] {
-    return this.list() ?? [];
+  public getCardList(): RoleCardListItem[] {
+    const directoryPath = this.getDirPath();
+    if (directoryPath === undefined) {
+      return [];
+    }
+    const fileNames = this.list() ?? [];
+    const textDecoder = util.TextDecoder.create('utf-8');
+    const base64Helper = new util.Base64Helper();
+    const cards: RoleCardListItem[] = [];
+    for (let fileIndex = 0; fileIndex < fileNames.length; fileIndex++) {
+      const card = this.parseRoleCardListItem(fileNames[fileIndex], directoryPath, textDecoder, base64Helper);
+      if (card !== undefined) {
+        cards.push(card);
+      }
+    }
+    cards.sort((left: RoleCardListItem, right: RoleCardListItem): number => {
+      if (left.name < right.name) {
+        return -1;
+      }
+      if (left.name > right.name) {
+        return 1;
+      }
+      return left.index - right.index;
+    });
+    return cards;
+  }
+
+  /**
+   * 解析一个使用 Base64URL 命名的角色卡文件。
+   *
+   * 该解析由列表读取和写入序号分配共同使用，因此集中在这里，避免两个流程的
+   * Base64URL 还原规则出现差异。
+   *
+   * @param fileName 角色卡目录中的文件名。
+   * @param directoryPath 角色卡目录的完整路径。
+   * @param textDecoder 用于还原 UTF-8 JSON 的解码器。
+   * @param base64Helper 用于还原 Base64URL 内容的工具。
+   * @returns 可解析时返回角色卡列表项，否则返回 undefined。
+   */
+  private parseRoleCardListItem(
+    fileName: string,
+    directoryPath: string,
+    textDecoder: util.TextDecoder,
+    base64Helper: util.Base64Helper
+  ): RoleCardListItem | undefined {
+    if (!fileName.startsWith(RoleCardStore.ROLE_CARD_FILE_PREFIX) ||
+      !fileName.endsWith(RoleCardStore.PNG_FILE_EXTENSION)) {
+      return undefined;
+    }
+    try {
+      const encodedStart = RoleCardStore.ROLE_CARD_FILE_PREFIX.length;
+      const encodedEnd = fileName.length - RoleCardStore.PNG_FILE_EXTENSION.length;
+      const encodedFileNameData = fileName.substring(encodedStart, encodedEnd);
+      let base64FileNameData = '';
+      for (let characterIndex = 0; characterIndex < encodedFileNameData.length; characterIndex++) {
+        const character = encodedFileNameData[characterIndex];
+        if (character === '-') {
+          base64FileNameData += '+';
+        } else if (character === '_') {
+          base64FileNameData += '/';
+        } else {
+          base64FileNameData += character;
+        }
+      }
+      const base64Remainder = base64FileNameData.length % RoleCardStore.BASE64_ENCODE_GROUP_LENGTH;
+      if (base64Remainder > 0) {
+        for (let paddingIndex = base64Remainder;
+          paddingIndex < RoleCardStore.BASE64_ENCODE_GROUP_LENGTH; paddingIndex++) {
+          base64FileNameData += RoleCardStore.BASE64_PADDING_CHARACTER;
+        }
+      }
+      const fileNameJson = textDecoder.decodeToString(base64Helper.decodeSync(base64FileNameData));
+      const fileNameData = JSONUtil.jsonToBean<RoleCardFileNameData>(fileNameJson);
+      if (fileNameData === undefined) {
+        return undefined;
+      }
+
+      let name: string | undefined = fileNameData.name;
+      let index: number | undefined = fileNameData.index;
+      if (typeof name !== 'string' || typeof index !== 'number') {
+        name = fileNameData.n;
+        index = fileNameData.i;
+      }
+      if (typeof name !== 'string' || typeof index !== 'number' || Math.floor(index) !== index || index < 1) {
+        return undefined;
+      }
+      return {
+        name: name,
+        index: index,
+        filePath: `${directoryPath}${FileUtil.separator}${fileName}`
+      };
+    } catch (error) {
+      LogUtil.warn(this.className, '跳过无法解析的角色卡文件名：', fileName, error);
+      return undefined;
+    }
   }
 
 
@@ -462,51 +574,18 @@ export class RoleCardStore extends BaseStore.Dir {
       // 读取已有文件名中可逆的角色名与序号，为同名角色分配下一个连续序号。
       const cardName = card.data.name;
       let nextCardIndex = 1;
-      const existingFileNames = this.getCardList();
-      for (let fileIndex = 0; fileIndex < existingFileNames.length; fileIndex++) {
-        const existingFileName = existingFileNames[fileIndex];
-        if (!existingFileName.startsWith(RoleCardStore.ROLE_CARD_FILE_PREFIX) ||
-          !existingFileName.endsWith(RoleCardStore.PNG_FILE_EXTENSION)) {
-          continue;
-        }
-        const encodedStart = RoleCardStore.ROLE_CARD_FILE_PREFIX.length;
-        const encodedEnd = existingFileName.length - RoleCardStore.PNG_FILE_EXTENSION.length;
-        const encodedFileNameData = existingFileName.substring(encodedStart, encodedEnd);
-        try {
-          let base64FileNameData = '';
-          for (let characterIndex = 0; characterIndex < encodedFileNameData.length; characterIndex++) {
-            const character = encodedFileNameData[characterIndex];
-            if (character === '-') {
-              base64FileNameData += '+';
-            } else if (character === '_') {
-              base64FileNameData += '/';
-            } else {
-              base64FileNameData += character;
-            }
-          }
-          const base64Remainder = base64FileNameData.length % RoleCardStore.BASE64_ENCODE_GROUP_LENGTH;
-          if (base64Remainder > 0) {
-            for (let paddingIndex = base64Remainder;
-              paddingIndex < RoleCardStore.BASE64_ENCODE_GROUP_LENGTH; paddingIndex++) {
-              base64FileNameData += RoleCardStore.BASE64_PADDING_CHARACTER;
-            }
-          }
-          const fileNameJson = textDecoder.decodeToString(base64Helper.decodeSync(base64FileNameData));
-          const fileNameData = JSONUtil.jsonToBean<RoleCardFileNameData>(fileNameJson);
-          if (fileNameData !== undefined && fileNameData.n === cardName && typeof fileNameData.i === 'number' &&
-            Math.floor(fileNameData.i) === fileNameData.i && fileNameData.i >= nextCardIndex) {
-            nextCardIndex = fileNameData.i + 1;
-          }
-        } catch (error) {
-          // 旧格式或损坏文件名不参与序号分配，避免单个异常文件阻断新的角色卡写入。
-          LogUtil.warn(this.className, '跳过无法解析的角色卡文件名：', existingFileName, error);
+      const existingCards = this.getCardList();
+      for (let cardIndex = 0; cardIndex < existingCards.length; cardIndex++) {
+        const existingCard = existingCards[cardIndex];
+        if (existingCard.name === cardName && existingCard.index >= nextCardIndex) {
+          nextCardIndex = existingCard.index + 1;
         }
       }
 
       // 文件名只保存角色名与序号的紧凑 JSON；Base64URL 不含 /、+、=，可直接作为文件名主体。
       let targetFileName = '';
       do {
-        const fileNameData: RoleCardFileNameData = { n: cardName, i: nextCardIndex };
+        const fileNameData: RoleCardFileNameData = { name: cardName, index: nextCardIndex };
         const fileNameJson = JSON.stringify(fileNameData);
         if (fileNameJson === undefined) {
           throw new Error('角色卡文件名 JSON 序列化失败');
