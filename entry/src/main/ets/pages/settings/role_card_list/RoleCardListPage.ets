@@ -2,7 +2,9 @@ import { Route } from '@hzw/zrouter';
 import { RouterName } from 'router';
 import { RoleCardListState } from './RoleCardListState';
 import { RoleCardListViewModel } from './RoleCardListViewModel';
-import { hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit';
+import { HdsListItemCard, hdsMaterial, HdsNavDestination, ScrollEffectType } from '@kit.UIDesignKit';
+import { FullPercent } from 'common';
+import { AppUtil } from '@pura/harmony-utils';
 
 
 @Route({ name: RouterName.RoleCardList })
@@ -17,6 +19,38 @@ export struct RoleCardListPage {
 
   build() {
     HdsNavDestination() {
+      if (this.state.cardList.length > 0) {
+        List({ space: 8 }) {
+          Repeat(this.state.cardList).each((repeat) => {
+            ListItem() {
+              HdsListItemCard({
+                textItem: {
+                  primaryText: { text: `${repeat.item.name}（序号 ${repeat.item.index}）` },
+                  secondaryText: { text: repeat.item.filePath },
+                },
+              })
+            }
+          }).key((item) => item.filePath)
+            .virtualScroll()
+        }
+        .contentStartOffset(56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+        .contentEndOffset(this.getUIContext().px2vp(AppUtil.getStatusBarHeight()))
+        .width(FullPercent)
+        .height(FullPercent)
+      } else {
+        Column({ space: 8 }) {
+          Text($r("app.string.character_card_empty_title"))
+            .fontSize(20)
+            .fontWeight(FontWeight.Medium)
+          Text($r("app.string.character_card_empty_description"))
+            .fontColor($r("sys.color.font_secondary"))
+        }
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .width(FullPercent)
+        .height(FullPercent)
+        .padding({ top: 56 + this.getUIContext().px2vp(AppUtil.getStatusBarHeight()) })
+      }
     }
     .backgroundColor($r("sys.color.background_secondary"))
     .titleBar({
